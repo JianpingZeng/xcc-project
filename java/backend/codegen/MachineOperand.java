@@ -429,8 +429,10 @@ public abstract class MachineOperand {
   public void print(FormattedOutputStream os, TargetMachine tm) {
     switch (getType()) {
       case MO_Register: {
-        if (getReg() == 0 || TargetRegisterInfo.isVirtualRegister(getReg())) {
+        if (TargetRegisterInfo.isVirtualRegister(getReg())) {
           os.printf("%%reg%d", getReg());
+        } else if (getReg() == 0) {
+          os.print("%noreg");
         } else {
           // The used register is physical register.
           if (tm == null) {

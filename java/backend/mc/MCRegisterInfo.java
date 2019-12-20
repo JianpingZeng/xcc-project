@@ -75,12 +75,12 @@ public class MCRegisterInfo {
   }
 
   public static boolean isPhysicalRegister(int reg) {
-    Util.assertion(reg != 0, "this is not a register");
-    return reg < FirstVirtualRegister;
+    //Util.assertion(reg != 0, "this is not a register");
+    return reg < FirstVirtualRegister && reg > 0;
   }
 
   public static boolean isVirtualRegister(int reg) {
-    Util.assertion(reg != 0, "this is not a register");
+    //Util.assertion(reg != 0, "this is not a register");
     return reg >= FirstVirtualRegister;
   }
 

@@ -4,6 +4,7 @@ import backend.codegen.*;
 import backend.mc.MCRegisterClass;
 import backend.mc.MCRegisterInfo;
 import tools.BitMap;
+import tools.FormattedOutputStream;
 import tools.OutRef;
 import tools.Util;
 
@@ -275,5 +276,24 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
         bestRC = rc;
     }
     return bestRC;
+  }
+  public static void printReg(FormattedOutputStream os, int reg) {
+    printReg(os, reg, null);
+  }
+  public static void printReg(FormattedOutputStream os, int reg, TargetRegisterInfo tri) {
+    printReg(os, reg, tri, 0);
+  }
+  public static void printReg(FormattedOutputStream os, int reg, TargetRegisterInfo tri, int subIdx) {
+    if (reg == 0) {
+      os.print("%noreg");
+    }
+    else if (TargetRegisterInfo.isVirtualRegister(reg))
+      os.print(String.format("%%reg%d", reg));
+    else if (tri != null && reg < tri.getNumRegs())
+      os.print(String.format("%%%s", tri.getName(reg)));
+    else
+      os.print(String.format("%%physreg%d", reg));
+    if (subIdx != 0)
+      os.print(String.format(":sub(%d)", subIdx));
   }
 }

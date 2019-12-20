@@ -2,9 +2,11 @@ package backend.codegen;
 
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
+import backend.mc.MCOperandInfo;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetOpcode;
 import backend.target.TargetMachine;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import backend.value.Value;
 import tools.FormattedOutputStream;
@@ -13,7 +15,9 @@ import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
 import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
 import static backend.target.TargetOpcode.INLINEASM;
@@ -743,19 +747,60 @@ public class MachineInstr implements Cloneable {
 
   public void print(FormattedOutputStream os, TargetMachine tm) {
     int startOp = 0;
-    if (getNumOperands() != 0 && getOperand(0).isRegister() &&
-        getOperand(0).isDef()) {
-      getOperand(0).print(os, tm);
-      os.print(" = ");
+    TargetRegisterInfo tri = tm.getRegisterInfo();
+    MachineRegisterInfo mri = null;
+    if (getParent() != null && getParent().getParent() != null)
+      mri = getParent().getParent().getMachineRegisterInfo();
+
+    // Saves all virtual registers. We will print all register class for each virtual register.
+    HashMap<MCRegisterClass, ArrayList<Integer>> virtRegs = new HashMap<>();
+    while (getNumOperands() != 0 && getOperand(startOp).isRegister() &&
+        getOperand(startOp).isDef() && !getOperand(startOp).isImplicit()) {
+
+      if (startOp != 0)
+        os.print(", ");
+      getOperand(startOp).print(os, tm);
+      int reg = getOperand(startOp).getReg();
+      if (reg != 0 && TargetRegisterInfo.isVirtualRegister(reg) && mri != null) {
+        MCRegisterClass rc = mri.getRegClass(reg);
+        if (!virtRegs.containsKey(rc))
+          virtRegs.put(rc, new ArrayList<>());
+
+        virtRegs.get(rc).add(reg);
+      }
+
       ++startOp;
     }
 
+    if (startOp != 0)
+      os.print(" = ");
+
+    // print the opcode name.
     os.printf(getDesc().getName());
+
     // we have to print the first six operands instead of all operands in the sake of space.
     for (int i = startOp, e = getNumOperands(); i != e; i++) {
+      MachineOperand mo = getOperand(i);
+      if (mo.isRegister() && TargetRegisterInfo.isVirtualRegister(mo.getReg()) && mri != null) {
+        int reg = mo.getReg();
+        MCRegisterClass rc = mri.getRegClass(reg);
+        if (!virtRegs.containsKey(rc))
+          virtRegs.put(rc, new ArrayList<>());
+
+        virtRegs.get(rc).add(reg);
+      }
+
       if (i != startOp)
         os.print(",");
       os.print(" ");
+
+      if (i < getDesc().numOperands) {
+        MCOperandInfo mcoi = getDesc().opInfo[i];
+        if (mcoi.isPredicate())
+          os.print("pred:");
+        if (mcoi.isOptionalDef())
+          os.print("opt:");
+      }
       if (i == 6 && isCall()) {
         os.print("...");
         break;
@@ -764,7 +809,7 @@ public class MachineInstr implements Cloneable {
     }
 
     if (!memOperands.isEmpty()) {
-      os.print(", Mem:");
+      os.print(", mem:");
       for (MachineMemOperand mmo : memOperands) {
         Value v = mmo.getValue();
 
@@ -786,6 +831,21 @@ public class MachineInstr implements Cloneable {
           v.print(os);
 
         os.printf(" + %d]", mmo.getOffset());
+      }
+    }
+
+    // print the regclass for each virtual registers used and defined.
+    if (!virtRegs.isEmpty()) {
+      os.print(";");
+      for (Map.Entry<MCRegisterClass, ArrayList<Integer>> entry : virtRegs.entrySet()) {
+        MCRegisterClass rc = entry.getKey();
+        os.printf(" %s:", rc.getName());
+        for (int i = 0, e = entry.getValue().size(); i < e; ++i) {
+          int virtReg = entry.getValue().get(i);
+          TargetRegisterInfo.printReg(os, virtReg);
+          if (i != e - 1)
+            os.print(',');
+        }
       }
     }
     os.println();
