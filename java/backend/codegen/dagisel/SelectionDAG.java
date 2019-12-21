@@ -3156,6 +3156,34 @@ public class SelectionDAG {
     return new SDValue(n, 0);
   }
 
+  public SDValue getTargetConstantPool(MachineConstantPoolValue c,
+                                       EVT vt,
+                                       int alignment,
+                                       int offset,
+                                       boolean isTarget,
+                                       int targetFlags) {
+    Util.assertion(targetFlags == 0 || isTarget, "Can't set target flags on target-independent constant pool");
+
+    if (alignment == 0)
+      alignment = tli.getTargetData().getPrefTypeAlignment(c.getType());
+
+    int opc = isTarget ? ISD.TargetConstantPool : ISD.ConstantPool;
+    FoldingSetNodeID compute = new FoldingSetNodeID();
+    addNodeToIDNode(compute, opc, getVTList(vt), null, 0);
+    compute.addInteger(c.hashCode());
+    compute.addInteger(alignment);
+    compute.addInteger(offset);
+    compute.addInteger(targetFlags);
+
+    int id = compute.computeHash();
+    if (cseMap.containsKey(id))
+      return new SDValue(cseMap.get(id), 0);
+    SDNode n = new ConstantPoolSDNode(isTarget, c, vt, offset, alignment, targetFlags);
+    cseMap.put(id, n);
+    add(n);
+    return new SDValue(n, 0);
+  }
+
   public SDValue getTargetConstantPool(Constant c, EVT vt, int align, int offset,
                                        int targetFlags) {
     return getConstantPool(c, vt, align, offset, true, targetFlags);

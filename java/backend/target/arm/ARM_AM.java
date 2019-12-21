@@ -27,6 +27,7 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.codegen.dagisel.ISD;
 import tools.APFloat;
 import tools.APInt;
 import tools.OutRef;
@@ -110,7 +111,7 @@ public class ARM_AM {
    * @param val
    * @return
    */
-  private static int getSOImmValRotate(int val) {
+  static int getSOImmValRotate(int val) {
     if ((val & ~255) == 0) return 0;
 
     int tz = Util.countTrailingZeros(val);
@@ -294,6 +295,16 @@ public class ARM_AM {
       case lsr: return "lsr";
       case ror: return "ror";
       case rrx: return "rrx";
+    }
+  }
+
+  static ShiftOpc getShiftOpcForNode(int opc) {
+    switch (opc) {
+      default: return ShiftOpc.no_shift;
+      case ISD.SHL: return ShiftOpc.lsl;
+      case ISD.SRL: return ShiftOpc.lsr;
+      case ISD.SRA: return ShiftOpc.asr;
+      case ISD.ROTR: return ShiftOpc.ror;
     }
   }
 

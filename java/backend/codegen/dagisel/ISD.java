@@ -577,7 +577,7 @@ public class ISD {
   // BUILTIN_OP_END - This must be the last enum value in this list.
   public static final int BUILTIN_OP_END = ATOMIC_LOAD_UMAX + 1;
 
-  public static int FIRST_TARGET_MEMORY_OPCODE = BUILTIN_OP_END+150;
+  public static final int FIRST_TARGET_MEMORY_OPCODE = BUILTIN_OP_END+150;
 
   public static CondCode getSetCCInverse(CondCode cc, boolean isInteger) {
     int operator = cc.ordinal();

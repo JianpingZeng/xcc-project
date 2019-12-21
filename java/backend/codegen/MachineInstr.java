@@ -71,6 +71,7 @@ public class MachineInstr implements Cloneable {
   private int totalOperands;
 
   private DebugLoc debugLoc;
+  private int flag;
 
   /**
    * Return true if it's illegal to add a new operand.
@@ -205,6 +206,15 @@ public class MachineInstr implements Cloneable {
           operands.get(i).addRegOperandToRegInfo(regInfo);
       }
     }
+  }
+
+  public void replaceOperand(MachineOperand mo, int opNo) {
+    Util.assertion(opNo >=0 && opNo < operands.size());
+    operands.set(opNo, mo);
+  }
+
+  public int getOpIdx(MachineOperand mo) {
+    return operands.indexOf(mo);
   }
 
   public MachineRegisterInfo getRegInfo() {
@@ -747,7 +757,6 @@ public class MachineInstr implements Cloneable {
 
   public void print(FormattedOutputStream os, TargetMachine tm) {
     int startOp = 0;
-    TargetRegisterInfo tri = tm.getRegisterInfo();
     MachineRegisterInfo mri = null;
     if (getParent() != null && getParent().getParent() != null)
       mri = getParent().getParent().getMachineRegisterInfo();
@@ -1005,5 +1014,13 @@ public class MachineInstr implements Cloneable {
           mo.substVirtReg(toReg, subIdx, tri);
       }
     }
+  }
+
+  public void setFlag(int flag) {
+    this.flag = flag;
+  }
+
+  public int getFlag() {
+    return flag;
   }
 }

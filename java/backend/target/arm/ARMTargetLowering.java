@@ -37,6 +37,8 @@ import backend.target.TargetLowering;
 import backend.target.TargetLoweringObjectFile;
 import backend.target.TargetMachine;
 import backend.target.TargetOptions;
+import backend.target.arm.ARMConstantPoolValue.ARMCP;
+import backend.value.GlobalValue;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -71,6 +73,7 @@ public class ARMTargetLowering extends TargetLowering {
 
   private ARMSubtarget subtarget;
   private ARMRegisterInfo regInfo;
+  private int ARMPCLabelIndex;
 
   public ARMTargetLowering(backend.target.arm.ARMTargetMachine tm) {
     super(tm, createTLOF(tm));
@@ -723,7 +726,7 @@ public class ARMTargetLowering extends TargetLowering {
 
   @Override
   public MachineFunctionInfo createMachineFunctionInfo(MachineFunction mf) {
-    return null;
+    return new ARMFunctionInfo(mf);
   }
 
   @Override
@@ -839,6 +842,19 @@ public class ARMTargetLowering extends TargetLowering {
   }
 
   @Override
+  public SDValue lowerCall(SDValue chain,
+                           SDValue callee,
+                           CallingConv cc,
+                           boolean isVarArg,
+                           boolean isTailCall,
+                           ArrayList<OutputArg> outs,
+                           ArrayList<InputArg> ins,
+                           SelectionDAG dag,
+                           ArrayList<SDValue> inVals) {
+    return super.lowerCall(chain, callee, cc, isVarArg, isTailCall, outs, ins, dag, inVals);
+  }
+
+  @Override
   public SDValue lowerReturn(SDValue chain,
                              CallingConv cc,
                              boolean isVarArg,
@@ -891,11 +907,137 @@ public class ARMTargetLowering extends TargetLowering {
   @Override
   public String getTargetNodeName(int opcode) {
     switch (opcode) {
-      case ARMISD.CALL: return "ARMISD.CALL";
-      case ARMISD.RET_FLAG: return "ARMISD.RET_FLAG";
-      default:
-        Util.shouldNotReachHere("Unknown arm opcode!");
-        return null;
+      default: return null;
+      case ARMISD.Wrapper:       return "ARMISD.Wrapper";
+      case ARMISD.WrapperDYN:    return "ARMISD.WrapperDYN";
+      case ARMISD.WrapperPIC:    return "ARMISD.WrapperPIC";
+      case ARMISD.WrapperJT:     return "ARMISD.WrapperJT";
+      case ARMISD.CALL:          return "ARMISD.CALL";
+      case ARMISD.CALL_PRED:     return "ARMISD.CALL_PRED";
+      case ARMISD.CALL_NOLINK:   return "ARMISD.CALL_NOLINK";
+      case ARMISD.tCALL:         return "ARMISD.tCALL";
+      case ARMISD.BRCOND:        return "ARMISD.BRCOND";
+      case ARMISD.BR_JT:         return "ARMISD.BR_JT";
+      case ARMISD.BR2_JT:        return "ARMISD.BR2_JT";
+      case ARMISD.RET_FLAG:      return "ARMISD.RET_FLAG";
+      case ARMISD.PIC_ADD:       return "ARMISD.PIC_ADD";
+      case ARMISD.CMP:           return "ARMISD.CMP";
+      case ARMISD.CMPZ:          return "ARMISD.CMPZ";
+      case ARMISD.CMPFP:         return "ARMISD.CMPFP";
+      case ARMISD.CMPFPw0:       return "ARMISD.CMPFPw0";
+      case ARMISD.BCC_i64:       return "ARMISD.BCC_i64";
+      case ARMISD.FMSTAT:        return "ARMISD.FMSTAT";
+      case ARMISD.CMOV:          return "ARMISD.CMOV";
+
+      case ARMISD.RBIT:          return "ARMISD.RBIT";
+
+      case ARMISD.FTOSI:         return "ARMISD.FTOSI";
+      case ARMISD.FTOUI:         return "ARMISD.FTOUI";
+      case ARMISD.SITOF:         return "ARMISD.SITOF";
+      case ARMISD.UITOF:         return "ARMISD.UITOF";
+
+      case ARMISD.SRL_FLAG:      return "ARMISD.SRL_FLAG";
+      case ARMISD.SRA_FLAG:      return "ARMISD.SRA_FLAG";
+      case ARMISD.RRX:           return "ARMISD.RRX";
+
+      case ARMISD.ADDC:          return "ARMISD.ADDC";
+      case ARMISD.ADDE:          return "ARMISD.ADDE";
+      case ARMISD.SUBC:          return "ARMISD.SUBC";
+      case ARMISD.SUBE:          return "ARMISD.SUBE";
+
+      case ARMISD.VMOVRRD:       return "ARMISD.VMOVRRD";
+      case ARMISD.VMOVDRR:       return "ARMISD.VMOVDRR";
+
+      case ARMISD.EH_SJLJ_SETJMP: return "ARMISD.EH_SJLJ_SETJMP";
+      case ARMISD.EH_SJLJ_LONGJMP:return "ARMISD.EH_SJLJ_LONGJMP";
+      case ARMISD.EH_SJLJ_DISPATCHSETUP:return "ARMISD.EH_SJLJ_DISPATCHSETUP";
+
+      case ARMISD.TC_RETURN:     return "ARMISD.TC_RETURN";
+
+      case ARMISD.THREAD_POINTER:return "ARMISD.THREAD_POINTER";
+
+      case ARMISD.DYN_ALLOC:     return "ARMISD.DYN_ALLOC";
+
+      case ARMISD.MEMBARRIER:    return "ARMISD.MEMBARRIER";
+      case ARMISD.MEMBARRIER_MCR: return "ARMISD.MEMBARRIER_MCR";
+
+      case ARMISD.PRELOAD:       return "ARMISD.PRELOAD";
+
+      case ARMISD.VCEQ:          return "ARMISD.VCEQ";
+      case ARMISD.VCEQZ:         return "ARMISD.VCEQZ";
+      case ARMISD.VCGE:          return "ARMISD.VCGE";
+      case ARMISD.VCGEZ:         return "ARMISD.VCGEZ";
+      case ARMISD.VCLEZ:         return "ARMISD.VCLEZ";
+      case ARMISD.VCGEU:         return "ARMISD.VCGEU";
+      case ARMISD.VCGT:          return "ARMISD.VCGT";
+      case ARMISD.VCGTZ:         return "ARMISD.VCGTZ";
+      case ARMISD.VCLTZ:         return "ARMISD.VCLTZ";
+      case ARMISD.VCGTU:         return "ARMISD.VCGTU";
+      case ARMISD.VTST:          return "ARMISD.VTST";
+
+      case ARMISD.VSHL:          return "ARMISD.VSHL";
+      case ARMISD.VSHRs:         return "ARMISD.VSHRs";
+      case ARMISD.VSHRu:         return "ARMISD.VSHRu";
+      case ARMISD.VSHLLs:        return "ARMISD.VSHLLs";
+      case ARMISD.VSHLLu:        return "ARMISD.VSHLLu";
+      case ARMISD.VSHLLi:        return "ARMISD.VSHLLi";
+      case ARMISD.VSHRN:         return "ARMISD.VSHRN";
+      case ARMISD.VRSHRs:        return "ARMISD.VRSHRs";
+      case ARMISD.VRSHRu:        return "ARMISD.VRSHRu";
+      case ARMISD.VRSHRN:        return "ARMISD.VRSHRN";
+      case ARMISD.VQSHLs:        return "ARMISD.VQSHLs";
+      case ARMISD.VQSHLu:        return "ARMISD.VQSHLu";
+      case ARMISD.VQSHLsu:       return "ARMISD.VQSHLsu";
+      case ARMISD.VQSHRNs:       return "ARMISD.VQSHRNs";
+      case ARMISD.VQSHRNu:       return "ARMISD.VQSHRNu";
+      case ARMISD.VQSHRNsu:      return "ARMISD.VQSHRNsu";
+      case ARMISD.VQRSHRNs:      return "ARMISD.VQRSHRNs";
+      case ARMISD.VQRSHRNu:      return "ARMISD.VQRSHRNu";
+      case ARMISD.VQRSHRNsu:     return "ARMISD.VQRSHRNsu";
+      case ARMISD.VGETLANEu:     return "ARMISD.VGETLANEu";
+      case ARMISD.VGETLANEs:     return "ARMISD.VGETLANEs";
+      case ARMISD.VMOVIMM:       return "ARMISD.VMOVIMM";
+      case ARMISD.VMVNIMM:       return "ARMISD.VMVNIMM";
+      case ARMISD.VDUP:          return "ARMISD.VDUP";
+      case ARMISD.VDUPLANE:      return "ARMISD.VDUPLANE";
+      case ARMISD.VEXT:          return "ARMISD.VEXT";
+      case ARMISD.VREV64:        return "ARMISD.VREV64";
+      case ARMISD.VREV32:        return "ARMISD.VREV32";
+      case ARMISD.VREV16:        return "ARMISD.VREV16";
+      case ARMISD.VZIP:          return "ARMISD.VZIP";
+      case ARMISD.VUZP:          return "ARMISD.VUZP";
+      case ARMISD.VTRN:          return "ARMISD.VTRN";
+      case ARMISD.VTBL1:         return "ARMISD.VTBL1";
+      case ARMISD.VTBL2:         return "ARMISD.VTBL2";
+      case ARMISD.VMULLs:        return "ARMISD.VMULLs";
+      case ARMISD.VMULLu:        return "ARMISD.VMULLu";
+      case ARMISD.BUILD_VECTOR:  return "ARMISD.BUILD_VECTOR";
+      case ARMISD.FMAX:          return "ARMISD.FMAX";
+      case ARMISD.FMIN:          return "ARMISD.FMIN";
+      case ARMISD.BFI:           return "ARMISD.BFI";
+      case ARMISD.VORRIMM:       return "ARMISD.VORRIMM";
+      case ARMISD.VBICIMM:       return "ARMISD.VBICIMM";
+      case ARMISD.VBSL:          return "ARMISD.VBSL";
+      case ARMISD.VLD2DUP:       return "ARMISD.VLD2DUP";
+      case ARMISD.VLD3DUP:       return "ARMISD.VLD3DUP";
+      case ARMISD.VLD4DUP:       return "ARMISD.VLD4DUP";
+      case ARMISD.VLD1_UPD:      return "ARMISD.VLD1_UPD";
+      case ARMISD.VLD2_UPD:      return "ARMISD.VLD2_UPD";
+      case ARMISD.VLD3_UPD:      return "ARMISD.VLD3_UPD";
+      case ARMISD.VLD4_UPD:      return "ARMISD.VLD4_UPD";
+      case ARMISD.VLD2LN_UPD:    return "ARMISD.VLD2LN_UPD";
+      case ARMISD.VLD3LN_UPD:    return "ARMISD.VLD3LN_UPD";
+      case ARMISD.VLD4LN_UPD:    return "ARMISD.VLD4LN_UPD";
+      case ARMISD.VLD2DUP_UPD:   return "ARMISD.VLD2DUP_UPD";
+      case ARMISD.VLD3DUP_UPD:   return "ARMISD.VLD3DUP_UPD";
+      case ARMISD.VLD4DUP_UPD:   return "ARMISD.VLD4DUP_UPD";
+      case ARMISD.VST1_UPD:      return "ARMISD.VST1_UPD";
+      case ARMISD.VST2_UPD:      return "ARMISD.VST2_UPD";
+      case ARMISD.VST3_UPD:      return "ARMISD.VST3_UPD";
+      case ARMISD.VST4_UPD:      return "ARMISD.VST4_UPD";
+      case ARMISD.VST2LN_UPD:    return "ARMISD.VST2LN_UPD";
+      case ARMISD.VST3LN_UPD:    return "ARMISD.VST3LN_UPD";
+      case ARMISD.VST4LN_UPD:    return "ARMISD.VST4LN_UPD";
     }
   }
 
@@ -906,11 +1048,54 @@ public class ARMTargetLowering extends TargetLowering {
     return null;
   }
   private SDValue lowerGlobalAddressDarwin(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerGlobalAddressELF(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerGlobalAddressELF(SDValue op, SelectionDAG dag) {
+    EVT ptrTy = new EVT(getPointerTy());
+    GlobalValue gv = ((SDNode.GlobalAddressSDNode)op.getNode()).getGlobalValue();
+    TargetMachine.RelocModel relocModel = tm.getRelocationModel();
+    if (relocModel == TargetMachine.RelocModel.PIC_) {
+      boolean useGOTOFF = gv.hasLocalLinkage() || gv.hasHiddenVisibility();
+      ARMConstantPoolValue cstValue = ARMConstantPoolConstant.create(gv, useGOTOFF ?
+          ARMCP.ARMCPModifier.GOTOFF : ARMCP.ARMCPModifier.GOT);
+      SDValue cpAddr = dag.getTargetConstantPool(cstValue, ptrTy, 4, 0, false, 0);
+      cpAddr = dag.getNode(ARMISD.Wrapper, new EVT(MVT.i32), cpAddr);
+      SDValue result = dag.getLoad(ptrTy, dag.getEntryNode(), cpAddr,
+          PseudoSourceValue.getConstantPool(), 0);
+      SDValue chain = result.getValue(1);
+      SDValue got = dag.getGLOBAL_OFFSET_TABLE(ptrTy);
+      result = dag.getNode(ISD.ADD, ptrTy, result, got);
+      if (!useGOTOFF)
+        result = dag.getLoad(ptrTy, chain, result, PseudoSourceValue.getGOT(), 0);
+
+      return result;
+    }
+
+    // If we have T2 ops, we can materialize the address directly via movt/movw
+    // pair. This is always cheaper.
+    if (subtarget.useMovt()) {
+      return dag.getNode(ARMISD.Wrapper, ptrTy, dag.getTargetGlobalAddress(gv, ptrTy, 0, 0));
+    }
+    else {
+      SDValue cpAddr = dag.getTargetConstantPool(gv, ptrTy, 4, 0, 0);
+      cpAddr = dag.getNode(ARMISD.Wrapper, new EVT(MVT.i32), cpAddr);
+      return dag.getLoad(ptrTy, dag.getEntryNode(), cpAddr, PseudoSourceValue.getConstantPool(), 0);
+    }
+  }
   private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag) { return null; }
   private SDValue lowerToTLSGeneralDynamicModel(SDNode.GlobalAddressSDNode ga, SelectionDAG dag) { return null; }
   private SDValue lowerToTLSExecModels(SDNode.GlobalAddressSDNode ga, SelectionDAG dag) { return null; }
-  private SDValue lowerGLOBAL_OFFSET_TABLE(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerGLOBAL_OFFSET_TABLE(SDValue op, SelectionDAG dag) {
+    Util.assertion(subtarget.isTargetELF(), "GLOBAL_OFFSET_TABELE not implemented for non-ELF targets");
+    MachineFunction mf = dag.getMachineFunction();
+    EVT ptrVT = new EVT(getPointerTy());
+    int pcAdj = subtarget.isThumb() ? 4 : 8;
+    ARMConstantPoolValue cpv = null;
+    SDValue cpAddr = dag.getTargetConstantPool(cpv, ptrVT, 4, 0, true, 0);
+    cpAddr = dag.getNode(ARMISD.Wrapper, new EVT(MVT.i32), cpAddr);
+    SDValue result = dag.getLoad(ptrVT, dag.getEntryNode(), cpAddr, PseudoSourceValue.getConstantPool(), 0);
+    SDValue picLabel = dag.getConstant(ARMPCLabelIndex++, new EVT(MVT.i32), false);
+    return dag.getNode(ARMISD.PIC_ADD, ptrVT, result, picLabel);
+  }
+
   private SDValue lowerBR_JT(SDValue op, SelectionDAG dag) { return null; }
   private SDValue lowerSELECT(SDValue op, SelectionDAG dag) { return null; }
   private SDValue lowerSELECT_CC(SDValue op, SelectionDAG dag) { return null; }
@@ -1076,7 +1261,7 @@ public class ARMTargetLowering extends TargetLowering {
   }
 
   /**
-   * Replace those ISD::ATMOC_* operations with a serial of supported
+   * Replace those ISD.ATMOC_* operations with a serial of supported
    * operations.
    * @param n
    * @param results

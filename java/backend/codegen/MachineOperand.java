@@ -882,9 +882,9 @@ public abstract class MachineOperand {
     return false;
   }
 
-  public MachineOperand changeToRegister(int reg,
+  public void changeToRegister(int reg,
                                          boolean isDef) {
-    return changeToRegister(reg, isDef, false, false, false, false);
+    changeToRegister(reg, isDef, false, false, false, false);
   }
 
   /**
@@ -899,7 +899,7 @@ public abstract class MachineOperand {
    * @param isDead
    * @param isUndef
    */
-  public MachineOperand changeToRegister(int reg,
+  public void changeToRegister(int reg,
                                          boolean isDef,
                                          boolean isImp,
                                          boolean isKill,
@@ -908,7 +908,6 @@ public abstract class MachineOperand {
     if (isRegister()) {
       Util.assertion(!isEarlyClobber());
       setReg(reg);
-      return this;
     } else {
       RegisterMO res = new RegisterMO(getParent(), reg);
       res.isDef = isDef;
@@ -925,7 +924,9 @@ public abstract class MachineOperand {
           if ((mf = parentMI.getParent().getParent()) != null)
             res.addRegOperandToRegInfo(mf.getMachineRegisterInfo());
       }
-      return res;
+      int idx = getParent().getOpIdx(this);
+      Util.assertion(idx != -1, "no such operand?");
+      getParent().replaceOperand(res, idx);
     }
   }
 

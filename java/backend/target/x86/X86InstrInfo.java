@@ -2513,8 +2513,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
               break;
           }
           mib.getMInstr().setDesc(get(newOpc));
-          MO1 = MO1.changeToRegister(MO0.getReg(), false);
-          mib.getMInstr().setOperand(1, MO1);
+          MO1.changeToRegister(MO0.getReg(), false);
         }
       }
     }

@@ -1446,12 +1446,47 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     TargetMachine tm = mf.getTarget();
     Util.assertion(tm.getRegisterInfo() != null);
     TargetRegisterInfo regInfo = tm.getRegisterInfo();
+    TargetInstrInfo tii = tm.getInstrInfo();
+    boolean stackGrowsDown = tm.getFrameLowering().getStackGrowDirection() == StackGrowDown;
+    int frameSetupOpcode = tii.getCallFrameSetupOpcode();
+    int frameDestroyOpcode = tii.getCallFrameDestroyOpcode();
+
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
-      for (int i = 0; i < mbb.size(); i++) {
+      int spAdj = 0;
+      if (rs != null)
+        rs.enterBasicBlock(mbb);
+
+      for (int i = 0; i < mbb.size(); ) {
         MachineInstr mi = mbb.getInstAt(i);
-        for (int j = 0; j < mi.getNumOperands(); j++)
-          if (mi.getOperand(j).isFrameIndex())
-            regInfo.eliminateFrameIndex(mf, mi);
+        if (mi.getOpcode() == frameSetupOpcode || mi.getOpcode() == frameDestroyOpcode) {
+          int size = (int) mi.getOperand(0).getImm();
+          if ((!stackGrowsDown && mi.getOpcode() == frameSetupOpcode) ||
+              (stackGrowsDown && mi.getOpcode() == frameDestroyOpcode))
+            size = -size;
+
+          spAdj += size;
+          // FIXME tri.eliminateCallFramePseudoInstr(mf, mbb, i);
+        }
+
+        boolean doIncr = true;
+        for (int j = 0; j < mi.getNumOperands(); j++) {
+          if (mi.getOperand(j).isFrameIndex()) {
+            boolean atBeginning = i == 0;
+            if (!atBeginning) --i;
+            // if this instruction has a frame index operand, we have to use that
+            // target machine register info object to eliminate it.
+            regInfo.eliminateFrameIndex(mf, spAdj, mi);
+            // reset the iterator if we are at the beginning of the machine basic block.
+            if (atBeginning) {
+              i = 0;
+              doIncr = false;
+            }
+            break;
+          }
+        }
+        if (doIncr && i != mbb.size()) ++i;
+        if (rs != null)
+          rs.forward(i);
       }
     }
   }

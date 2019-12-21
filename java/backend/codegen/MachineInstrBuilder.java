@@ -291,4 +291,9 @@ public final class MachineInstrBuilder {
     mi.addOperand(MachineOperand.createMetadata(md));
     return this;
   }
+
+  public MachineInstrBuilder setMIFlags(int flags) {
+    mi.setFlag(flags);
+    return this;
+  }
 }

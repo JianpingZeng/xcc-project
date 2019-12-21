@@ -176,8 +176,9 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
    * finished product.
    */
   public void eliminateFrameIndex(MachineFunction mf,
+                                  int spAdj,
                                   MachineInstr mi) {
-    eliminateFrameIndex(mf, mi, null);
+    eliminateFrameIndex(mf, spAdj, mi, null);
   }
 
   /**
@@ -188,6 +189,7 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
    * @param rs
    */
   public abstract void eliminateFrameIndex(MachineFunction mf,
+                                           int spAdj,
                                            MachineInstr mi,
                                            RegScavenger rs);
 

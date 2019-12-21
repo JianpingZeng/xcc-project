@@ -32,15 +32,12 @@ import backend.codegen.dagisel.*;
 import backend.mc.MCRegisterClass;
 import backend.support.CallingConv;
 import backend.target.TargetLowering;
-import backend.value.Function;
 import tools.Util;
 
 import java.util.ArrayList;
 
 import static backend.codegen.PseudoSourceValue.getFixedStack;
-import static backend.target.TargetLowering.LegalizeAction.Custom;
-import static backend.target.TargetLowering.LegalizeAction.Expand;
-import static backend.target.TargetLowering.LegalizeAction.Promote;
+import static backend.target.TargetLowering.LegalizeAction.*;
 
 /**
  * This class is used for lower Mips-specific operations to the Machine instructions
@@ -205,11 +202,6 @@ public class MipsTargetLowering extends TargetLowering {
   @Override
   public MachineFunctionInfo createMachineFunctionInfo(MachineFunction mf) {
     return new MipsFunctionInfo(mf);
-  }
-
-  @Override
-  public int getFunctionAlignment(Function fn) {
-    return 2;
   }
 
   @Override

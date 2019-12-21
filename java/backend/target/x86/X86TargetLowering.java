@@ -1000,11 +1000,6 @@ public class X86TargetLowering extends TargetLowering {
   }
 
   @Override
-  public int getFunctionAlignment(Function fn) {
-    return fn.hasFnAttr(Attribute.OptimizeForSize) ? 0 : 4;
-  }
-
-  @Override
   public String getTargetNodeName(int opcode) {
     switch (opcode) {
       default:

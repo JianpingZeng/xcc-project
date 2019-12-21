@@ -737,7 +737,9 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
   }
 
   @Override
-  public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi,
+  public void eliminateFrameIndex(MachineFunction mf,
+                                  int spAdj,
+                                  MachineInstr mi,
                                   RegScavenger rs) {
     int i = 0;
     while (!mi.getOperand(i).isFrameIndex()) {
@@ -754,7 +756,7 @@ public abstract class X86RegisterInfo extends TargetRegisterInfo {
     else
       basePtr = tli.hasFP(mf) ? framePtr : stackPtr;
 
-    mi.setOperand(i, mi.getOperand(i).changeToRegister(basePtr, false));
+    mi.getOperand(i).changeToRegister(basePtr, false);
     if (mi.getOperand(i + 3).isImm()) {
       int offset = getFrameIndexOffset(mf, frameIndex) + (int) mi
           .getOperand(i + 3).getImm();

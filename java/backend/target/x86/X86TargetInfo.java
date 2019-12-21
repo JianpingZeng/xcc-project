@@ -77,7 +77,7 @@ public class X86TargetInfo {
     // TODO X86 sytle asm printer not supported;
   };
 
-  public static void InitiliazeX86Target() {
+  public static void InitializeX86Target() {
     TargetRegistry.registerTargetMachine(theX86_32Target, X86_32TargetMachineMaker);
     TargetRegistry.registerTargetMachine(theX86_64Target, X86_64TargetMachineMaker);
 

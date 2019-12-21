@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.TreeMap;
 
 import static utils.tablegen.SDNP.SDNPHasChain;
+import static utils.tablegen.SDNP.SDNPWantParent;
+import static utils.tablegen.SDNP.SDNPWantRoot;
 
 /**
  * @author Jianping Zeng.
@@ -790,9 +792,10 @@ public class DAGISelMatcherEmitter {
     // Emit CompletePattern matchers.
     if (!complexPatterns.isEmpty()) {
       os.println("  public boolean checkComplexPattern(SDNode root,");
+      os.println("                                     SDNode parent,");
       os.println("                                     SDValue n,");
       os.println("                                     int patternNo,");
-      os.println("                                     ArrayList<SDValue> result) {");
+      os.println("                                     ArrayList<tools.Pair<SDValue, SDNode>> result) {");
       os.println("    switch(patternNo) {");
       os.println("      default: Util.assertion(\"Invalid pattern # in table?\");");
       for (int i = 0, e = complexPatterns.size(); i < e; i++) {
@@ -803,8 +806,20 @@ public class DAGISelMatcherEmitter {
 
         os.printf("      case %d: {%n", i);
         os.printf("        SDValue[] tmp = new SDValue[%d];%n", numOps);
-        os.printf("        boolean res = %s(root, n, tmp);\n", cp.getSelectFunc());
-        os.println("        result.addAll(Arrays.asList(tmp));");
+        os.printf("        boolean res = %s(", cp.getSelectFunc());
+
+        // If the complex pattern wants the root of the match, pass it in as the
+        // first argument.
+        if (cp.hasProperty(SDNPWantRoot))
+          os.print("root, ");
+
+        // If the complex pattern wants the parent of the operand being matched,
+        // pass it in as the next argument.
+        if (cp.hasProperty(SDNPWantParent))
+          os.print("parent, ");
+
+        os.println("n, tmp);");
+        os.println("        for (SDValue t : tmp) result.add(tools.Pair.get(t, null));");
         os.println("        return res;");
         os.println("     }");
       }

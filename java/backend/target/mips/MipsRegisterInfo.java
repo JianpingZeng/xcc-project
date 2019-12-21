@@ -232,7 +232,7 @@ public abstract class MipsRegisterInfo extends TargetRegisterInfo {
   }
 
   @Override
-  public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi, RegScavenger rs) {
+  public void eliminateFrameIndex(MachineFunction mf, int spAdj, MachineInstr mi, RegScavenger rs) {
     int offsetIdx = 0;
     while (offsetIdx < mi.getNumOperands() && mi.getOperand(offsetIdx).isFrameIndex()) {
       ++offsetIdx;

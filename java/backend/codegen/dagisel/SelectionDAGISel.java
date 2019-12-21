@@ -438,11 +438,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   private boolean checkSame(int[] matcherTable,
                             OutRef<Integer> matcherIndex,
                             SDValue n,
-                            ArrayList<SDValue> recordedNodes) {
+                            ArrayList<Pair<SDValue, SDNode>> recordedNodes) {
     int recNo = matcherTable[matcherIndex.get()];
     matcherIndex.set(matcherIndex.get() + 1);
     Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
-    return n.equals(recordedNodes.get(recNo));
+    return n.equals(recordedNodes.get(recNo).first);
   }
 
   private boolean checkOpcode(int[] matcherTable,
@@ -566,9 +566,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     return false;
   }
 
-  public boolean checkComplexPattern(SDNode root, SDValue n,
+  public boolean checkComplexPattern(SDNode root,
+                                     SDNode parent,
+                                     SDValue n,
                                      int patternNo,
-                                     ArrayList<SDValue> result) {
+                                     ArrayList<tools.Pair<SDValue, SDNode>> result) {
     Util.shouldNotReachHere("This method should be overrided by generation of tblgen");
     return false;
   }
@@ -580,7 +582,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
   private int isPredicateKnownToFail(int index, SDValue n,
                                      OutRef<Boolean> result,
-                                     ArrayList<SDValue> recordedNodes) {
+                                     ArrayList<Pair<SDValue, SDNode>> recordedNodes) {
     OutRef<Integer> tmpIdx = new OutRef<>(0);
     switch (matcherTable[index++]) {
       default:
@@ -977,7 +979,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     LinkedList<MatchScope> matchScopes = new LinkedList<>();
 
     // This is the set of nodes that have been recorded by the state machine.
-    ArrayList<SDValue> recordedNodes = new ArrayList<>();
+    ArrayList<Pair<SDValue, SDNode>> recordedNodes = new ArrayList<>();
 
     // This is the set of MemRef's we're seen in the input patterns.
     ArrayList<MachineMemOperand> matchedMemRefs = new ArrayList<>();
@@ -1088,7 +1090,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         }
         case OPC_RecordNode:
           // remember this node, it may end up being on an operand in the pattern.
-          recordedNodes.add(n);
+          SDNode parent = null;
+          if (nodeStack.size() > 1)
+            parent = nodeStack.get(nodeStack.size() - 2).getNode();
+          recordedNodes.add(Pair.get(n, parent));
           continue;
 
         case OPC_RecordChild0:
@@ -1102,7 +1107,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           int childNo = opcode - OPC_RecordChild0;
           if (childNo >= n.getNumOperands())
             break;  // match fails if out of range child number
-          recordedNodes.add(n.getOperand(childNo));
+          recordedNodes.add(Pair.get(n.getOperand(childNo), n.getNode()));
           continue;
         }
         case OPC_RecordMemRef:
@@ -1151,8 +1156,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         case OPC_CheckComplexPat: {
           int cpNum = matcherTable[matcherIndex++];
           int recNo = matcherTable[matcherIndex++];
-          if (!checkComplexPattern(nodeToMatch, recordedNodes.get(recNo),
-              cpNum, recordedNodes)) break;
+          if (!checkComplexPattern(nodeToMatch, recordedNodes.get(recNo).second,
+              recordedNodes.get(recNo).first, cpNum, recordedNodes)) break;
           continue;
         }
         case OPC_CheckOpcode: {
@@ -1293,20 +1298,20 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             val = getVBR(val, idx);
             matcherIndex = idx.get();
           }
-          recordedNodes.add(curDAG.getTargetConstant(val, new EVT(vt)));
+          recordedNodes.add(Pair.get(curDAG.getTargetConstant(val, new EVT(vt)), null));
           continue;
         }
         case OPC_EmitRegister: {
           int vt = matcherTable[matcherIndex++];
           int regNo = matcherTable[matcherIndex++];
-          recordedNodes.add(curDAG.getRegister(regNo, new EVT(vt)));
+          recordedNodes.add(Pair.get(curDAG.getRegister(regNo, new EVT(vt)), null));
           continue;
         }
         case OPC_EmitConvertToTarget: {
           // Convert from IMM/FPIMM to target version.
           int recNo = matcherTable[matcherIndex++];
           Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
-          SDValue imm = recordedNodes.get(recNo);
+          SDValue imm = recordedNodes.get(recNo).first;
 
           if (imm.getOpcode() == ISD.Constant) {
             long val = ((ConstantSDNode) imm.getNode()).getZExtValue();
@@ -1315,7 +1320,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             ConstantFP fp = ((SDNode.ConstantFPSDNode) imm.getNode()).getConstantFPValue();
             imm = curDAG.getTargetConstantFP(fp, imm.getValueType());
           }
-          recordedNodes.add(imm);
+          recordedNodes.add(Pair.get(imm, recordedNodes.get(recNo).second));
           continue;
         }
         case OPC_EmitMergeInputChains: {
@@ -1330,9 +1335,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           for (int i = 0; i < numChains; i++) {
             int recNo = matcherTable[matcherIndex++];
             Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
-            SDNode tmpNode = recordedNodes.get(recNo).getNode();
+            SDNode tmpNode = recordedNodes.get(recNo).first.getNode();
             if (!tmpNode.equals(nodeToMatch) &&
-                !recordedNodes.get(recNo).hasOneUse()) {
+                !recordedNodes.get(recNo).first.hasOneUse()) {
               chainNodesMatched.clear();
               break;
             }
@@ -1358,7 +1363,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             inputChain = curDAG.getEntryNode();
 
           inputChain = curDAG.getCopyToReg(inputChain, dstPhysReg,
-              recordedNodes.get(recNo), inputFlag);
+              recordedNodes.get(recNo).first, inputFlag);
           inputFlag = inputChain.getValue(1);
           continue;
         }
@@ -1366,7 +1371,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           int xFormNo = matcherTable[matcherIndex++];
           int recNo = matcherTable[matcherIndex++];
           Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
-          recordedNodes.add(runSDNodeXForm(recordedNodes.get(recNo), xFormNo));
+          recordedNodes.add(Pair.get(runSDNodeXForm(recordedNodes.get(recNo).first, xFormNo), null));
           continue;
         }
         case OPC_EmitNode:
@@ -1403,7 +1408,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
             Util.assertion(recNo < Integer.MAX_VALUE, "too large index in Java");
             Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
-            ops.add(recordedNodes.get((int) recNo));
+            ops.add(recordedNodes.get((int) recNo).first);
           }
 
           // If there are variadic operands to add, handle them now.
@@ -1438,7 +1443,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
               if (vts.get(i).equals(new EVT(MVT.Other)) ||
                   vts.get(i).equals(new EVT(MVT.Glue)))
                 break;
-              recordedNodes.add(new SDValue(res, i));
+              recordedNodes.add(Pair.get(new SDValue(res, i), null));
             }
           }/* else {
             res = curDAG.morphNodeTo(nodeToMatch, ~targetOpc, vtlist, ops);
@@ -1480,7 +1485,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             }
             Util.assertion(recNo < Integer.MAX_VALUE, "integer too large");
             Util.assertion(recNo < recordedNodes.size(), "invalid checkSame");
-            flagResultNodesMatched.add(recordedNodes.get((int) recNo).getNode());
+            flagResultNodesMatched.add(recordedNodes.get((int) recNo).first.getNode());
           }
           continue;
         }
@@ -1500,7 +1505,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             Util.assertion(resSlot < Integer.MAX_VALUE, "integer too large");
             Util.assertion(resSlot < recordedNodes.size(), "invalid checkSame");
 
-            SDValue res = recordedNodes.get((int) resSlot);
+            SDValue res = recordedNodes.get((int) resSlot).first;
 
             // FIXME2: Eliminate this horrible hack by fixing the 'Gen' program
             // after (parallel) on input patterns are removed.  This would also

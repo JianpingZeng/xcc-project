@@ -112,8 +112,6 @@ public class ARMSubtarget extends ARMGenSubtarget {
     cpuString = cpu;
     // the abi default to ARM_ABI_APCS
     targetABI = ARM_ABI_APCS;
-    instrInfo = ARMInstrInfo.createARMInstrInfo(tm);
-    regInfo = ARMRegisterInfo.createARMRegisterInfo(tm, getHwMode());
     
     if (cpuString == null || cpuString.isEmpty())
       cpuString = "generic";
@@ -172,12 +170,16 @@ public class ARMSubtarget extends ARMGenSubtarget {
 
   @Override
   public ARMInstrInfo getInstrInfo() {
-    return (ARMInstrInfo) super.getInstrInfo();
+    if (instrInfo == null)
+      instrInfo = ARMInstrInfo.createARMInstrInfo(tm);
+    return (ARMInstrInfo) instrInfo;
   }
 
   @Override
   public ARMRegisterInfo getRegisterInfo() {
-    return (ARMRegisterInfo)super.getRegisterInfo();
+    if (regInfo == null)
+      regInfo = ARMRegisterInfo.createARMRegisterInfo(tm, getHwMode());
+    return (ARMRegisterInfo) regInfo;
   }
 
   public boolean hasV4TOps()  { return hasV4TOps;  }
