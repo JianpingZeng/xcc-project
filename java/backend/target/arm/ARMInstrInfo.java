@@ -65,6 +65,8 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
                              int srcReg,
                              MCRegisterClass dstRC,
                              MCRegisterClass srcRC) {
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg) &&
+        TargetRegisterInfo.isPhysicalRegister(dstReg), "copy virtual register should be coped with COPY!");
     DebugLoc dl = DebugLoc.getUnknownLoc();
     if (insertPos != mbb.size())
       dl = mbb.getInstAt(insertPos).getDebugLoc();

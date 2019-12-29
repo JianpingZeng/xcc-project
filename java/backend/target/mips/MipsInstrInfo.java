@@ -32,6 +32,7 @@ import backend.codegen.MachineInstr;
 import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfoImpl;
+import backend.target.TargetRegisterInfo;
 import tools.OutRef;
 import tools.Util;
 
@@ -62,6 +63,9 @@ public class MipsInstrInfo extends TargetInstrInfoImpl {
                              int srcReg,
                              MCRegisterClass dstRC,
                              MCRegisterClass srcRC) {
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg) &&
+        TargetRegisterInfo.isPhysicalRegister(dstReg), "copy virtual register should be coped with COPY!");
+
     // Unknown debug loc.
     DebugLoc dl = new DebugLoc();
     if (insertPos != mbb.size()) dl = mbb.getInstAt(insertPos).getDebugLoc();

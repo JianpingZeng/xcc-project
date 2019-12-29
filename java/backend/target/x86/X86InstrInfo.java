@@ -1669,10 +1669,13 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
   public boolean copyPhysReg(MachineBasicBlock mbb,
                              int index,
-                             int destReg,
+                             int dstReg,
                              int srcReg,
                              MCRegisterClass destRC,
                              MCRegisterClass srcRC) {
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg) &&
+        TargetRegisterInfo.isPhysicalRegister(dstReg), "copy virtual register should be coped with COPY!");
+
     DebugLoc dl = DebugLoc.getUnknownLoc();
     if (index != mbb.size())
       dl = mbb.getInstAt(index).getDebugLoc();
@@ -1710,7 +1713,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       } else if (commonRC == GR8RegisterClass) {
         // Copying to or from a physical H register on x86-64 requires a NOREX
         // move.  Otherwise use a normal move.
-        if ((isHReg(destReg) || isHReg(srcReg)) && ((X86Subtarget) tm
+        if ((isHReg(dstReg) || isHReg(srcReg)) && ((X86Subtarget) tm
             .getSubtarget()).is64Bit())
           opc = MOV8rr_NOREX;
         else
@@ -1755,7 +1758,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       } else {
         return false;
       }
-      buildMI(mbb, index, dl, get(opc), destReg).addReg(srcReg);
+      buildMI(mbb, index, dl, get(opc), dstReg).addReg(srcReg);
       return true;
     }
 
@@ -1765,16 +1768,16 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         return false;
       if (destRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass) {
         buildMI(mbb, index, dl, get(PUSHFQ));
-        buildMI(mbb, index, dl, get(POP64r), destReg);
+        buildMI(mbb, index, dl, get(POP64r), dstReg);
         return true;
       } else if (destRC == GR32RegisterClass
           || destRC == GR32_NOSPRegisterClass) {
         buildMI(mbb, index, dl, get(PUSHFD));
-        buildMI(mbb, index, dl, get(POP32r), destReg);
+        buildMI(mbb, index, dl, get(POP32r), dstReg);
         return true;
       }
     } else if (destRC == CCRRegisterClass) {
-      if (destReg != EFLAGS)
+      if (dstReg != EFLAGS)
         return false;
       if (srcRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass) {
         buildMI(mbb, index, dl, get(PUSH64r)).addReg(srcReg);
@@ -1805,17 +1808,17 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           return false;
         opc = isST0 ? FpGET_ST0_80 : FpGET_ST1_80;
       }
-      buildMI(mbb, index, dl, get(opc), destReg);
+      buildMI(mbb, index, dl, get(opc), dstReg);
       return true;
     }
 
     // Moving to ST(0) turns into FpSET_ST0_32 etc.
     if (destRC == RSTRegisterClass) {
       // Copying to ST(0) / ST(1).
-      if (destReg != ST0 && destReg != ST1)
+      if (dstReg != ST0 && dstReg != ST1)
         // Can only copy to TOS right now
         return false;
-      boolean isST0 = destReg == ST0;
+      boolean isST0 = dstReg == ST0;
       int opc;
       if (srcRC == RFP32RegisterClass)
         opc = isST0 ? FpSET_ST0_32 : FpSET_ST1_32;

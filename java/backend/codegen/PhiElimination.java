@@ -157,8 +157,7 @@ public final class PhiElimination extends MachineFunctionPass {
       // Get an iterator pointing to the first terminator in the block (or end()).
       // This is the point where we can insert a copy if we'd like to.
       int idx = opBB.getFirstTerminator();
-
-      instInfo.copyPhysReg(opBB, idx, incomingReg, srcReg, destRC, srcRC);
+      buildMI(opBB, idx, phiMI.getDebugLoc(), tii.get(TargetOpcode.COPY), incomingReg).addReg(srcReg);
 
       // idx++;
       idx++; // make sure the idx always points to the first terminator inst.
