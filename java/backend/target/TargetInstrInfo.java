@@ -316,13 +316,13 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param srcRC
    * @return
    */
-  public boolean copyRegToReg(MachineBasicBlock mbb,
-                              int insertPos,
-                              int dstReg,
-                              int srcReg,
-                              MCRegisterClass dstRC,
-                              MCRegisterClass srcRC) {
-    Util.assertion("Target didn't implement TargetLowering::copyRegToReg");
+  public boolean copyPhysReg(MachineBasicBlock mbb,
+                             int insertPos,
+                             int dstReg,
+                             int srcReg,
+                             MCRegisterClass dstRC,
+                             MCRegisterClass srcRC) {
+    Util.assertion("Target didn't implement TargetLowering::copyPhysReg");
     return false;
   }
 

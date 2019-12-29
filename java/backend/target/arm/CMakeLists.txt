@@ -11,6 +11,7 @@ tablegen(ARMGenInstrNames.java -gen-instr-names)
 tablegen(ARMGenSubtarget.java -gen-subtarget)
 tablegen(ARMGenCallingConv.java -gen-callingconv)
 tablegen(ARMGenDAGISel.java -gen-dag-isel)
+tablegen(ARMGenMCPseudoLowering.java -gen-pseudo-lowering)
 
 add_public_tablegen_target(ARMCommonTableGen)
 

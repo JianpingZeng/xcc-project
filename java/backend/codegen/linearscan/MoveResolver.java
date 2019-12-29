@@ -124,7 +124,7 @@ public final class MoveResolver {
       int srcReg = ilk.getPhyReg(srcIt), dstReg = ilk.getPhyReg(dstIt);
       MCRegisterClass srcRC = tri.getRegClass(srcReg);
       MCRegisterClass dstRC = tri.getRegClass(dstReg);
-      boolean emitted = tii.copyRegToReg(insertedMBB, insertedIndex, dstReg, srcReg, dstRC, srcRC);
+      boolean emitted = tii.copyPhysReg(insertedMBB, insertedIndex, dstReg, srcReg, dstRC, srcRC);
       Util.assertion(emitted, "Can't emit a copy from reg to reg");
     } else if (ilk.isAssignedStackSlot(srcIt) && ilk.isAssignedPhyReg(dstIt)) {
       int srcSlot = ilk.getStackSlot(srcIt), dstReg = ilk.getPhyReg(dstIt);

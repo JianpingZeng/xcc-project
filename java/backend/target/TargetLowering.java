@@ -1445,7 +1445,9 @@ public abstract class TargetLowering {
   }
 
   public boolean isEligibleTailCallOptimization(SDValue calle,
-                                                CallingConv calleeCC, boolean isVarArg, ArrayList<InputArg> ins,
+                                                CallingConv calleeCC,
+                                                boolean isVarArg,
+                                                ArrayList<InputArg> ins,
                                                 SelectionDAG dag) {
     return false;
   }

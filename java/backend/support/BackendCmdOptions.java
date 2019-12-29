@@ -167,6 +167,15 @@ public class BackendCmdOptions {
           desc("Enable optimizations that assumes non- NaNs / +-Infs"),
           init(false));
 
+  public static final BooleanOpt EnableNoInfsFPMath = new BooleanOpt(
+      optionName("enable-no-infs-fp-math"),
+      desc("Enable FP math optimizations that assume no +-Infs"),
+      init(false));
+
+  public static final BooleanOpt EnableNoNaNsFPMath = new BooleanOpt(
+      optionName("enable-no-nans-fp-math"),
+      desc("Enable FP math optimizations that assume no NaNs"),
+      init(false));
 
   public static final Opt<SchedPassCtor> InstScheduler =
       new Opt<>(new RegisterSchedulerParser(),

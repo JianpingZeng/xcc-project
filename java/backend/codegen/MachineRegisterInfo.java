@@ -36,7 +36,7 @@ import static backend.target.TargetRegisterInfo.NoRegister;
  * @version 0.4
  */
 public final class MachineRegisterInfo {
-    public static class DefUseChainIterator {
+  public static class DefUseChainIterator {
     private MachineOperand op;
     private boolean returnUses;
     private boolean returnDefs;
@@ -115,7 +115,10 @@ public final class MachineRegisterInfo {
    */
   private TIntArrayList liveOuts;
 
+  private TargetRegisterInfo tri;
+
   public MachineRegisterInfo(TargetRegisterInfo tri) {
+    this.tri = tri;
     vregInfo = new ArrayList<>();
     regClass2VRegMap = new TreeMap<>();
     regAllocHints = new ArrayList<>();
@@ -142,6 +145,12 @@ public final class MachineRegisterInfo {
     int actualReg = rescale(reg);
     Util.assertion(actualReg < vregInfo.size(), "Register out of bound!");
     return vregInfo.get(actualReg).first;
+  }
+
+  public void setRegClass(int reg, MCRegisterClass rc) {
+    int actualReg = rescale(reg);
+    Util.assertion(actualReg < vregInfo.size() && rc != null, "Register out of bound!");
+    vregInfo.get(actualReg).first = rc;
   }
 
   /**
@@ -453,5 +462,21 @@ public final class MachineRegisterInfo {
       if (entry.second == vreg)
         return entry.first;
     return 0;
+  }
+
+  public MCRegisterClass constraintRegClass(int reg, MCRegisterClass rc, int minNumRegs) {
+    Util.assertion(TargetRegisterInfo.isVirtualRegister(reg), "the register should be a virtual register!");
+    MCRegisterClass oldRC = getRegClass(reg);
+    if (oldRC.equals(rc))
+      return rc;
+
+    MCRegisterClass newRC = tri.getCommonSubClass(rc, oldRC);
+    if (newRC == null || newRC.equals(oldRC))
+      return newRC;
+
+    if (newRC.getNumRegs() < minNumRegs)
+      return null;
+    setRegClass(reg, newRC);
+    return newRC;
   }
 }

@@ -49,7 +49,7 @@ public interface TargetOpcode {
   /// public  registers have been created for all the instructions, and it's
   /// only needed in cases where the register classes implied by the
   /// instructions are insufficient. The actual MachineInstrs to perform
-  /// the copy are emitted with the RISCVGenInstrInfo::copyRegToReg hook.
+  /// the copy are emitted with the {@linkplain TargetOpcode#COPY} hook.
   int COPY_TO_REGCLASS = 10;
   /**
    * a mapping of the llvm.dbg.value intrinsic

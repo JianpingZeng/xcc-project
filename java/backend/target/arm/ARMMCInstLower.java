@@ -31,61 +31,23 @@ import backend.codegen.MachineInstr;
 import backend.codegen.MachineOperand;
 import backend.mc.MCInst;
 import backend.mc.MCOperand;
-import backend.mc.MCSymbol;
-import backend.mc.MCSymbolRefExpr;
-import backend.support.NameMangler;
-import tools.APFloat;
-import tools.OutRef;
-import tools.Util;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public class ARMMCInstLower {
-  private MCSymbol.MCContext ctx;
-  private NameMangler mangler;
   private ARMAsmPrinter printer;
 
-  public ARMMCInstLower(MCSymbol.MCContext ctx, NameMangler mangler, ARMAsmPrinter printer) {
-    this.ctx = ctx;
-    this.mangler = mangler;
+  public ARMMCInstLower(ARMAsmPrinter printer) {
     this.printer = printer;
-  }
-
-  private MCOperand lowerOperand(MachineOperand mo) {
-    switch (mo.getType()) {
-      default:
-        Util.assertion("unknown machine operand type");
-        break;
-      case MO_Register:
-        if (mo.isImplicit() && mo.getReg() != ARMGenRegisterNames.CPSR)
-          break;
-        Util.assertion(mo.getSubReg() == 0, "subregs should be eliminated");
-        return MCOperand.createReg(mo.getReg());
-      case MO_Immediate:
-        return MCOperand.createImm(mo.getImm());
-      case MO_MachineBasicBlock:
-        return MCOperand.createExpr(MCSymbolRefExpr.create(mo.getMBB().getSymbol(ctx)));
-      case MO_GlobalAddress:
-        return printer.getSymbolRef(mo, mangler.getSymbol(mo.getGlobal()));
-      case MO_ExternalSymbol:
-        return printer.getSymbolRef(mo, printer.getExternalSymbolSymbol(mo.getSymbolName()));
-      case MO_JumpTableIndex:
-        return printer.getSymbolRef(mo, printer.getJTISymbol(mo.getIndex(), false));
-      case MO_ConstantPoolIndex:
-        return printer.getSymbolRef(mo, printer.getCPISymbol(mo.getIndex()));
-      case MO_BlockAddress:
-        return printer.getSymbolRef(mo, printer.getBlockAddressSymbol(mo.getBlockAddress()));
-    }
-    return null;
   }
 
   public void lower(MachineInstr mi, MCInst inst) {
     inst.setOpcode(mi.getOpcode());
     for (int i = 0, e = mi.getNumOperands(); i <e; i++) {
       MachineOperand mo = mi.getOperand(i);
-      MCOperand mop = lowerOperand(mo);
+      MCOperand mop = printer.lowerOperand(mo);
       if (mop != null)
         inst.addOperand(mop);
     }

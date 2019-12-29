@@ -217,6 +217,10 @@ public class ARM_AM {
     return ShiftOpc.values()[(int) imm];
   }
 
+  static long getSORegShOpc(ShiftOpc shOp, long imm) {
+    return shOp.ordinal() | (imm << 3);
+  }
+
   static int getSORegOffset(long imm) {
     return (int) (imm >> 3);
   }

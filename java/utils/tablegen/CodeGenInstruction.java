@@ -175,6 +175,7 @@ public final class CodeGenInstruction {
   boolean isAsCheapAsAMove;
   boolean hasExtraSrcRegAllocReq; // Sources have special regalloc requirement?
   boolean hasExtraDefRegAllocReq;
+  boolean isCodeGenOnly;
   boolean isPseudo;
   boolean hasOptionalDef;
   boolean isVariadic;
@@ -211,6 +212,8 @@ public final class CodeGenInstruction {
     isAsCheapAsAMove = r.getValueAsBit("isAsCheapAsAMove");
     hasExtraSrcRegAllocReq = r.getValueAsBit("hasExtraSrcRegAllocReq");
     hasExtraDefRegAllocReq = r.getValueAsBit("hasExtraDefRegAllocReq");
+    // FIXME 12/29/2019
+    //isCodeGenOnly = r.getValueAsBit("isCodeGenOnly");
     isPseudo = r.getValueAsBit("isPseudo");
     implicitDefs = r.getValueAsListOfDefs("Defs");
     implicitUses = r.getValueAsListOfDefs("Uses");

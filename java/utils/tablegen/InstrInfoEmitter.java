@@ -211,6 +211,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
     if (inst.hasExtraSrcRegAllocReq) os.print("|(TID.ExtraSrcRegAllocReq)");
     if (inst.hasExtraDefRegAllocReq) os.print("|(1<<TID.ExtraDefRegAllocReq)");
     if (inst.isPseudo) os.print("|(1<<TID.Pseudo)");
+    if (inst.isCodeGenOnly) os.print("|(1<<TID.CodeGenOnly)");
 
     // Emit all of the target-specific flags...
     Init.BitsInit li = inst.theDef.getValueAsBitsInit("TSFlags");

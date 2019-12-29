@@ -158,6 +158,18 @@ public abstract class MCRegisterClass {
     return false;
   }
 
+  public boolean hasSubClassEq(MCRegisterClass subRC) {
+    if (subClasses == null || subClasses.length <= 0)
+      return false;
+    if (subRC.equals(this))
+      return true;
+
+    for (MCRegisterClass rc : subClasses)
+      if (rc.equals(subRC))
+        return true;
+    return false;
+  }
+
   public MCRegisterClass[] getSubClasses() {
     return subClasses;
   }

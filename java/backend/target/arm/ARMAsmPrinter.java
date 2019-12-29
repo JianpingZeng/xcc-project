@@ -52,7 +52,12 @@ public class ARMAsmPrinter extends AsmPrinter {
   @Override
   protected void emitInstruction(MachineInstr mi) {
     if (instLowering == null)
-      instLowering = new ARMMCInstLower(outContext, mangler, this);
+      instLowering = new ARMMCInstLower(this);
+
+    // If this instruction is a pseudo and can be lowering to other instruction,
+    // return immediately.
+    if (ARMGenMCPseudoLowering.emitPseudoExpansionLowering(outStreamer, mi, this))
+      return;
 
     MCInst inst = new MCInst();
     instLowering.lower(mi, inst);
@@ -64,7 +69,7 @@ public class ARMAsmPrinter extends AsmPrinter {
     return "ARM Assembly Printer";
   }
 
-  MCOperand getSymbolRef(MachineOperand mo, MCSymbol symbol) {
+  private MCOperand getSymbolRef(MachineOperand mo, MCSymbol symbol) {
     MCExpr expr;
     switch (mo.getTargetFlags()) {
       default:{
@@ -94,5 +99,33 @@ public class ARMAsmPrinter extends AsmPrinter {
       expr = MCBinaryExpr.createAdd(expr, MCConstantExpr.create(mo.getOffset(), outContext), outContext);
 
     return MCOperand.createExpr(expr);
+  }
+
+  MCOperand lowerOperand(MachineOperand mo) {
+    switch (mo.getType()) {
+      default:
+        Util.assertion("unknown machine operand type");
+        break;
+      case MO_Register:
+        if (mo.isImplicit() && mo.getReg() != ARMGenRegisterNames.CPSR)
+          break;
+        Util.assertion(mo.getSubReg() == 0, "subregs should be eliminated");
+        return MCOperand.createReg(mo.getReg());
+      case MO_Immediate:
+        return MCOperand.createImm(mo.getImm());
+      case MO_MachineBasicBlock:
+        return MCOperand.createExpr(MCSymbolRefExpr.create(mo.getMBB().getSymbol(outContext)));
+      case MO_GlobalAddress:
+        return getSymbolRef(mo, mangler.getSymbol(mo.getGlobal()));
+      case MO_ExternalSymbol:
+        return getSymbolRef(mo, getExternalSymbolSymbol(mo.getSymbolName()));
+      case MO_JumpTableIndex:
+        return getSymbolRef(mo, getJTISymbol(mo.getIndex(), false));
+      case MO_ConstantPoolIndex:
+        return getSymbolRef(mo, getCPISymbol(mo.getIndex()));
+      case MO_BlockAddress:
+        return getSymbolRef(mo, getBlockAddressSymbol(mo.getBlockAddress()));
+    }
+    return null;
   }
 }

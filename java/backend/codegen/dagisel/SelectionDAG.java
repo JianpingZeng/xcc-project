@@ -46,6 +46,7 @@ import static backend.codegen.dagisel.ISD.EXTRACT_VECTOR_ELT;
 import static backend.codegen.dagisel.ISD.getSetCCSwappedOperands;
 import static backend.codegen.dagisel.MemIndexedMode.UNINDEXED;
 import static backend.codegen.dagisel.SDNode.*;
+import static backend.support.BackendCmdOptions.EnableNoNaNsFPMath;
 import static backend.support.BackendCmdOptions.EnableUnsafeFPMath;
 import static backend.target.TargetLowering.BooleanContent.ZeroOrNegativeOneBooleanContent;
 import static backend.target.TargetLowering.BooleanContent.ZeroOrOneBooleanContent;
@@ -2506,6 +2507,19 @@ public class SelectionDAG {
       return false;
 
     return true;
+  }
+
+  public boolean isKnownNeverNaN(SDValue op) {
+    if (op == null || op.getNode() == null) return false;
+    if (EnableNoNaNsFPMath.value)
+      return true;
+
+    // if the value is a constant, we can obviously see if ti sia NaN or not.
+    if (op.getNode() instanceof ConstantFPSDNode) {
+      ConstantFPSDNode fp = (ConstantFPSDNode) op.getNode();
+      return !fp.getValueAPF().isNaN();
+    }
+    return false;
   }
 
   static class UseMemo {

@@ -36,15 +36,41 @@ import backend.target.TargetRegisterInfo;
 import tools.BitMap;
 import tools.OutRef;
 import tools.Util;
+import tools.commandline.BooleanOpt;
+import tools.commandline.OptionHidden;
+import tools.commandline.OptionHiddenApplicator;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.target.TargetOptions.EnableRealignStack;
 import static backend.target.arm.ARMGenRegisterNames.*;
+import static tools.commandline.Desc.desc;
+import static tools.commandline.Initializer.init;
+import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
+
+  private static final BooleanOpt ForceAllBaseRegAlloc = new BooleanOpt(
+      optionName("arm-force-base-reg-alloc"),
+      new OptionHiddenApplicator(OptionHidden.Hidden),
+      init(false),
+      desc("Force use of virtual base registers for stack load/store"));
+
+  private static final BooleanOpt EnableLocalStackAlloc = new BooleanOpt(
+      optionName("enable-local-stack-alloc"),
+      init(true),
+      new OptionHiddenApplicator(OptionHidden.Hidden),
+      desc("Enable pre-regalloc stack frame index allocation"));
+
+  private static final BooleanOpt EnableBasePointer = new BooleanOpt(
+      optionName("arm-use-base-pointer"),
+      new OptionHiddenApplicator(OptionHidden.Hidden),
+      init(true),
+      desc("Enable use of a base pointer for complex stack frames"));
+
   private int framePtr;
   private int basePtr;
   private ARMSubtarget subtarget;
@@ -827,5 +853,20 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       default:
         return false;
     }
+  }
+
+  /**
+   * We can't realign the stack if:
+   *  1. Dynamic stack realignment is explicitly disabled,
+   *  2. This is a Thumb1 function (it's not useful, so we don't bother), or
+   *  3. There are VLAs in the function and the base pointer is disabled.
+   * @param mf
+   * @return
+   */
+  public boolean canRealignStack(MachineFunction mf) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    ARMFunctionInfo funcInfo = (ARMFunctionInfo) mf.getInfo();
+    return EnableRealignStack.value && !funcInfo.isThumb1OnlyFunction() &&
+        (!mfi.hasVarSizedObjects() || EnableBasePointer.value);
   }
 }

@@ -37,6 +37,7 @@ import backend.pass.FunctionPass;
 import backend.pass.Pass;
 import backend.pass.RegisterPass;
 import backend.target.TargetMachine;
+import tools.OutRef;
 import tools.Util;
 import tools.commandline.BooleanOpt;
 import tools.commandline.OptionHidden;
@@ -105,6 +106,46 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       return null;
     }
 
+    switch (opcode) {
+      case ARMISD.BRCOND:
+        // Pattern: (ARMbrcond:void (bb:Other):$dst, (imm:i32):$cc)
+        // Emits: (Bcc:void (bb:Other):$dst, (imm:i32):$cc)
+        // Pattern complexity = 6  cost = 1  size = 0
+
+        // Pattern: (ARMbrcond:void (bb:Other):$dst, (imm:i32):$cc)
+        // Emits: (tBcc:void (bb:Other):$dst, (imm:i32):$cc)
+        // Pattern complexity = 6  cost = 1  size = 0
+
+        // Pattern: (ARMbrcond:void (bb:Other):$dst, (imm:i32):$cc)
+        // Emits: (t2Bcc:void (bb:Other):$dst, (imm:i32):$cc)
+        // Pattern complexity = 6  cost = 1  size = 0
+        int opc = subtarget.isThumb() ? subtarget.hasThumb2() ?
+            ARMGenInstrNames.t2Bcc : ARMGenInstrNames.tBcc : ARMGenInstrNames.Bcc;
+        SDValue chain = node.getOperand(0);
+        SDValue n1 = node.getOperand(1);
+        SDValue n2 = node.getOperand(2);
+        SDValue n3 = node.getOperand(3);
+        SDValue inFlag = node.getOperand(4);
+        // destination block.
+        Util.assertion(n1.getOpcode() == ISD.BasicBlock);
+        // ARM_CC::CondCodes
+        Util.assertion(n2.getOpcode() == ISD.Constant);
+        // the CPSR register.
+        Util.assertion(n3.getOpcode() == ISD.Register);
+
+        SDValue temp = curDAG.getTargetConstant(((SDNode.ConstantSDNode)n2.getNode()).getZExtValue(),
+            new EVT(MVT.i32));
+        SDValue[] ops = new SDValue[] {n1, temp, n3, chain, inFlag};
+        SDNode resNode = curDAG.getMachineNode(opc, new EVT(MVT.Other), new EVT(MVT.Glue), ops);
+        chain = new SDValue(resNode, 0);
+        if (node.getNumValues() == 2) {
+          inFlag = new SDValue(resNode, 1);
+          replaceUses(new SDValue(node, 1), inFlag);
+        }
+        replaceUses(new SDValue(node, 0), chain);
+        return null;
+    }
+
     SDNode resNode = selectCommonCode(node);
     if (Util.DEBUG) {
       System.err.print("=> ");
@@ -138,39 +179,217 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   }
 
   protected boolean hasNoVMLxHazardUse(SDNode n) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectRegShifterOperand(SDValue n, SDValue[] tmp) {
+    return selectRegShifterOperand(n, tmp, true);
+  }
+
+  private boolean isShifterOpProfitable(SDValue shift,
+                                               ARM_AM.ShiftOpc shOpc,
+                                               long shAmt) {
+    if (!subtarget.isCortexA9())
+      return true;
+
+    if (shift.hasOneUse())
+      return true;
+
+    // R << 2 is free.
+    return shOpc == ARM_AM.ShiftOpc.lsl && shAmt == 2;
+  }
+
+  protected boolean selectRegShifterOperand(SDValue n, SDValue[] tmp, boolean checkProfitability) {
     if (DisableShifterOp.value)
       return false;
 
     ARM_AM.ShiftOpc shOpcVal = ARM_AM.getShiftOpcForNode(n.getOpcode());
 
+    // Don't match base register only case. That is matched to a separate
+    // lower complexity pattern with explicit register operand.
+    if (shOpcVal == ARM_AM.ShiftOpc.no_shift) return false;
+
+    // base register.
+    SDValue baseReg = n.getOperand(0);
+    int shImmVal = 0;
+    if ((n.getOperand(1).getNode() instanceof SDNode.ConstantSDNode))
+      return false;
+
+    // shift register.
+    SDValue shReg = n.getOperand(1);
+
+    if (checkProfitability && !isShifterOpProfitable(n, shOpcVal, shImmVal))
+      return false;
+    SDValue opc = curDAG.getTargetConstant(ARM_AM.getSORegShOpc(shOpcVal, shImmVal), new EVT(MVT.i32));
+    tmp[0] = baseReg;
+    tmp[1] = shReg;
+    tmp[2] = opc;
     return false;
   }
 
   protected boolean selectImmShifterOperand(SDValue n, SDValue[] tmp) {
+    return selectImmShifterOperand(n, tmp, true);
+  }
+
+  protected boolean selectImmShifterOperand(SDValue n, SDValue[] tmp, boolean checkProfitability) {
+    if (DisableShifterOp.value)
+      return false;
+
+    ARM_AM.ShiftOpc shOpcVal = ARM_AM.getShiftOpcForNode(n.getOpcode());
+
+    // Don't match base register only case. That is matched to a separate
+    // lower complexity pattern with explicit register operand.
+    if (shOpcVal == ARM_AM.ShiftOpc.no_shift) return false;
+
+    // base register.
+    SDValue baseReg = n.getOperand(0);
+    long shImmVal = 0;
+    if (!(n.getOperand(1).getNode() instanceof SDNode.ConstantSDNode))
+      return false;
+
+    shImmVal = ((SDNode.ConstantSDNode)n.getOperand(1).getNode()).getZExtValue() & 31;
+    SDValue opc = curDAG.getTargetConstant(ARM_AM.getSORegShOpc(shOpcVal, shImmVal), new EVT(MVT.i32));
+    tmp[0] = baseReg;
+    tmp[2] = opc;
     return false;
   }
 
   protected boolean selectT2ShifterOperandReg(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectShiftRegShifterOperand(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectShiftImmShifterOperand(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
+  }
+
+  /**
+   * Check whether a particular node is a constant value representable as
+   * (N * Scale) where (N in [{@code rangeMin}, {@code rangeMax}).
+   * @param node
+   * @param scale
+   * @param rangeMin
+   * @param rangeMax
+   * @param scaledConstant
+   * @return
+   */
+  private static boolean isScaledConstantInRange(SDValue node,
+                                                 int scale,
+                                                 int rangeMin,
+                                                 int rangeMax,
+                                                 OutRef<Integer> scaledConstant) {
+    Util.assertion(scale >0, "invalid scale");
+    if (!(node.getNode() instanceof SDNode.ConstantSDNode))
+      return false;
+
+    SDNode.ConstantSDNode cst = (SDNode.ConstantSDNode) node.getNode();
+    long c = cst.getZExtValue();
+    if ((c % scale) != 0)
+      return false;
+
+    c /= scale;
+    return c >= rangeMin && c < rangeMax;
   }
 
   protected boolean selectLdStSOReg(SDValue n, SDValue[] tmp) {
-    return false;
+    if (n.getOpcode() == ISD.MUL && (!subtarget.isCortexA9() || n.hasOneUse())) {
+      if (n.getOperand(1).getNode() instanceof SDNode.ConstantSDNode) {
+        SDNode.ConstantSDNode cstRHS = (SDNode.ConstantSDNode) n.getOperand(1).getNode();
+        long rhsc = cstRHS.getZExtValue();
+        if ((rhsc & 1) != 0) {
+          rhsc = rhsc & ~1;
+          ARM_AM.AddrOpc addsub = ARM_AM.AddrOpc.add;
+          if (rhsc < 0) {
+            addsub = ARM_AM.AddrOpc.sub;
+            rhsc = -rhsc;
+          }
+          if (Util.isPowerOf2(rhsc)) {
+            int shAmt = Util.log2(rhsc);
+            // base = offset = n.getOperand(0);
+            tmp[0] = tmp[1] = n.getOperand(0);
+            // opc
+            tmp[2] = curDAG.getTargetConstant(ARM_AM.getAM2Opc(addsub, shAmt, ARM_AM.ShiftOpc.lsl), new EVT(MVT.i32));
+            return true;
+          }
+        }
+      }
+    }
+
+    if (n.getOpcode() != ISD.ADD && n.getOpcode() != ISD.SUB &&
+        !curDAG.isBaseWithConstantOffset(n)) {
+      return false;
+    }
+
+    if (n.getOpcode() == ISD.ADD || n.getOpcode() == ISD.OR) {
+      // simple R +- imm12 for LDRi12.
+      OutRef<Integer> rhsc = new OutRef<>(0);
+      if (isScaledConstantInRange(n.getOperand(1), /*scale*/ 1, -0x100+1, 0x1000, rhsc))
+        return false;
+    }
+
+    // otherwise R +/- [possibly shifted] R.
+    ARM_AM.AddrOpc addsub = n.getOpcode() == ISD.ADD ? ARM_AM.AddrOpc.add : ARM_AM.AddrOpc.sub;
+    ARM_AM.ShiftOpc shOpc = ARM_AM.getShiftOpcForNode(n.getOperand(1).getOpcode());
+    long shAmt = 0;
+
+    // base
+    SDValue base = n.getOperand(0);
+    // offset
+    SDValue offset = n.getOperand(1);
+    if (shOpc != ARM_AM.ShiftOpc.no_shift) {
+      // check to see if the rhs of the shift is a constant, if it is not, we can't fold.
+      if (n.getOperand(1).getOperand(1).getNode() instanceof SDNode.ConstantSDNode) {
+        SDNode.ConstantSDNode sh = (SDNode.ConstantSDNode) n.getOperand(1).getOperand(1).getNode();
+        shAmt = sh.getZExtValue();
+        if (isShifterOpProfitable(offset, shOpc, shAmt))
+          offset = n.getOperand(1).getOperand(0);
+        else {
+          shAmt = 0;
+          shOpc = ARM_AM.ShiftOpc.no_shift;
+        }
+      }
+      else
+        shOpc = ARM_AM.ShiftOpc.no_shift;
+    }
+
+    // try matching (R shl C) + (R).
+    if (n.getOpcode() != ISD.SUB && shOpc == ARM_AM.ShiftOpc.no_shift &&
+      !(subtarget.isCortexA9() || n.getOperand(0).hasOneUse())) {
+      shOpc = ARM_AM.getShiftOpcForNode(n.getOperand(0).getOpcode());
+      if (shOpc != ARM_AM.ShiftOpc.no_shift) {
+        // check to see if the rhs of the shift is a constant, if it is not, don't fold.
+        if (n.getOperand(0).getOperand(1).getNode() instanceof SDNode.ConstantSDNode) {
+          SDNode.ConstantSDNode sh = (SDNode.ConstantSDNode) n.getOperand(0).getOperand(1).getNode();
+          shAmt = sh.getZExtValue();
+          if (isShifterOpProfitable(n.getOperand(0), shOpc, shAmt)) {
+            offset = n.getOperand(0).getOperand(0);
+            base = n.getOperand(1);
+          }
+          else {
+            shAmt = 0;
+            shOpc = ARM_AM.ShiftOpc.no_shift;
+          }
+        }
+        else
+          shOpc = ARM_AM.ShiftOpc.no_shift;
+      }
+    }
+    tmp[0] = base;
+    tmp[1] = offset;
+    // opc
+    tmp[2] = curDAG.getTargetConstant(ARM_AM.getAM2Opc(addsub, (int) shAmt, shOpc), new EVT(MVT.i32));
+    return true;
   }
 
   protected boolean selectT2AddrModeSoReg(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
@@ -219,86 +438,114 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   }
 
   protected boolean selectT2AddrModeImm12(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectT2AddrModeImm8(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode2(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode6(SDNode parent, SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode6Offset(SDNode op, SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrModePC(SDValue n, SDValue[] tmp) {
+    if (n.getOpcode() == ARMISD.PIC_ADD && n.hasOneUse()) {
+      // offset
+      tmp[0] = n.getOperand(0);
+      SDValue n1 = n.getOperand(1);
+      // label.
+      tmp[1] = curDAG.getTargetConstant(((SDNode.ConstantSDNode)n1.getNode()).getZExtValue(), new EVT(MVT.i32));
+      return true;
+    }
     return false;
   }
 
   protected boolean selectAddrOffsetNone(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode3Offset(SDNode op, SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode2OffsetReg(SDNode op, SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode2OffsetImm(SDNode op, SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode3(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectT2AddrModeImm8Offset(SDNode op, SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeRI5S4(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeImm5S4(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeRI5S1(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeImm5S1(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeRI5S2(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeImm5S2(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeSP(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectAddrMode5(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 
   protected boolean selectThumbAddrModeRR(SDValue n, SDValue[] tmp) {
+    Util.shouldNotReachHere();
     return false;
   }
 

@@ -244,10 +244,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         else
           destRC = tri.getPhysicalRegisterRegClass(destReg, node.getOperand(1).getValueType());
 
-        boolean emitted = tii.copyRegToReg(mbb, insertPos++, destReg, srcReg,
-            destRC, srcRC);
-
-        Util.assertion(emitted, "Unable to issue a copy instruction!");
+        buildMI(mbb, insertPos++, node.getDebugLoc(), tii.get(TargetOpcode.COPY), destReg).addReg(srcReg);
         break;
       }
       case ISD.CopyFromReg:
@@ -415,7 +412,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     MCRegisterClass destRC = tri.getRegClass(destRCIdx);
 
     int newVReg = mri.createVirtualRegister(destRC);
-    boolean emitted = tii.copyRegToReg(mbb, insertPos++, newVReg, vreg,
+    boolean emitted = tii.copyPhysReg(mbb, insertPos++, newVReg, vreg,
         destRC, srcRC);
     Util.assertion(emitted, "Unable to issue a copy instruction!");
     SDValue op = new SDValue(node, 0);
@@ -521,6 +518,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     }
   }
 
+  private static final int MinRCSize = 4;
+
   private void addRegisterOperand(MachineInstr mi,
                                   SDValue op,
                                   int iiOpNum,
@@ -543,10 +542,12 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       Util.assertion(destRC != null || (ii.isVariadic() &&
           iiOpNum >= ii.getNumOperands()), "Don't have operand info for this instruction!");
 
-      if (destRC != null && !srcRC.equals(destRC) && !srcRC.hasSuperClass(destRC)) {
+      // It is normal to emit a copy between two different register classes, such as GPR to GPRnopc
+      // but those two register classes have a common sub register class, GPRnopc, we use emit a
+      // virtual register with the GPRnopc RC.
+      if (destRC != null && mri.constraintRegClass(vreg, destRC, MinRCSize) == null) {
         int newVReg = mri.createVirtualRegister(destRC);
-        boolean emitted = tii.copyRegToReg(mbb, insertPos++,
-            newVReg, vreg, destRC, srcRC);
+        boolean emitted = tii.copyPhysReg(mbb, insertPos++, newVReg, vreg, destRC, destRC);
         Util.assertion(emitted, "Unable to issue a copy instruction!");
         vreg = newVReg;
       }
@@ -638,7 +639,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         vrbase = srcReg;
       else {
         vrbase = mri.createVirtualRegister(destRC);
-        boolean emitted = tii.copyRegToReg(mbb, insertPos++, vrbase, srcReg,
+        boolean emitted = tii.copyPhysReg(mbb, insertPos++, vrbase, srcReg,
             destRC, srcRC);
         Util.assertion(emitted, "Unable to issue copy instruction!");
       }

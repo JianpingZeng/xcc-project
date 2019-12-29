@@ -129,14 +129,14 @@ public abstract class ScheduleDAG {
             break;
           }
         }
-        tii.copyRegToReg(mbb, insertPos++, reg, vrBaseMap.get(d.getSUnit()),
+        tii.copyPhysReg(mbb, insertPos++, reg, vrBaseMap.get(d.getSUnit()),
             su.copyDstRC, su.copySrcRC);
       } else {
         Util.assertion(d.getReg() != 0, "Unknown physical register!");
         int vrBase = mri.createVirtualRegister(su.copyDstRC);
         Util.assertion(!vrBaseMap.containsKey(su));
         vrBaseMap.put(su, vrBase);
-        tii.copyRegToReg(mbb, insertPos++, vrBase, d.getReg(),
+        tii.copyPhysReg(mbb, insertPos++, vrBase, d.getReg(),
             su.copyDstRC, su.copySrcRC);
       }
       break;

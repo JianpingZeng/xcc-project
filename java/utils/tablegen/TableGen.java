@@ -53,6 +53,7 @@ public final class TableGen {
     GenFastISel,
     GenSubtarget,
     GenXCCOptions,
+    GenPseudoLowering,
     PrintSets,
   }
 
@@ -83,6 +84,8 @@ public final class TableGen {
               "Generate subtarget enumerations"),
           new ValueClass.Entry<>(GenXCCOptions, "gen-xcc-options",
               "Generate XCC C Compiler options"),
+          new ValueClass.Entry(GenPseudoLowering, "gen-pseudo-lowering",
+              "Generate pseudo instruction lowering"),
           new ValueClass.Entry<>(PrintSets, "print-sets",
               "Print expanded sets for testing DAG exps")
       ));
@@ -153,6 +156,9 @@ public final class TableGen {
           break;
         case GenXCCOptions:
           new XCCOptionsEmitter(records).run(outputFile);
+          break;
+        case GenPseudoLowering:
+          new PseudoLoweringEmitter(records).run(outputFile);
           break;
         case PrintSets:
           SetTheory sets = new SetTheory();

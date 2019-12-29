@@ -93,7 +93,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (addPostRegAlloc(pm, level))
       return true;
 
-    pm.add(LowerSubregInstructionPass.createLowerSubregPass());
+    pm.add(ExpandPostRAPseduos.createLowerSubregPass());
 
     pm.add(createPrologEpilogEmitter());
     return false;

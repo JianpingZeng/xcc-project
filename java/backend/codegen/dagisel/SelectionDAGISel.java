@@ -23,6 +23,7 @@ import backend.codegen.dagisel.SDNode.CondCodeSDNode;
 import backend.codegen.dagisel.SDNode.ConstantSDNode;
 import backend.codegen.dagisel.SDNode.LabelSDNode;
 import backend.codegen.dagisel.SDNode.MachineSDNode;
+import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
@@ -45,6 +46,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.*;
 
+import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.dagisel.FunctionLoweringInfo.computeValueVTs;
 import static backend.codegen.dagisel.RegsForValue.getCopyFromParts;
 import static backend.codegen.dagisel.SelectionDAGISel.ChainResult.CR_InducesCycle;
@@ -153,8 +155,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     for (Pair<Integer, Integer> regs : mri.getLiveIns()) {
       if (regs.second != 0) {
         MCRegisterClass rc = mri.getRegClass(regs.second);
-        boolean emitted = tii.copyRegToReg(entryBB, 0, regs.second, regs.first, rc, rc);
-        Util.assertion(emitted, "Fail to emit a copy of live-in register!");
+        buildMI(entryBB, 0, new DebugLoc(), tii.get(TargetOpcode.COPY), regs.second).addReg(regs.first);
       }
     }
   }
@@ -1431,12 +1432,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           if ((emitNodeInfo & OPFL_FlagInput) != 0 && inputFlag.getNode() != null)
             ops.add(inputFlag);
 
-          MachineSDNode res = null;
-          /*if (opcode != OPC_MorphNodeTo)*/ {
+          MachineSDNode res;
+          SDValue[] tempOps = new SDValue[ops.size()];
+          ops.toArray(tempOps);
+          if (opcode != OPC_MorphNodeTo) {
             // If this is a normal EmitNode command, just create the new node and
             // add the results to the RecordedNodes list.
-            SDValue[] tempOps = new SDValue[ops.size()];
-            ops.toArray(tempOps);
+
             res = curDAG.getMachineNode(targetOpc, vtlist, tempOps);
             // Add all the non-flag/non-chain results to the RecordedNodes list.
             for (int i = 0, e = vts.size(); i < e; i++) {
@@ -1445,9 +1447,9 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                 break;
               recordedNodes.add(Pair.get(new SDValue(res, i), null));
             }
-          }/* else {
-            res = curDAG.morphNodeTo(nodeToMatch, ~targetOpc, vtlist, ops);
-          }*/
+          } else {
+            res = morphNode(nodeToMatch, targetOpc, vtlist, emitNodeInfo, tempOps);
+          }
 
           if ((emitNodeInfo & OPFL_FlagOutput) != 0) {
             inputFlag = new SDValue(res, vts.size() - 1);
@@ -1590,6 +1592,51 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         matchScopes.pop();
       }
     }
+  }
+
+  /**
+   * Handle morphing a node in place for the selector (Acutally, we don't morph it in place due to type cast in Java).
+   * @param node
+   * @param targetOpc
+   * @param vts
+   * @param emitNodeInfo
+   * @param ops
+   * @return
+   */
+  private MachineSDNode morphNode(SDNode node,
+                           int targetOpc,
+                           SDNode.SDVTList vts,
+                           int emitNodeInfo,
+                           SDValue... ops) {
+    int oldGlueResultNo = -1, oldChainResultNo = -1;
+    int numResults = node.getNumValues();
+    if (node.getValueType(numResults-1).equals(new EVT(MVT.Glue))) {
+      oldGlueResultNo = numResults - 1;
+      if (numResults != 1 && node.getValueType(numResults-2).equals(new EVT(MVT.Other)))
+        oldChainResultNo = numResults - 2;
+    }
+    else if (node.getValueType(numResults - 1).equals(new EVT(MVT.Other)))
+      oldChainResultNo = numResults - 1;
+
+    MachineSDNode res = curDAG.getMachineNode(targetOpc, vts, ops);
+    int resNumResults = res.getNumValues();
+    // move the glue if needed.
+    if ((emitNodeInfo & OPFL_FlagOutput) != 0 && oldGlueResultNo != -1 &&
+        oldGlueResultNo != resNumResults - 1) {
+      curDAG.replaceAllUsesOfValueWith(new SDValue(node, oldGlueResultNo), new SDValue(res, resNumResults - 1));
+    }
+
+    if ((emitNodeInfo & OPFL_FlagOutput) != 0)
+      --resNumResults;
+
+    // Move the chain reference if needed.
+    if ((emitNodeInfo & OPFL_Chain) != 0 && oldChainResultNo != -1 &&
+        oldChainResultNo != resNumResults - 1) {
+      curDAG.replaceAllUsesOfValueWith(new SDValue(node, oldChainResultNo), new SDValue(res, resNumResults-1));
+    }
+
+    replaceUses(node, res);
+    return res;
   }
 
   /**

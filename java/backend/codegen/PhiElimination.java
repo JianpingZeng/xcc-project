@@ -14,6 +14,7 @@ import tools.Util;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
@@ -119,8 +120,9 @@ public final class PhiElimination extends MachineFunctionPass {
     MCRegisterClass srcRC = mri.getRegClass(incomingReg);
     // creates a register to register copy instruction at the position where
     // indexed by firstInstAfter.
-    instInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, destRC, srcRC);
-    MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
+    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+    MachineInstrBuilder mib = buildMI(mbb, firstInstAfterPhi, phiMI.getDebugLoc(), tii.get(TargetOpcode.COPY), destReg).addReg(incomingReg);
+    MachineInstr copyInst = mib.getMInstr();
 
     // Delete the PHI node whose index to 0
     phiMI.removeFromParent();
@@ -156,7 +158,7 @@ public final class PhiElimination extends MachineFunctionPass {
       // This is the point where we can insert a copy if we'd like to.
       int idx = opBB.getFirstTerminator();
 
-      instInfo.copyRegToReg(opBB, idx, incomingReg, srcReg, destRC, srcRC);
+      instInfo.copyPhysReg(opBB, idx, incomingReg, srcReg, destRC, srcRC);
 
       // idx++;
       idx++; // make sure the idx always points to the first terminator inst.

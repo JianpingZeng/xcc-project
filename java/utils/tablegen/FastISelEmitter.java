@@ -551,7 +551,7 @@ public final class FastISelEmitter extends TableGenBackend {
                   for (int i = 0; i != memo.physRegs.size(); i++) {
                     if (!memo.physRegs.get(i).equals("")) {
                       os.printf(
-                          "\tinstrInfo.copyRegToReg(mbb, mbb.size(), %s, "
+                          "\tinstrInfo.copyPhysReg(mbb, mbb.size(), %s, "
                               + " op%d, tm.getRegisterInfo()."
                               + "\n\t\t\tgetPhysicalRegisterRegClass(%s), "
                               + "mri.getRegClass(op%d));\n",
@@ -651,7 +651,7 @@ public final class FastISelEmitter extends TableGenBackend {
                 for (int i = 0; i != memo.physRegs.size(); i++) {
                   if (!memo.physRegs.get(i).equals("")) {
                     os.printf(
-                        "\tinstrInfo.copyRegToReg(mbb, mbb.size(), %s, "
+                        "\tinstrInfo.copyPhysReg(mbb, mbb.size(), %s, "
                             + " op%d, tm.getRegisterInfo().getPhysicalRegisterRegClass(%s), "
                             + "mri.getRegClass(op%d));\n",
                         memo.physRegs.get(i), i,

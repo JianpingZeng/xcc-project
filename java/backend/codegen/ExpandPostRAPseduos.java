@@ -37,7 +37,7 @@ import static backend.codegen.MachineOperand.createReg;
  * @author Jianping Zeng
  * @version 0.4
  */
-public class LowerSubregInstructionPass extends MachineFunctionPass {
+public class ExpandPostRAPseduos extends MachineFunctionPass {
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
     au.setPreservesCFG();
@@ -47,13 +47,15 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
   }
 
   private int curPos;
+  private TargetRegisterInfo tri;
 
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     if (Util.DEBUG) {
-      System.err.println("********** Lowering subregs instructions **********");
+      System.err.println("********** Expanding pseudo instructions **********");
       System.err.printf("********** Function: %s%n", mf.getFunction().getName());
     }
+    tri = mf.getTarget().getSubtarget().getRegisterInfo();
     boolean madeChange = false;
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       for (int i = 0; i < mbb.size(); i++) {
@@ -69,6 +71,9 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
           case TargetOpcode.SUBREG_TO_REG:
             madeChange |= lowerSubregToReg(mi);
             break;
+          case TargetOpcode.COPY:
+            madeChange |= lowerCopy(mi);
+            break;
         }
         i = curPos;
       }
@@ -78,7 +83,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
 
   @Override
   public String getPassName() {
-    return "Subregister lowering instruction pass";
+    return "Post-RA pseudo instruction expansion pass";
   }
 
   private boolean lowerExtract(MachineInstr mi) {
@@ -119,7 +124,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       // insert a copy.
       MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(srcReg);
       MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destReg);
-      boolean emitted = tii.copyRegToReg(mbb, mi.getIndexInMBB(), destReg, srcReg,
+      boolean emitted = tii.copyPhysReg(mbb, mi.getIndexInMBB(), destReg, srcReg,
           destRC, srcRC);
       Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
       if (mo0.isDead())
@@ -188,7 +193,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
       if (mo2.isUndef())
         buildMI(mbb, mi.getIndexInMBB(), new DebugLoc(), tii.get(TargetOpcode.IMPLICIT_DEF), destSubReg);
       else {
-        boolean emitted = tii.copyRegToReg(mbb, mi.getIndexInMBB(), destSubReg,
+        boolean emitted = tii.copyPhysReg(mbb, mi.getIndexInMBB(), destSubReg,
             insReg, destRC, srcRC);
         Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
       }
@@ -248,7 +253,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
     } else {
       MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
       MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
-      tii.copyRegToReg(mbb, mi.getIndexInMBB(), destSubReg, insReg, destRC, srcRC);
+      tii.copyPhysReg(mbb, mi.getIndexInMBB(), destSubReg, insReg, destRC, srcRC);
       if (mo0.isDead())
         transferDeadFlag(mi, destSubReg, tri);
       if (mo2.isKill())
@@ -274,7 +279,7 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
     for (int i = mi.getIndexInMBB() - 1; ; i--) {
       if (mbb.getInstAt(i).addRegisterDead(destReg, tri))
         break;
-      Util.assertion(i != 0, "copyRegToReg doesn't reference destination register!");
+      Util.assertion(i != 0, "copyPhysReg doesn't reference destination register!");
     }
   }
 
@@ -299,11 +304,47 @@ public class LowerSubregInstructionPass extends MachineFunctionPass {
     for (int i = mi.getIndexInMBB() - 1; ; i--) {
       if (mbb.getInstAt(i).addRegisterKilled(srcReg, tri, addIfNotFound))
         break;
-      Util.assertion(i != 0, "copyRegToReg doesn't reference source register!");
+      Util.assertion(i != 0, "copyPhysReg doesn't reference source register!");
+    }
+  }
+
+  private boolean lowerCopy(MachineInstr mi) {
+    MachineOperand destMO = mi.getOperand(0);
+    MachineOperand srcMO = mi.getOperand(1);
+    Util.assertion(destMO.isRegister() && srcMO.isRegister());
+    if (srcMO.getReg() == destMO.getReg()) {
+      // eliminate identical copy.
+      mi.removeFromParent();
+      --curPos;
+      return true;
+    }
+
+    if (destMO.isDead())
+      transferDeadFlag(mi, destMO.getReg(), tri);
+    if (mi.getNumOperands() > 2)
+      transferImplicitDefs(mi);
+    mi.removeFromParent();
+    --curPos;
+    return true;
+  }
+
+  /**
+   * Transfer implicitly defined register of a COPY pseudo instruction to the proceeding instruction.
+   * @param mi
+   */
+  private void transferImplicitDefs(MachineInstr mi) {
+    int pos = mi.getIndexInMBB();
+    --pos;
+    MachineInstr copyMI = mi.getParent().getInstAt(pos);
+    for (int i = 0, e = mi.getNumOperands(); i < e; ++i) {
+      MachineOperand mo = mi.getOperand(i);
+      if (!mo.isRegister() || !mo.isImplicit() || mo.isUse())
+        continue;
+      copyMI.addOperand(MachineOperand.createReg(mo.getReg(), true, true));
     }
   }
 
   public static FunctionPass createLowerSubregPass() {
-    return new LowerSubregInstructionPass();
+    return new ExpandPostRAPseduos();
   }
 }

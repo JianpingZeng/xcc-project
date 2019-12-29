@@ -54,4 +54,5 @@ public interface TID {
   int Pseudo = 25;
   int OptionalDef = 26;
   int Variadic = 27;
+  int CodeGenOnly = 28;
 }

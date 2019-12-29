@@ -21,6 +21,7 @@ import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
+import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
@@ -28,6 +29,7 @@ import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
@@ -35,6 +37,7 @@ import tools.BitMap;
 import tools.OutRef;
 import tools.Util;
 
+import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.mc.MCOperandInfo.OperandConstraint.TIED_TO;
 import static backend.target.TargetOpcode.INLINEASM;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
@@ -256,7 +259,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
               reMatRegs.set(regB);
               NumReMats.inc();
             } else {
-              tii.copyRegToReg(mbb, i, regA, regB, rc, rc);
+              buildMI(mbb, i, defMI != null ? defMI.getDebugLoc() : new DebugLoc(),
+                  tii.get(TargetOpcode.COPY),regA).addReg(regB);
 
               // Uses another method to reduce 3-addr instruction
               // to 2-addr instruction.

@@ -56,12 +56,12 @@ public class MipsInstrInfo extends TargetInstrInfoImpl {
   }
 
   @Override
-  public boolean copyRegToReg(MachineBasicBlock mbb,
-                              int insertPos,
-                              int dstReg,
-                              int srcReg,
-                              MCRegisterClass dstRC,
-                              MCRegisterClass srcRC) {
+  public boolean copyPhysReg(MachineBasicBlock mbb,
+                             int insertPos,
+                             int dstReg,
+                             int srcReg,
+                             MCRegisterClass dstRC,
+                             MCRegisterClass srcRC) {
     // Unknown debug loc.
     DebugLoc dl = new DebugLoc();
     if (insertPos != mbb.size()) dl = mbb.getInstAt(insertPos).getDebugLoc();

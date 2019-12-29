@@ -1667,12 +1667,12 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return GR8_ABCD_HRegisterClass.contains(Reg);
   }
 
-  public boolean copyRegToReg(MachineBasicBlock mbb,
-                              int index,
-                              int destReg,
-                              int srcReg,
-                              MCRegisterClass destRC,
-                              MCRegisterClass srcRC) {
+  public boolean copyPhysReg(MachineBasicBlock mbb,
+                             int index,
+                             int destReg,
+                             int srcReg,
+                             MCRegisterClass destRC,
+                             MCRegisterClass srcRC) {
     DebugLoc dl = DebugLoc.getUnknownLoc();
     if (index != mbb.size())
       dl = mbb.getInstAt(index).getDebugLoc();

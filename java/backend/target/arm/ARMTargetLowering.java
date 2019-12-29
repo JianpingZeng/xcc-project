@@ -31,6 +31,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
+import backend.support.BackendCmdOptions;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.target.TargetLowering;
@@ -38,7 +39,9 @@ import backend.target.TargetLoweringObjectFile;
 import backend.target.TargetMachine;
 import backend.target.TargetOptions;
 import backend.target.arm.ARMConstantPoolValue.ARMCP;
+import backend.value.ConstantFP;
 import backend.value.GlobalValue;
+import tools.OutRef;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -1042,12 +1045,17 @@ public class ARMTargetLowering extends TargetLowering {
   }
 
   private SDValue lowerGlobalAddress(SDValue op, SelectionDAG dag) {
+    Util.shouldNotReachHere();
     return null;
   }
   private SDValue lowerBlockAddress(SDValue op, SelectionDAG dag) {
+    Util.shouldNotReachHere();
     return null;
   }
-  private SDValue lowerGlobalAddressDarwin(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerGlobalAddressDarwin(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
   private SDValue lowerGlobalAddressELF(SDValue op, SelectionDAG dag) {
     EVT ptrTy = new EVT(getPointerTy());
     GlobalValue gv = ((SDNode.GlobalAddressSDNode)op.getNode()).getGlobalValue();
@@ -1080,9 +1088,18 @@ public class ARMTargetLowering extends TargetLowering {
       return dag.getLoad(ptrTy, dag.getEntryNode(), cpAddr, PseudoSourceValue.getConstantPool(), 0);
     }
   }
-  private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerToTLSGeneralDynamicModel(SDNode.GlobalAddressSDNode ga, SelectionDAG dag) { return null; }
-  private SDValue lowerToTLSExecModels(SDNode.GlobalAddressSDNode ga, SelectionDAG dag) { return null; }
+  private SDValue lowerGlobalTLSAddress(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerToTLSGeneralDynamicModel(SDNode.GlobalAddressSDNode ga, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerToTLSExecModels(SDNode.GlobalAddressSDNode ga, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
   private SDValue lowerGLOBAL_OFFSET_TABLE(SDValue op, SelectionDAG dag) {
     Util.assertion(subtarget.isTargetELF(), "GLOBAL_OFFSET_TABELE not implemented for non-ELF targets");
     MachineFunction mf = dag.getMachineFunction();
@@ -1096,51 +1113,388 @@ public class ARMTargetLowering extends TargetLowering {
     return dag.getNode(ARMISD.PIC_ADD, ptrVT, result, picLabel);
   }
 
-  private SDValue lowerBR_JT(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerSELECT(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerSELECT_CC(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerBR_CC(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerRETURNADDR(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerFRAMEADDR(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerShiftRightParts(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerShiftLeftParts(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerVASTART(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerMEMBARRIER(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerATOMIC_FENCE(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerPREFETCH(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerINT_TO_FP(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerFP_TO_INT(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerINTRINSIC_WO_CAHIN(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue expandBITCAST(SDNode n, SelectionDAG dag) { return null; }
-  private SDValue lowerShift(SDNode n, SelectionDAG dag) { return null; }
-  private SDValue lowerCTTZ(SDNode n, SelectionDAG dag) { return null; }
-  private SDValue lowerVSETCC(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerCONCAT_VECTORS(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerFLT_ROUNDS(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerMUL(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerSDIV(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerUDIV(SDValue op, SelectionDAG dag) { return null; }
-  private SDValue lowerADDC_ADDE_SUBC_SUBE(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue lowerBR_JT(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerSELECT(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerSELECT_CC(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+
+  /**
+   * Convert a DAG integer condition code to an ARM CC
+   * @param cc
+   * @return
+   */
+  private static ARMCC.CondCodes IntCCToARMCC(CondCode cc) {
+    switch (cc) {
+      default: Util.shouldNotReachHere("Unknown condition code!");
+      case SETNE:  return ARMCC.CondCodes.NE;
+      case SETEQ:  return ARMCC.CondCodes.EQ;
+      case SETGT:  return ARMCC.CondCodes.GT;
+      case SETGE:  return ARMCC.CondCodes.GE;
+      case SETLT:  return ARMCC.CondCodes.LT;
+      case SETLE:  return ARMCC.CondCodes.LE;
+      case SETUGT: return ARMCC.CondCodes.HI;
+      case SETUGE: return ARMCC.CondCodes.HS;
+      case SETULT: return ARMCC.CondCodes.LO;
+      case SETULE: return ARMCC.CondCodes.LS;
+    }
+  }
+
+  /**
+   * Convert a DAG fp condition code to an ARM cc.
+   * @param cc
+   */
+  private static ARMCC.CondCodes[] FPCCToARMCC(CondCode cc) {
+    ARMCC.CondCodes condCode, condCode2;
+    condCode2 = ARMCC.CondCodes.AL;
+    switch (cc) {
+      default: Util.shouldNotReachHere("Unknown FP condition!");
+      case SETEQ:
+      case SETOEQ: condCode = ARMCC.CondCodes.EQ; break;
+      case SETGT:
+      case SETOGT: condCode = ARMCC.CondCodes.GT; break;
+      case SETGE:
+      case SETOGE: condCode = ARMCC.CondCodes.GE; break;
+      case SETOLT: condCode = ARMCC.CondCodes.MI; break;
+      case SETOLE: condCode = ARMCC.CondCodes.LS; break;
+      case SETONE: condCode = ARMCC.CondCodes.MI; condCode2 = ARMCC.CondCodes.GT; break;
+      case SETO:   condCode = ARMCC.CondCodes.VC; break;
+      case SETUO:  condCode = ARMCC.CondCodes.VS; break;
+      case SETUEQ: condCode = ARMCC.CondCodes.EQ; condCode2 = ARMCC.CondCodes.VS; break;
+      case SETUGT: condCode = ARMCC.CondCodes.HI; break;
+      case SETUGE: condCode = ARMCC.CondCodes.PL; break;
+      case SETLT:
+      case SETULT: condCode = ARMCC.CondCodes.LT; break;
+      case SETLE:
+      case SETULE: condCode = ARMCC.CondCodes.LE; break;
+      case SETNE:
+      case SETUNE: condCode = ARMCC.CondCodes.NE; break;
+    }
+    return new ARMCC.CondCodes[] {condCode, condCode2};
+  }
+
+  private static SDValue getARMCmp(SDValue lhs, SDValue rhs,
+                                   CondCode cc, SDValue armcc,
+                                   SelectionDAG dag, DebugLoc dl) {
+    ARMCC.CondCodes condCode = IntCCToARMCC(cc);
+    int compareType;
+    switch (condCode) {
+      default:
+        compareType = ARMISD.CMP;
+        break;
+      case EQ:
+      case NE:
+        // only use zero flag.
+        compareType = ARMISD.CMPZ;
+        break;
+    }
+
+    SDValue ccConst = dag.getConstant(condCode.ordinal(), new EVT(MVT.i32), false);
+    armcc.setNode(ccConst.getNode());
+    armcc.setResNo(ccConst.getResNo());
+    return dag.getNode(compareType, new EVT(MVT.Glue), lhs, rhs);
+  }
+
+  // return true if this is a +0.0
+  private static boolean isFloatingPointZero(SDValue op) {
+    if (op.getNode() instanceof SDNode.ConstantFPSDNode) {
+      return ((SDNode.ConstantFPSDNode)op.getNode()).getValueAPF().isPosZero();
+    }
+    else if (op.getNode().isExtLoad() || op.getNode().isNONExtLoad()) {
+      if (op.getOperand(1).getOpcode() == ARMISD.Wrapper) {
+        SDValue wrapperOp = op.getOperand(1).getOperand(0);
+        if (wrapperOp.getNode() instanceof SDNode.ConstantPoolSDNode) {
+          SDNode.ConstantPoolSDNode cp = (SDNode.ConstantPoolSDNode) wrapperOp.getNode();
+          if (cp.getConstantValue() instanceof ConstantFP)
+            return ((ConstantFP)cp.getConstantValue()).getValueAPF().isPosZero();
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean canChangeToInt(SDValue op, OutRef<Boolean> seenZero, ARMSubtarget subtarget) {
+    SDNode n = op.getNode();
+    if (!n.hasOneUse()) {
+      // otherwise, it requires moving the value from fp to integer registers.
+      return false;
+    }
+    if (n.getNumValues() == 0)
+      return false;
+    EVT vt = op.getValueType();
+    if (!vt.equals(new EVT(MVT.f32)) && !subtarget.isFPBrccSlow()) {
+      // f32 case is generally profitable. f64 case only makes sense when vcmpe +
+      // vmrs are very slow, e.g. cortex-a8.
+      return false;
+    }
+    if (isFloatingPointZero(op)) {
+      seenZero.set(true);
+      return true;
+    }
+    return op.getNode().isNormalLoad();
+  }
+
+  private static SDValue bitcastf32Toi32(SDValue op, SelectionDAG dag) {
+    if (isFloatingPointZero(op))
+      return dag.getConstant(0, new EVT(MVT.i32), false);
+
+    if (op.getNode() instanceof SDNode.LoadSDNode) {
+      SDNode.LoadSDNode ld = (SDNode.LoadSDNode) op.getNode();
+      return dag.getLoad(new EVT(MVT.i32), ld.getChain(), ld.getBasePtr(),
+          ld.getSrcValue(), ld.getSrcValueOffset(),ld.isVolatile(),ld.getAlignment());
+    }
+    Util.shouldNotReachHere("Unknown VFP cmp argument!");
+    return new SDValue();
+  }
+
+  private static SDValue[] expandf64Toi32(SDValue op, SelectionDAG dag) {
+    if (isFloatingPointZero(op)) {
+      return new SDValue[] {dag.getConstant(0, new EVT(MVT.i32), false),
+                             dag.getConstant(0, new EVT(MVT.i32), false)};
+    }
+    if (op.getNode() instanceof SDNode.LoadSDNode) {
+      SDNode.LoadSDNode ld = (SDNode.LoadSDNode) op.getNode();
+      SDValue ptr = ld.getBasePtr();
+      SDValue retVal1 = dag.getLoad(new EVT(MVT.i32), ld.getChain(), ptr,
+          ld.getSrcValue(), ld.getSrcValueOffset(), ld.isVolatile(), ld.getAlignment());
+      EVT ptrType = ptr.getValueType();
+      int newAlign = Util.minAlign(ld.getAlignment(), 4);
+      SDValue newPtr = dag.getNode(ISD.ADD, ptrType, ptr, dag.getConstant(4, ptrType, false));
+      SDValue retVal2 = dag.getLoad(new EVT(MVT.i32), newPtr,
+          ld.getChain(), ld.getSrcValue(), ld.getSrcValueOffset(),
+          ld.isVolatile(), newAlign);
+      return new SDValue[] {retVal1, retVal2};
+    }
+
+    Util.shouldNotReachHere("Unknown VFP cmp argument!");
+    return null;
+  }
+
+  private static SDValue optimizeVFPBrcond(SDValue op, SelectionDAG dag) {
+    SDValue chain = op.getOperand(0);
+    CondCode cc = ((SDNode.CondCodeSDNode)op.getOperand(1).getNode()).getCondition();
+    SDValue lhs = op.getOperand(2);
+    SDValue rhs = op.getOperand(3);
+    SDValue dest = op.getOperand(4);
+    DebugLoc dl = op.getDebugLoc();
+
+    OutRef<Boolean> seenZero = new OutRef<>(false);
+    ARMSubtarget subtarget = (ARMSubtarget) dag.getMachineFunction().getTarget().getSubtarget();
+    if (canChangeToInt(lhs, seenZero, subtarget) && canChangeToInt(rhs, seenZero, subtarget) &&
+        // If one of the operand is zero, it's safe to ignore the NaN case since
+        // we only care about equality comparisons.
+        (seenZero.get() || (dag.isKnownNeverNaN(lhs) && dag.isKnownNeverNaN(rhs)))) {
+      // If unsafe fp math optimization is enabled and there are no other uses of
+      // the CMP operands, and the condition code is EQ or NE, we can optimize it
+      // to an integer comparison.
+      if (cc == CondCode.SETOEQ)
+        cc = CondCode.SETEQ;
+      else if (cc == CondCode.SETUNE)
+        cc = CondCode.SETNE;
+
+      SDValue armcc = new SDValue();
+      if (lhs.getValueType().equals(new EVT(MVT.f32))) {
+        lhs = bitcastf32Toi32(lhs, dag);
+        rhs = bitcastf32Toi32(rhs, dag);
+        SDValue cmp = getARMCmp(lhs, rhs, cc, armcc, dag, dl);
+        SDValue ccr = dag.getRegister(ARMGenRegisterNames.CPSR, new EVT(MVT.i32));
+        return dag.getNode(ARMISD.BRCOND, new EVT(MVT.Other), chain, dest, armcc, ccr, cmp);
+      }
+
+      SDValue[] lhsParts = expandf64Toi32(lhs, dag);
+      SDValue[] rhsParts = expandf64Toi32(rhs, dag);
+      ARMCC.CondCodes condCode = IntCCToARMCC(cc);
+      armcc = dag.getConstant(condCode.ordinal(), new EVT(MVT.i32), false);
+      SDNode.SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
+      SDValue[] ops = new SDValue[] {chain, armcc, lhsParts[0], lhsParts[1], rhsParts[0], rhsParts[1], dest};
+      return dag.getNode(ARMISD.BCC_i64, vts, ops);
+    }
+    return new SDValue();
+  }
+
+  private static SDValue getVFPCmp(SDValue lhs, SDValue rhs, SelectionDAG dag, DebugLoc dl) {
+    SDValue cmp;
+    if (!isFloatingPointZero(rhs))
+      cmp = dag.getNode(ARMISD.CMPFP, new EVT(MVT.Glue), lhs, rhs);
+    else
+      cmp = dag.getNode(ARMISD.CMPFPw0, new EVT(MVT.Glue), lhs);
+    return dag.getNode(ARMISD.FMSTAT, new EVT(MVT.Glue), cmp);
+  }
+
+  private SDValue lowerBR_CC(SDValue op, SelectionDAG dag) {
+    // chain, cc, lhs, rhs, dest
+    SDValue chain = op.getOperand(0);
+    CondCode cc = ((SDNode.CondCodeSDNode)op.getOperand(1).getNode()).getCondition();
+    SDValue lhs = op.getOperand(2);
+    SDValue rhs = op.getOperand(3);
+    SDValue dest = op.getOperand(4);
+    DebugLoc dl = op.getDebugLoc();
+
+    if (lhs.getValueType().equals(new EVT(MVT.i32))) {
+      SDValue armcc = new SDValue();
+      SDValue cmp = getARMCmp(lhs, rhs, cc, armcc, dag, dl);
+      SDValue ccr = dag.getRegister(ARMGenRegisterNames.CPSR, new EVT(MVT.i32));
+      return dag.getNode(ARMISD.BRCOND, new EVT(MVT.Other), chain, dest, armcc, ccr, cmp);
+    }
+
+    Util.assertion(lhs.getValueType().equals(new EVT(MVT.f32)) || lhs.getValueType().equals(new EVT(MVT.f64)));
+
+    if (BackendCmdOptions.EnableUnsafeFPMath.value && (cc == CondCode.SETEQ ||
+        cc == CondCode.SETOEQ || cc == CondCode.SETNE || cc == CondCode.SETONE)) {
+      SDValue result = optimizeVFPBrcond(op, dag);
+      if (result.getNode() != null)
+        return result;
+    }
+
+    ARMCC.CondCodes condCodes[] = FPCCToARMCC(cc);
+    ARMCC.CondCodes condCode1 = condCodes[0], condCode2 = condCodes[1];
+    SDValue armcc = dag.getConstant(condCode1.ordinal(), new EVT(MVT.i32), false);
+    SDValue cmp = getVFPCmp(lhs, rhs, dag, dl);
+    SDValue ccr = dag.getRegister(ARMGenRegisterNames.CPSR, new EVT(MVT.i32));
+    SDNode.SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
+    SDValue[] ops = new SDValue[] {chain, dest, armcc, ccr, cmp};
+    SDValue res = dag.getNode(ARMISD.BRCOND, vts, ops);
+    if (condCode2 != ARMCC.CondCodes.AL) {
+      armcc = dag.getConstant(condCode2.ordinal(), new EVT(MVT.i32), false);
+      ops = new SDValue[] {res, dest, armcc, ccr, res.getValue(1)};
+      res = dag.getNode(ARMISD.BRCOND, vts, ops);
+    }
+    return res;
+  }
+  private SDValue lowerFCOPYSIGN(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerRETURNADDR(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerFRAMEADDR(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerShiftRightParts(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerShiftLeftParts(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerVASTART(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerMEMBARRIER(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerATOMIC_FENCE(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerPREFETCH(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerINT_TO_FP(SDValue op, SelectionDAG dag) {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerFP_TO_INT(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerINTRINSIC_WO_CAHIN(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue expandBITCAST(SDNode n, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerShift(SDNode n, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerCTTZ(SDNode n, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerVSETCC(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerVECTOR_SHUFFLE(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerCONCAT_VECTORS(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerFLT_ROUNDS(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerMUL(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerSDIV(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerUDIV(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
+  private SDValue lowerADDC_ADDE_SUBC_SUBE(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
 
   private static SDValue lowerAtomicLoadStore(SDValue op, SelectionDAG dag) {
       Util.shouldNotReachHere();
       return null;
   }
 
-  private SDValue reconstructShuffle(SDValue op, SelectionDAG dag) { return null; }
+  private SDValue reconstructShuffle(SDValue op, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
   private SDValue lowerCallResult(SDValue chain, SDValue inFlag,
                                   CallingConv cc, boolean isVarArg,
                                   ArrayList<InputArg> ins,
                                   DebugLoc dl, SelectionDAG dag,
-                                  ArrayList<SDValue> inVals) { return null; }
+                                  ArrayList<SDValue> inVals)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
   private void varArgStyleRegisters(CCState ccInfo, SelectionDAG dag,
-                                    DebugLoc dl, SDValue chain, int argOffset) {}
+                                    DebugLoc dl, SDValue chain, int argOffset)  {
+    Util.shouldNotReachHere();
+  }
 
-  private int[] computeRegArea(CCState ccInfo, MachineFunction mf) { return null; }
+  private int[] computeRegArea(CCState ccInfo, MachineFunction mf)  {
+    Util.shouldNotReachHere();
+    return null;
+  }
 
   @Override
   public SDValue lowerOperation(SDValue op, SelectionDAG dag) {
@@ -1256,7 +1610,8 @@ public class ARMTargetLowering extends TargetLowering {
       results.add(res);
   }
 
-  private SDValue expand64BitShift(SDNode n, SelectionDAG dag) {
+  private SDValue expand64BitShift(SDNode n, SelectionDAG dag)  {
+    Util.shouldNotReachHere();
     return null;
   }
 
