@@ -872,7 +872,7 @@ public final class LLParser {
     SMLoc retTypeLoc = lexer.getLoc();
     OutRef<Integer> retAttrs = new OutRef<>();
     if (parseOptionalLinkage(linkage) || parseOptionalVisibility(visibility)
-        || parseCallingConv(cc) || parseOptionalAttrs(retAttrs, 1)
+        || parseOptionalCallingConv(cc) || parseOptionalAttrs(retAttrs, 1)
         || parseType(resultTy, true/*void allowed*/))
       return false;
 
@@ -1163,7 +1163,7 @@ public final class LLParser {
    * @param cc
    * @return
    */
-  private boolean parseCallingConv(OutRef<CallingConv> cc) {
+  private boolean parseOptionalCallingConv(OutRef<CallingConv> cc) {
     switch (lexer.getTokKind()) {
       default:
         cc.set(CallingConv.C);
@@ -1179,6 +1179,15 @@ public final class LLParser {
         break;
       case kw_x86_stdcallcc:
         cc.set(CallingConv.X86_StdCall);
+        break;
+      case kw_arm_apcscc:
+        cc.set(CallingConv.ARM_APCS);
+        break;
+      case kw_arm_aapcscc:
+        cc.set(CallingConv.ARM_AAPCS);
+        break;
+      case kw_arm_aapcs_vfpcc:
+        cc.set(CallingConv.ARM_AAPCS_VFP);
         break;
     }
     lexer.lex();
@@ -2341,7 +2350,7 @@ public final class LLParser {
     SMLoc callLoc = lexer.getLoc();
 
     if ((isTail && parseToken(kw_call, "expected 'tail call'")) ||
-        parseCallingConv(cc) || parseOptionalAttrs(attrs1, 1)
+        parseOptionalCallingConv(cc) || parseOptionalAttrs(attrs1, 1)
         || parseType(ty, retLoc, true/*allow void*/) ||
         parseValID(valID) || parseParameterList(argList, pfs) ||
         parseOptionalAttrs(attrs2, 2))
