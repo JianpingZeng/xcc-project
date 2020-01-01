@@ -382,6 +382,8 @@ public final class AsmWriterEmitter extends TableGenBackend {
     os.println("import backend.mc.MCInst;");
     os.println("import tools.Util;");
     os.println("import java.io.PrintStream;");
+    os.printf("import static backend.target.%s.%sGenInstrNames.*;\n\n",
+        lowerTargetName, targetName);
 
     emitSourceFileHeaderComment("Assemble Writer Source Fragment", os);
     Record asmWriter = target.getAsmWriter();
@@ -744,7 +746,6 @@ public final class AsmWriterEmitter extends TableGenBackend {
         emitInstructions(instructions, os);
       }
       os.print("\t\t\t}\n");
-      os.print("\t\treturn;\n");
     }
     os.print("\t}\n");
   }
