@@ -127,7 +127,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     tri = mf.getTarget().getRegisterInfo();
 
     Function f = mf.getFunction();
-    TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
+    TargetFrameLowering tfl = mf.getTarget().getFrameLowering();
     rs = tri.requireRegisterScavenging(mf) ? new RegScavenger() : null;
 
     // Calculate the MaxCallFrameSize and HasCalls variables for the
@@ -135,7 +135,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     // instructions.
     calculateCallsInformation(mf);
 
-    tri.processFunctionBeforeCalleeSavedScan(mf, rs);
+    tfl.processFunctionBeforeCalleeSavedScan(mf, rs);
 
     // Scan the function for modified callee saved registers and
     // inserts spill code for any callee saved registers that are modified.
@@ -155,7 +155,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
 
     // ALlow target machine to make final modification to the function
     // before the frame layout is finalized.
-    tri.processFunctionBeforeFrameFinalized(mf);
+    tfl.processFunctionBeforeFrameFinalized(mf);
 
     // Calculate actual frame offsets for all of the stack object.
     calculateFrameObjectOffsets(mf);
@@ -195,7 +195,8 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       for (int i = 0, e = mbb.size(); i != e; i++) {
         MachineInstr mi = mbb.getInstAt(i);
         if (mi.getOpcode() == frameSetupOpcode || mi.getOpcode() == frameDestroyOpcode) {
-          Util.assertion(mi.getNumOperands() >= 1, "Call frame Setup/Destroy" + " Psedo instruction should have a single immediate argument!");
+          Util.assertion(mi.getNumOperands() >= 1, "Call frame Setup/Destroy" +
+              " Psedo instruction should have a single immediate argument!");
 
           long size = mi.getOperand(0).getImm();
           if (size > maxCallFrameSize)

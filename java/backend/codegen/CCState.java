@@ -124,9 +124,7 @@ public class CCState {
 
   /// analyzeCallOperands - Analyze the outgoing arguments to a call,
   /// incorporating info about the passed values into this state.
-  public void analyzeCallOperands(
-      ArrayList<OutputArg> outs,
-      CCAssignFn fn) {
+  public void analyzeCallOperands(ArrayList<OutputArg> outs, CCAssignFn fn) {
     int idx = 0;
     for (OutputArg arg : outs) {
       ArgFlagsTy argFlags = arg.flags;
@@ -139,10 +137,7 @@ public class CCState {
 
   /// analyzeCallOperands - Same as above except it takes vectors of types
   /// and argument flags.
-  public void analyzeCallOperands(
-      ArrayList<EVT> argVTs,
-      ArrayList<ArgFlagsTy> flags,
-      CCAssignFn fn) {
+  public void analyzeCallOperands(ArrayList<EVT> argVTs, ArrayList<ArgFlagsTy> flags, CCAssignFn fn) {
     for (int idx = 0; idx < argVTs.size(); idx++) {
       ArgFlagsTy argFlags = flags.get(idx);
       EVT argVT = argVTs.get(idx);

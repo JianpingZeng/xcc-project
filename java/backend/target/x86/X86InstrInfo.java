@@ -1838,7 +1838,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   private static int getStoreRegOpcode(int SrcReg, MCRegisterClass rc,
-                                       boolean isStackAligned, TargetMachine tm) {
+                                       boolean isStackAligned, X86TargetMachine tm) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
       opc = MOV64mr;

@@ -19,6 +19,7 @@ package backend.codegen.dagisel;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
@@ -639,9 +640,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         vrbase = srcReg;
       else {
         vrbase = mri.createVirtualRegister(destRC);
-        boolean emitted = tii.copyPhysReg(mbb, insertPos++, vrbase, srcReg,
-            destRC, srcRC);
-        Util.assertion(emitted, "Unable to issue copy instruction!");
+        buildMI(mbb, insertPos++, new DebugLoc(), tii.get(TargetOpcode.COPY), vrbase).addReg(srcReg);
       }
 
       SDValue op = new SDValue(node, resNo);

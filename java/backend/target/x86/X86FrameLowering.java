@@ -63,7 +63,6 @@ public class X86FrameLowering extends TargetFrameLowering {
     int stackSize = mfi.getStackSize();
     boolean hasFP = hasFP(mf);
     boolean is64Bit = subtarget.is64Bit();
-    X86Subtarget subtarget = (X86Subtarget) mf.getTarget().getSubtarget();
     X86RegisterInfo tri = subtarget.getRegisterInfo();
     int slotSize = tri.getSlotSize();
     X86InstrInfo tii = subtarget.getInstrInfo();
@@ -249,7 +248,6 @@ public class X86FrameLowering extends TargetFrameLowering {
                            MachineBasicBlock mbb) {
     MachineFrameInfo mfi = mf.getFrameInfo();
     boolean is64Bit = subtarget.is64Bit();
-    X86Subtarget subtarget = (X86Subtarget) mf.getTarget().getSubtarget();
     X86RegisterInfo tri = subtarget.getRegisterInfo();
     X86InstrInfo tii = subtarget.getInstrInfo();
     int stackPtr = tri.getStackRegister();

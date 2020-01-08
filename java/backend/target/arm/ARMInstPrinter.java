@@ -146,7 +146,7 @@ public abstract class ARMInstPrinter extends MCInstPrinter {
     MCOperand mo1 = mi.getOperand(opNo);
     MCOperand mo2 = mi.getOperand(opNo+1);
 
-    if (!mo1.isReg()) {
+    if (mo1.getReg() == 0) {
       int immOff = ARM_AM.getAM2Offset((int) mo2.getImm());
       os.printf("#%s%d", ARM_AM.getAddrOpcStr(ARM_AM.getAM2Op((int) mo2.getImm())), immOff);
       return;

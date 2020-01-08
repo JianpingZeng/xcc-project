@@ -82,7 +82,7 @@ public class MCAsmInfo {
   /// SeparatorChar - This character, if specified, is used to separate
   /// instructions from each other when on the same line.  This is used to
   /// measure inline asm instructions.
-  protected char SeparatorChar;                      // Defaults to ';'
+  protected String SeparatorChar;                      // Defaults to ';'
 
   /// CommentColumn - This indicates the comment num (zero-based) at
   /// which asm comments should be printed.
@@ -305,7 +305,7 @@ public class MCAsmInfo {
     HasStaticCtorDtorReferenceInStaticMode = false;
     MaxInstLength = 4;
     PCSymbol = "$";
-    SeparatorChar = ';';
+    SeparatorChar = ";";
     CommentColumn = 40;
     CommentString = "#";
     GlobalPrefix = "";
@@ -458,7 +458,7 @@ public class MCAsmInfo {
     return PCSymbol;
   }
 
-  public char getSeparatorChar() {
+  public String getSeparatorChar() {
     return SeparatorChar;
   }
 

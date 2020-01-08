@@ -29,10 +29,7 @@ package backend.target.arm;
 
 import backend.codegen.EVT;
 import backend.codegen.MVT;
-import backend.codegen.dagisel.ISD;
-import backend.codegen.dagisel.SDNode;
-import backend.codegen.dagisel.SDValue;
-import backend.codegen.dagisel.SelectionDAGISel;
+import backend.codegen.dagisel.*;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
 import backend.pass.RegisterPass;
@@ -48,6 +45,8 @@ import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
+ * The detailed document of ARM addressing modes can be viewed from the following file.
+ * the chapter A5 of ARM Architecture Reference Manual (2005).
  * @author Jianping Zeng.
  * @version 0.4
  */
@@ -251,7 +250,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     shImmVal = ((SDNode.ConstantSDNode)n.getOperand(1).getNode()).getZExtValue() & 31;
     SDValue opc = curDAG.getTargetConstant(ARM_AM.getSORegShOpc(shOpcVal, shImmVal), new EVT(MVT.i32));
     tmp[0] = baseReg;
-    tmp[2] = opc;
+    tmp[1] = opc;
     return false;
   }
 
@@ -261,13 +260,13 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   }
 
   protected boolean selectShiftRegShifterOperand(SDValue n, SDValue[] tmp) {
-    Util.shouldNotReachHere();
-    return false;
+    // disable profitability checking.
+    return selectRegShifterOperand(n, tmp, false);
   }
 
   protected boolean selectShiftImmShifterOperand(SDValue n, SDValue[] tmp) {
-    Util.shouldNotReachHere();
-    return false;
+    // enable profitability checking.
+    return selectRegShifterOperand(n, tmp, true);
   }
 
   /**
@@ -475,28 +474,72 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   }
 
   protected boolean selectAddrOffsetNone(SDValue n, SDValue[] tmp) {
-    Util.shouldNotReachHere();
-    return false;
+    // tmp[0] = base
+    tmp[0] = n;
+    return true;
   }
 
   protected boolean selectAddrMode3Offset(SDNode op, SDValue n, SDValue[] tmp) {
-    Util.shouldNotReachHere();
-    return false;
+    int opc = op.getOpcode();
+    MemIndexedMode am = opc == ISD.LOAD ? ((SDNode.LoadSDNode)n.getNode()).getAddressingMode() :
+        ((SDNode.StoreSDNode)n.getNode()).getAddressingMode();
+    ARM_AM.AddrOpc addsub = am == MemIndexedMode.PRE_INC || am == MemIndexedMode.POST_INC ?
+        ARM_AM.AddrOpc.add : ARM_AM.AddrOpc.sub;
+    // tmp[0] = offset
+    tmp[0] = n;
+    // tmp[1] = opc.
+    tmp[1] = curDAG.getTargetConstant(ARM_AM.getAM3Opc(addsub, 0), new EVT(MVT.i32));
+    return true;
   }
 
   protected boolean selectAddrMode2OffsetReg(SDNode op, SDValue n, SDValue[] tmp) {
-    Util.shouldNotReachHere();
+    int opc = op.getOpcode();
+    MemIndexedMode am = opc == ISD.LOAD ? ((SDNode.LoadSDNode)n.getNode()).getAddressingMode() :
+        ((SDNode.StoreSDNode)n.getNode()).getAddressingMode();
+    ARM_AM.AddrOpc addsub = am == MemIndexedMode.PRE_INC || am == MemIndexedMode.POST_INC ?
+        ARM_AM.AddrOpc.add : ARM_AM.AddrOpc.sub;
+
+    OutRef<Integer> val = new OutRef<>(0);
+    // 12 bit, [0, 2^12)
+    if (isScaledConstantInRange(n, 1, 0, 0x1000, val)) {
+      if (addsub == ARM_AM.AddrOpc.sub)
+        val.set(-val.get());
+      // tmp[0] = offset
+      tmp[0] = curDAG.getRegister(0, new EVT(MVT.i32));
+      // tmp[1] = opc.
+      tmp[1] = curDAG.getTargetConstant(val.get(), new EVT(MVT.i32));
+      return true;
+    }
     return false;
   }
 
   protected boolean selectAddrMode2OffsetImm(SDNode op, SDValue n, SDValue[] tmp) {
-    Util.shouldNotReachHere();
+    int opc = op.getOpcode();
+    MemIndexedMode am = opc == ISD.LOAD ? ((SDNode.LoadSDNode)n.getNode()).getAddressingMode() :
+        ((SDNode.StoreSDNode)n.getNode()).getAddressingMode();
+    ARM_AM.AddrOpc addsub = am == MemIndexedMode.PRE_INC || am == MemIndexedMode.POST_INC ?
+        ARM_AM.AddrOpc.add : ARM_AM.AddrOpc.sub;
+
+    OutRef<Integer> val = new OutRef<>(0);
+    // 12 bit, [0, 2^12)
+    if (isScaledConstantInRange(n, 1, 0, 0x1000, val)) {
+      // tmp[0] = offset
+      tmp[0] = curDAG.getRegister(0, new EVT(MVT.i32));
+      // tmp[1] = opc.
+      tmp[1] = curDAG.getTargetConstant(ARM_AM.getAM2Opc(addsub, val.get(),
+          ARM_AM.ShiftOpc.no_shift), new EVT(MVT.i32));
+      return true;
+    }
     return false;
   }
 
   protected boolean selectAddrMode3(SDValue n, SDValue[] tmp) {
-    Util.shouldNotReachHere();
-    return false;
+    // Match the address mode 3.
+    // tmp[0] = base, tmp[1] = offset , tmp[2] = opc.
+    tmp[0] = n.getOperand(0);
+    tmp[1] = n.getOperand(1);
+    tmp[2] = curDAG.getTargetConstant(ARM_AM.getAM3Opc(ARM_AM.AddrOpc.add, 0), new EVT(MVT.i32));
+    return true;
   }
 
   protected boolean selectT2AddrModeImm8Offset(SDNode op, SDValue n, SDValue[] tmp) {

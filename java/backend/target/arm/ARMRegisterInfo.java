@@ -74,35 +74,123 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   private int framePtr;
   private int basePtr;
   private ARMSubtarget subtarget;
+  private ARMFrameLowering tfl;
   protected ARMRegisterInfo(ARMTargetMachine tm) {
     this.subtarget = tm.getSubtarget();
     framePtr = subtarget.isTargetDarwin() || subtarget.isThumb() ?
         ARMGenRegisterNames.R7 : ARMGenRegisterNames.R11;
     basePtr = ARMGenRegisterNames.R6;
+    tfl = tm.getFrameLowering();
   }
 
   public static TargetRegisterInfo createARMRegisterInfo(ARMTargetMachine tm, int mode) {
     return new ARMGenRegisterInfo(tm, mode);
   }
 
+  private static final int[] CalleeSavedRegs = {
+      ARMGenRegisterNames.LR,
+      ARMGenRegisterNames.R11, ARMGenRegisterNames.R10, ARMGenRegisterNames.R9, ARMGenRegisterNames.R8,
+      ARMGenRegisterNames.R7, ARMGenRegisterNames.R6,  ARMGenRegisterNames.R5,  ARMGenRegisterNames.R4,
+
+      ARMGenRegisterNames.D15, ARMGenRegisterNames.D14, ARMGenRegisterNames.D13, ARMGenRegisterNames.D12,
+      ARMGenRegisterNames.D11, ARMGenRegisterNames.D10, ARMGenRegisterNames.D9,  ARMGenRegisterNames.D8,
+  };
+
+  private static final int[] DarwinCalleeSavedRegs = {
+      // Darwin ABI deviates from ARM standard ABI. R9 is not a callee-saved
+      // register.
+      ARMGenRegisterNames.LR,
+      ARMGenRegisterNames.R7,  ARMGenRegisterNames.R6, ARMGenRegisterNames.R5, ARMGenRegisterNames.R4,
+      ARMGenRegisterNames.R11, ARMGenRegisterNames.R10, ARMGenRegisterNames.R8,
+
+      ARMGenRegisterNames.D15, ARMGenRegisterNames.D14, ARMGenRegisterNames.D13, ARMGenRegisterNames.D12,
+      ARMGenRegisterNames.D11, ARMGenRegisterNames.D10, ARMGenRegisterNames.D9,  ARMGenRegisterNames.D8,
+  };
+  
   @Override
   public int[] getCalleeSavedRegs(MachineFunction mf) {
-    return new int[0];
+    return subtarget.isTargetDarwin() ? DarwinCalleeSavedRegs : CalleeSavedRegs;
   }
+
+  private final MCRegisterClass[] CalleeSavedRegClasses = {
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass
+  };
+
+  private final MCRegisterClass[] ThumbCalleeSavedRegClasses = {
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass,
+      ARMGenRegisterInfo.tGPRRegisterClass,ARMGenRegisterInfo.tGPRRegisterClass,ARMGenRegisterInfo.tGPRRegisterClass,
+
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass
+  };
+
+  private final MCRegisterClass[] DarwinCalleeSavedRegClasses = {
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass
+  };
+
+  private final MCRegisterClass[] DarwinThumbCalleeSavedRegClasses = {
+      ARMGenRegisterInfo.GPRRegisterClass,  ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass,
+      ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass,  ARMGenRegisterInfo.GPRRegisterClass,
+
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
+      ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass
+  };
 
   @Override
   public MCRegisterClass[] getCalleeSavedRegClasses(MachineFunction mf) {
-    return new MCRegisterClass[0];
+    if (subtarget.isThumb1Only()) {
+      return subtarget.isTargetDarwin()
+          ? DarwinThumbCalleeSavedRegClasses : ThumbCalleeSavedRegClasses;
+    }
+    return subtarget.isTargetDarwin() ? DarwinCalleeSavedRegClasses : CalleeSavedRegClasses;
   }
 
   @Override
   public BitMap getReservedRegs(MachineFunction mf) {
-    return null;
+    BitMap res = new BitMap(getNumRegs());
+    res.set(ARMGenRegisterNames.SP);
+    res.set(ARMGenRegisterNames.PC);
+    if (subtarget.isTargetDarwin() || tfl.hasFP(mf))
+      res.set(framePtr);
+
+    // Some target reserves R9.
+    if (subtarget.isR9Reserved())
+      res.set(ARMGenRegisterNames.R9);
+
+    return res;
   }
 
-  @Override
-  public int getSubReg(int regNo, int index) {
-    return 0;
+  public boolean isReservedReg(MachineFunction mf, int reg) {
+    switch (reg) {
+      default: break;
+      case ARMGenRegisterNames.SP:
+      case ARMGenRegisterNames.PC:
+        return true;
+      case ARMGenRegisterNames.R7:
+      case ARMGenRegisterNames.R11:
+        if (framePtr == reg && (subtarget.isTargetDarwin() || tfl.hasFP(mf)))
+          return true;
+      case ARMGenRegisterNames.R9:
+        return subtarget.isR9Reserved();
+    }
+    return false;
   }
 
   @Override
@@ -178,11 +266,11 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     }
   }
 
-  protected boolean rewriteT2FrameIndex(MachineInstr mi,
-                                        int frameRegIdx,
-                                        int frameReg,
-                                        OutRef<Integer> offset,
-                                        ARMInstrInfo tii) {
+  private boolean rewriteT2FrameIndex(MachineInstr mi,
+                                      int frameRegIdx,
+                                      int frameReg,
+                                      OutRef<Integer> offset,
+                                      ARMInstrInfo tii) {
     int opcode = mi.getOpcode();
     MCInstrDesc mid = mi.getDesc();
     ARMII.AddrMode addrMode = ARMII.AddrMode.values()[mid.tSFlags & ARMII.AddrModeMask];
@@ -457,11 +545,11 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     return ARMCC.CondCodes.values()[(int) mi.getOperand(idx).getImm()];
   }
 
-  protected boolean rewriteARMFrameIndex(MachineInstr mi,
-                                         int frameRegIdx,
-                                         int frameReg,
-                                         OutRef<Integer> offset,
-                                         ARMInstrInfo tii) {
+  private boolean rewriteARMFrameIndex(MachineInstr mi,
+                                       int frameRegIdx,
+                                       int frameReg,
+                                       OutRef<Integer> offset,
+                                       ARMInstrInfo tii) {
     int opcode = mi.getOpcode();
     MCInstrDesc mid = mi.getDesc();
     ARMII.AddrMode addrMode = ARMII.AddrMode.values()[mid.tSFlags & ARMII.AddrModeMask];
@@ -587,7 +675,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     return offset.get() == 0;
   }
 
-  public static void emitT2RegPlusImmediate(MachineBasicBlock mbb,
+  static int emitT2RegPlusImmediate(MachineBasicBlock mbb,
                                       int mi,
                                       DebugLoc dl,
                                       int destReg,
@@ -596,10 +684,10 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
                                       ARMCC.CondCodes pred,
                                       int predReg,
                                       ARMInstrInfo tii) {
-    emitT2RegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, pred, predReg, tii, 0);
+    return emitT2RegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, pred, predReg, tii, 0);
   }
 
-  public static void emitT2RegPlusImmediate(MachineBasicBlock mbb,
+  static int emitT2RegPlusImmediate(MachineBasicBlock mbb,
                                       int mi,
                                       DebugLoc dl,
                                       int destReg,
@@ -654,7 +742,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
               .addReg(predReg)
               .addReg(0).setMIFlags(miFlags);
         }
-        return;
+        return mi;
       }
     }
 
@@ -716,17 +804,18 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
 
       baseReg = destReg;
     }
+    return mi;
   }
 
-  private static MachineInstrBuilder addDefaultCC(MachineInstrBuilder mib) {
+  static MachineInstrBuilder addDefaultCC(MachineInstrBuilder mib) {
     return mib.addReg(0);
   }
 
-  private static MachineInstrBuilder addDefaultPred(MachineInstrBuilder mib) {
+  static MachineInstrBuilder addDefaultPred(MachineInstrBuilder mib) {
     return mib.addImm(ARMCC.CondCodes.AL.ordinal()).addReg(0);
   }
 
-  public static void emitARMRegPlusImmediate(MachineBasicBlock mbb,
+  static int emitARMRegPlusImmediate(MachineBasicBlock mbb,
                                              int mi,
                                              DebugLoc dl,
                                              int destReg,
@@ -735,10 +824,10 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
                                              ARMCC.CondCodes cc,
                                              int predReg,
                                              ARMInstrInfo tii) {
-    emitARMRegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, cc, predReg, tii, 0);
+    return emitARMRegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, cc, predReg, tii, 0);
   }
 
-  public static void emitARMRegPlusImmediate(MachineBasicBlock mbb,
+  static int emitARMRegPlusImmediate(MachineBasicBlock mbb,
                                              int mi,
                                              DebugLoc dl,
                                              int destReg,
@@ -760,7 +849,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       Util.assertion(ARM_AM.getSOImmVal(thisVal) != -1, "bit extract didn't work?");
       // build the new ADD/SUB.
       int opc = isSub ? ARMGenInstrNames.SUBri : ARMGenInstrNames.ADDri;
-      buildMI(mbb, mi, dl, tii.get(opc), destReg)
+      buildMI(mbb, mi++, dl, tii.get(opc), destReg)
           .addReg(baseReg, MachineOperand.RegState.Kill)
           .addImm(thisVal)
           .addImm(pred.ordinal())
@@ -769,6 +858,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
           .setMIFlags(miFlags);
       baseReg = destReg;
     }
+    return mi;
   }
 
   @Override

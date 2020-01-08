@@ -14,6 +14,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.SDNode;
 import backend.codegen.dagisel.SelectionDAG;
 import backend.debug.DebugLoc;
+import backend.mc.MCAsmInfo;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCInstrInfo;
 import backend.mc.MCRegisterClass;
@@ -36,12 +37,12 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * The opcode of setting up stack frame for function being compiled.
    * If the target machine does not support it, this field will be -1.
    */
-  private int callFrameSetupOpcode;
+  protected int callFrameSetupOpcode;
   /**
    * The opcode of destroying stack frame for function being compiled.
    * If the target machine does not support it, this field will be -1.
    */
-  private int callFrameDestroyOpcode;
+  protected int callFrameDestroyOpcode;
 
   public TargetInstrInfo(int frameSetupOp, int frameDestroyOp) {
     callFrameSetupOpcode = frameSetupOp;
@@ -85,9 +86,7 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * need only be implemented if using call frame setup/destroy pseudo
    * instructions.
    */
-  public void eliminateCallFramePseudoInstr(
-      MachineFunction mf,
-      MachineInstr old) {
+  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr old) {
     Util.assertion((getCallFrameSetupOpcode() == -1 && getCallFrameDestroyOpcode() == -1),
         "eliminateCallFramePseudoInstr must be implemented if using"
             + " call frame setup/destroy pseudo instructions!");
@@ -113,11 +112,9 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param destSubIdx
    * @return
    */
-  public boolean isMoveInstr(MachineInstr mi,
-                             OutRef<Integer> srcReg,
-                             OutRef<Integer> destReg,
-                             OutRef<Integer> srcSubIdx,
-                             OutRef<Integer> destSubIdx) {
+  public boolean isMoveInstr(MachineInstr mi, OutRef<Integer> srcReg,
+                              OutRef<Integer> destReg, OutRef<Integer> srcSubIdx,
+                              OutRef<Integer> destSubIdx) {
     return false;
   }
 
@@ -129,8 +126,7 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param frameIndex
    * @return
    */
-  public int isLoadFromStackSlot(MachineInstr mi,
-                                 OutRef<Integer> frameIndex) {
+  public int isLoadFromStackSlot(MachineInstr mi, OutRef<Integer> frameIndex) {
     return 0;
   }
 
@@ -141,16 +137,15 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param frameIndex
    * @return
    */
-  public int isStoreToStackSlot(MachineInstr mi,
-                                OutRef<Integer> frameIndex) {
+  public int isStoreToStackSlot(MachineInstr mi, OutRef<Integer> frameIndex) {
     return 0;
   }
 
   public abstract void reMaterialize(MachineBasicBlock mbb,
-                                     int insertPos,
-                                     int destReg,
-                                     int subIdx,
-                                     MachineInstr origin);
+                                      int insertPos,
+                                      int destReg,
+                                      int subIdx,
+                                      MachineInstr origin);
 
   public boolean isInvariantLoad(MachineInstr mi) {
     return false;
@@ -172,10 +167,9 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param lv
    * @return
    */
-  public MachineInstr convertToThreeAddress(
-      MachineBasicBlock mbb,
-      OutRef<Integer> mbbi,
-      LiveVariables lv) {
+  public MachineInstr convertToThreeAddress(MachineBasicBlock mbb,
+                                            OutRef<Integer> mbbi,
+                                            LiveVariables lv) {
     return null;
   }
 
@@ -203,23 +197,21 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
   public abstract MachineInstr commuteInstruction(MachineInstr mi, boolean newMI);
 
   /**
-   * If specified MI is commutable, return the two operand indices that would swap value. Return true if the instruction
-   * is not in a form which this routine understands.
+   * If specified MI is commutable, return the two operand indices that would swap value.
+   * Return true if the instruction is not in a form which this routine understands.
    * @param mi
    * @param srcOpIdx1
    * @param srcOpIdx2
    * @return
    */
-  public abstract boolean findCommutedOpIndices(
-      MachineInstr mi,
-      OutRef<Integer> srcOpIdx1,
-      OutRef<Integer> srcOpIdx2);
+  public abstract boolean findCommutedOpIndices(MachineInstr mi,
+                                                OutRef<Integer> srcOpIdx1,
+                                                OutRef<Integer> srcOpIdx2);
 
-  public boolean analyzeBranch(
-      MachineBasicBlock mbb,
-      MachineBasicBlock tbb,
-      MachineBasicBlock fbb,
-      ArrayList<MachineOperand> cond) {
+  public boolean analyzeBranch(MachineBasicBlock mbb,
+                               MachineBasicBlock tbb,
+                               MachineBasicBlock fbb,
+                               ArrayList<MachineOperand> cond) {
     return analyzeBranch(mbb, tbb, fbb, cond, false);
   }
 
@@ -256,12 +248,11 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param allowModify
    * @return
    */
-  public boolean analyzeBranch(
-      MachineBasicBlock mbb,
-      MachineBasicBlock tbb,
-      MachineBasicBlock fbb,
-      ArrayList<MachineOperand> cond,
-      boolean allowModify) {
+  public boolean analyzeBranch(MachineBasicBlock mbb,
+                               MachineBasicBlock tbb,
+                               MachineBasicBlock fbb,
+                               ArrayList<MachineOperand> cond,
+                               boolean allowModify) {
     return true;
   }
 
@@ -380,7 +371,7 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
   public boolean spillCalleeSavedRegisters(MachineBasicBlock mbb,
                                            int pos,
                                            ArrayList<CalleeSavedInfo> csi) {
-    return false;
+    return true;
   }
 
   /**
@@ -393,11 +384,10 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param csi
    * @return
    */
-  public boolean restoreCalleeSavedRegisters(
-      MachineBasicBlock mbb,
-      int pos,
-      ArrayList<CalleeSavedInfo> csi) {
-    return false;
+  public boolean restoreCalleeSavedRegisters(MachineBasicBlock mbb,
+                                             int pos,
+                                             ArrayList<CalleeSavedInfo> csi) {
+    return true;
   }
 
   public MachineInstr foldMemoryOperand(MachineFunction mf,
@@ -422,11 +412,10 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param frameIndex
    * @return
    */
-  public abstract MachineInstr foldMemoryOperand(
-      MachineFunction mf,
-      MachineInstr mi,
-      TIntArrayList ops,
-      int frameIndex);
+  public abstract MachineInstr foldMemoryOperand(MachineFunction mf,
+                                                 MachineInstr mi,
+                                                 TIntArrayList ops,
+                                                 int frameIndex);
 
   /**
    * Same as the previous version except it allows folding
@@ -438,11 +427,10 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param loadMI
    * @return
    */
-  public abstract MachineInstr foldMemoryOperand(
-      MachineFunction mf,
-      MachineInstr mi,
-      TIntArrayList ops,
-      MachineInstr loadMI);
+  public abstract MachineInstr foldMemoryOperand(MachineFunction mf,
+                                                 MachineInstr mi,
+                                                 TIntArrayList ops,
+                                                 MachineInstr loadMI);
 
 
   /**
@@ -455,20 +443,18 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param frameIndex
    * @return
    */
-  protected MachineInstr foldMemoryOperandImpl(
-      MachineFunction mf,
-      MachineInstr mi,
-      TIntArrayList ops,
-      int frameIndex) {
+  protected MachineInstr foldMemoryOperandImpl(MachineFunction mf,
+                                               MachineInstr mi,
+                                               TIntArrayList ops,
+                                               int frameIndex) {
     return null;
   }
 
-  protected MachineInstr foldMemoryOperandImpl(
-      MachineFunction mf,
-      MachineInstr mi,
-      int i,
-      ArrayList<MachineOperand> mos,
-      int align) {
+  protected MachineInstr foldMemoryOperandImpl(MachineFunction mf,
+                                               MachineInstr mi,
+                                               int i,
+                                               ArrayList<MachineOperand> mos,
+                                               int align) {
     return null;
   }
 
@@ -482,11 +468,10 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param loadMI
    * @return
    */
-  public MachineInstr foldMemoryOperandImpl(
-      MachineFunction mf,
-      MachineInstr mi,
-      TIntArrayList ops,
-      MachineInstr loadMI) {
+  public MachineInstr foldMemoryOperandImpl(MachineFunction mf,
+                                            MachineInstr mi,
+                                            TIntArrayList ops,
+                                            MachineInstr loadMI) {
     return null;
   }
 
@@ -513,19 +498,17 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param newMIs
    * @return
    */
-  public boolean unfoldMemoryOperand(
-      MachineFunction mf,
-      MachineInstr mi,
-      int reg,
-      boolean unfoldLoad,
-      boolean unfoldStore,
-      ArrayList<MachineInstr> newMIs) {
+  public boolean unfoldMemoryOperand(MachineFunction mf,
+                                     MachineInstr mi,
+                                     int reg,
+                                     boolean unfoldLoad,
+                                     boolean unfoldStore,
+                                     ArrayList<MachineInstr> newMIs) {
     return false;
   }
 
-  public boolean unfoldMemoryOperand(
-      SelectionDAG dag, SDNode node,
-      ArrayList<SDNode> newNodes) {
+  public boolean unfoldMemoryOperand(SelectionDAG dag, SDNode node,
+                                     ArrayList<SDNode> newNodes) {
     return false;
   }
 
@@ -540,10 +523,7 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param unfoldStore
    * @return
    */
-  public int getOpcodeAfterMemoryUnfold(
-      int opc,
-      boolean unfoldLoad,
-      boolean unfoldStore) {
+  public int getOpcodeAfterMemoryUnfold(int opc, boolean unfoldLoad, boolean unfoldStore) {
     return 0;
   }
 
@@ -612,9 +592,8 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param pred
    * @return
    */
-  public abstract boolean predicateInstruction(
-      MachineInstr mi,
-      ArrayList<MachineOperand> pred);
+  public abstract boolean predicateInstruction(MachineInstr mi,
+                                               ArrayList<MachineOperand> pred);
 
   /**
    * Returns true if the first specified predicate subsumes the second, e.g. GE subsumes GT.
@@ -622,9 +601,8 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param pred2
    * @return
    */
-  public boolean subsumesPredicate(
-      ArrayList<MachineOperand> pred1,
-      ArrayList<MachineOperand> pred2) {
+  public boolean subsumesPredicate(ArrayList<MachineOperand> pred1,
+                                   ArrayList<MachineOperand> pred2) {
     return false;
   }
 
@@ -636,9 +614,7 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @param pred
    * @return
    */
-  public boolean definesPredicate(
-      MachineInstr mi,
-      ArrayList<MachineOperand> pred) {
+  public boolean definesPredicate(MachineInstr mi, ArrayList<MachineOperand> pred) {
     return false;
   }
 
@@ -670,7 +646,25 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
     return 0;
   }
 
-  /// Measure the specified inline asm to determine an approximation of its
-  /// length.
-  // public abstract int getInlineAsmLength(String Str, MCAsmInfo TAI);
+  /**
+   * Measure the specified inline asm to determine an approximation of its length.
+   * @param str
+   * @param tai
+   * @return
+   */
+  public int getInlineAsmLength(String str, MCAsmInfo tai) {
+    boolean atInstStart = true;
+    int length = 0;
+    for (int i = 0, e = str.length(); i < e; ++i) {
+      if (str.charAt(i) == '\n' || str.substring(i, tai.getSeparatorChar().length()+i).equals(tai.getSeparatorChar()))
+        atInstStart = true;
+      if (atInstStart && Character.isSpace(str.charAt(i))) {
+        length += tai.getMaxInstLength();
+        atInstStart = false;
+      }
+      if (atInstStart && str.substring(i, i+tai.getCommentString().length()).equals(tai.getCommentString()))
+        atInstStart = false;
+    }
+    return length;
+  }
 }

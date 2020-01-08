@@ -141,32 +141,6 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
     return false;
   }
 
-  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf) {
-    processFunctionBeforeCalleeSavedScan(mf, null);
-  }
-
-  /**
-   * This method is called immediately
-   * before PrologEpilogInserter scans the physical registers used to determine
-   * what callee saved registers should be spilled. This method is optional.
-   *
-   * @param mf
-   * @param rs
-   */
-  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf,
-                                                   RegScavenger rs) {
-  }
-
-  /**
-   * This method is called immediately before the specified functions frame
-   * layout (MF.getFrameLowering()) is finalized.  Once the frame is finalized,
-   * MO_FrameIndex operands are replaced with direct ants.  This method is
-   * optional.
-   */
-  public void processFunctionBeforeFrameFinalized(MachineFunction mf) {
-
-  }
-
   /*
    * eliminateFrameIndex - This method must be overridden to eliminate abstract
    * frame indices from instructions which may use them.  The instruction

@@ -56,8 +56,9 @@ public class ARMTargetInfo {
 
   private static Target.AsmInfoCtor createTargetAsmInfo = (t, triple) ->
   {
-    //Triple theTriple = new Triple(triple);
-    // only arm on ELF target.
+    Triple theTriple = new Triple(triple);
+    if (theTriple.isDarwin())
+      return new ARMMCAsmInfoDarwin();
     return new ARMELFMCAsmInfo();
   };
 

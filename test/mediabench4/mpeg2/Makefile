@@ -80,7 +80,7 @@ pc:
 clean:
 	cd src/mpeg2dec; make clean
 	cd src/mpeg2enc; make clean
-	cd bin; rm -rf *
+	rm -rf bin/*;
 
 test:
 	cd verify; ./verify

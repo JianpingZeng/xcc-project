@@ -200,7 +200,7 @@ public class MipsDAGISel extends SelectionDAGISel {
    * @param tmp
    * @return
    */
-  protected boolean selectAddr(SDNode root, SDValue addr, SDValue[] tmp) {
+  protected boolean selectAddr(SDValue addr, SDValue[] tmp) {
     EVT valTy = addr.getValueType();
     int gpreg = valTy.equals(new EVT(MVT.i32)) ? MipsGenRegisterNames.GP : MipsGenRegisterNames.GP_64;
 

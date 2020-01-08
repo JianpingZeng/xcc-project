@@ -33,21 +33,42 @@ import backend.mc.MCAsmInfo;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMELFMCAsmInfo extends MCAsmInfo {
-  public ARMELFMCAsmInfo() {
-    // ".comm align is in bytes but .align is pow-2."
-    AlignmentIsInBytes = false;
+class ARMMCAsmInfoDarwin extends MCAsmInfo {
+  private static final String[] arm_asm_table = {
+    "{r0}", "r0",
+    "{r1}", "r1",
+    "{r2}", "r2",
+    "{r3}", "r3",
+    "{r4}", "r4",
+    "{r5}", "r5",
+    "{r6}", "r6",
+    "{r7}", "r7",
+    "{r8}", "r8",
+    "{r9}", "r9",
+    "{r10}", "r10",
+    "{r11}", "r11",
+    "{r12}", "r12",
+    "{r13}", "r13",
+    "{r14}", "r14",
+    "{lr}", "lr",
+    "{sp}", "sp",
+    "{ip}", "ip",
+    "{fp}", "fp",
+    "{sl}", "sl",
+    "{memory}", "memory",
+    "{cc}", "cc",
+  };
 
+  ARMMCAsmInfoDarwin() {
+    AsmTransCBE = arm_asm_table;
     Data64bitsDirective = null;
     CommentString = "@";
-    PrivateGlobalPrefix = ".L";
     Code16Directive = ".code\t16";
     Code32Directive = ".code\t32";
-    WeakRefDirective = "\t.weak\t";
-    HasLEB128 = true;
+
     SupportsDebugInformation = true;
 
-    // Exception handling.
-    ExceptionsType = ExceptionHandlingType.ARM;
+    // Exceptions handling
+    ExceptionsType = ExceptionHandlingType.SjLj;
   }
 }

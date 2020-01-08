@@ -1023,4 +1023,12 @@ public class MachineInstr implements Cloneable {
   public int getFlag() {
     return flag;
   }
+
+  public void copyImplicitOps(MachineInstr mi) {
+    for (int i = mi.getDesc().getNumOperands(), e = mi.getNumOperands(); i < e; ++i) {
+      MachineOperand mo = mi.getOperand(i);
+      if (mo.isRegister() && mo.isImplicit())
+        addOperand(mo);
+    }
+  }
 }

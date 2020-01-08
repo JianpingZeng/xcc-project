@@ -1756,10 +1756,20 @@ public class SelectionDAGLegalizer {
         break;
       }
       case ISD.VAARG: {
+        // VAARG operator has four operands: input chain, pointer, source value, and alignment.
         Value v = ((SrcValueSDNode) node.getOperand(2).getNode()).getValue();
         EVT vt = node.getValueType(0);
+        // input chain
         temp1 = node.getOperand(0);
+        // pointer.
         temp2 = node.getOperand(1);
+        // it works as the following code snippet.
+        // var_stack_addr = $var_stack_offset
+        // val = ldr [var_stack_addr]
+        // incr = add $var_stack_addr, size_of_type
+        // incr =  add $incr, $var_stack_addr
+        // store incr, [$var_stack_offset]
+
         SDValue valist = dag.getLoad(
             new EVT(tli.getPointerTy()),
             temp1, temp2, v, 0);
@@ -1771,7 +1781,6 @@ public class SelectionDAGLegalizer {
         temp3 = dag.getStore(valist.getValue(1), temp3, temp2, v, 0, false, 0);
         results.add(dag.getLoad(vt, temp3, valist, null, 0));
         results.add(results.get(0).getValue(1));
-        ;
         break;
       }
       case ISD.VACOPY: {

@@ -3,6 +3,7 @@ package backend.target;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFrameInfo;
 import backend.codegen.MachineFunction;
+import backend.codegen.RegScavenger;
 import tools.Pair;
 
 import static backend.target.TargetOptions.DisableFPEliMLeaf;
@@ -16,20 +17,6 @@ import static backend.target.TargetOptions.DisableFPElim;
  * @version 0.4
  */
 public abstract class TargetFrameLowering {
-  /**
-   * This returns true if frame pointer elimination optimization should be
-   * turned off for the given machine function.
-   * @param mf
-   * @return
-   */
-  protected static boolean disableFramePointerElim(MachineFunction mf) {
-    if (DisableFPElim.value && !DisableFPEliMLeaf.value) {
-      MachineFrameInfo mfi = mf.getFrameInfo();
-      return mfi.hasCalls();
-    }
-    return DisableFPElim.value;
-  }
-
   public enum StackDirection {
     /**
      * Adding to the stack increasing the stack address.
@@ -112,12 +99,52 @@ public abstract class TargetFrameLowering {
   /**
    * This method insert epilogue code into the function.
    */
-  public abstract void emitEpilogue(MachineFunction mf,
-                                    MachineBasicBlock mbb);
+  public abstract void emitEpilogue(MachineFunction mf, MachineBasicBlock mbb);
 
   public abstract boolean hasFP(MachineFunction mf);
 
   public boolean hasReservedCallFrame(MachineFunction mf) {
     return !hasFP(mf);
+  }
+
+  /**
+   * This returns true if frame pointer elimination optimization should be
+   * turned off for the given machine function.
+   * @param mf
+   * @return
+   */
+  protected static boolean disableFramePointerElim(MachineFunction mf) {
+    if (DisableFPElim.value && !DisableFPEliMLeaf.value) {
+      MachineFrameInfo mfi = mf.getFrameInfo();
+      return mfi.hasCalls();
+    }
+    return DisableFPElim.value;
+  }
+
+
+  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf) {
+    processFunctionBeforeCalleeSavedScan(mf, null);
+  }
+
+  /**
+   * This method is called immediately
+   * before PrologEpilogInserter scans the physical registers used to determine
+   * what callee saved registers should be spilled. This method is optional.
+   *
+   * @param mf
+   * @param rs
+   */
+  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf,
+                                                   RegScavenger rs) {
+  }
+
+  /**
+   * This method is called immediately before the specified functions frame
+   * layout (MF.getFrameLowering()) is finalized.  Once the frame is finalized,
+   * MO_FrameIndex operands are replaced with direct ants.  This method is
+   * optional.
+   */
+  public void processFunctionBeforeFrameFinalized(MachineFunction mf) {
+
   }
 }

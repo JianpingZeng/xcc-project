@@ -45,14 +45,18 @@ public class ARMConstantPoolSymbol extends ARMConstantPoolValue {
   private String symbol;
 
   private ARMConstantPoolSymbol(LLVMContext ctx, String s,
-                                int id, ARMCP.ARMCPKind kind,
-                                int pcAdj, ARMCP.ARMCPModifier modifier,
+                                int id, int pcAdj, ARMCP.ARMCPModifier modifier,
                                 boolean addCurrentAddress) {
-    super(Type.getInt32Ty(ctx), id, kind, pcAdj, modifier, addCurrentAddress);
+    super(Type.getInt32Ty(ctx), id, ARMCP.ARMCPKind.CPExtSymbol, pcAdj, modifier, addCurrentAddress);
     symbol = s;
   }
 
   public String getSymbol() { return symbol; }
+
+  public static ARMConstantPoolSymbol create(LLVMContext ctx, String sym,
+                                             int armPCLabelIndex, int pcAdj) {
+    return new ARMConstantPoolSymbol(ctx, sym, armPCLabelIndex, pcAdj, ARMCP.ARMCPModifier.no_modifier, false);
+  }
 
   @Override
   public int getExistingMachineCPValue(MachineConstantPool pool, int align) {

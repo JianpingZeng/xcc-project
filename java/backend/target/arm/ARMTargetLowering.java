@@ -41,7 +41,9 @@ import backend.target.TargetOptions;
 import backend.target.arm.ARMConstantPoolValue.ARMCP;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
+import backend.value.Value;
 import tools.OutRef;
+import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -55,11 +57,11 @@ import static backend.target.arm.ARMGenCallingConv.*;
  */
 public class ARMTargetLowering extends TargetLowering {
   public static class ARMCCState extends CCState {
-    public ARMCCState(CallingConv cc, boolean isVarArg,
-                      TargetMachine tm,
-                      ArrayList<CCValAssign> locs,
-                      LLVMContext ctx,
-                      ParmContext pc) {
+    ARMCCState(CallingConv cc, boolean isVarArg,
+               TargetMachine tm,
+               ArrayList<CCValAssign> locs,
+               LLVMContext ctx,
+               ParmContext pc) {
       super(cc, isVarArg, tm, locs, ctx);
       Util.assertion(pc == ParmContext.Call || pc == ParmContext.Prologue);
       callOrPrologue = pc;
@@ -732,6 +734,36 @@ public class ARMTargetLowering extends TargetLowering {
     return new ARMFunctionInfo(mf);
   }
 
+  private SDValue getF64FormalArgument(CCValAssign va, CCValAssign nextVA,
+                                       SDValue root, SelectionDAG dag,
+                                       DebugLoc dl) {
+    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getInfo();
+    MachineFunction mf = dag.getMachineFunction();
+    MCRegisterClass rc;
+    if (afi.isThumb1OnlyFunction())
+      rc = ARMGenRegisterInfo.tGPRRegisterClass;
+    else
+      rc = ARMGenRegisterInfo.GPRRegisterClass;
+
+    // copy the first i32 to a virtual register.
+    mf.addLiveIn(va.getLocReg(), rc);
+    SDValue arg1 = dag.getCopyFromReg(root, va.getLocReg(), new EVT(MVT.i32));
+
+    SDValue arg2;
+    if (nextVA.isRegLoc()) {
+      arg2 = dag.getCopyFromReg(root, nextVA.getLocReg(), new EVT(MVT.i32));
+    }
+    else {
+      Util.assertion(nextVA.isMemLoc());
+      int argSize = nextVA.getLocVT().getSizeInBits()/8;
+      MachineFrameInfo mfi = mf.getFrameInfo();
+      int fi = mfi.createFixedObject(argSize, nextVA.getLocMemOffset());
+      SDValue fin = dag.getTargetFrameIndex(fi, new EVT(getPointerTy()));
+      arg2 = dag.getLoad(new EVT(MVT.i32), root, fin, null, 0);
+    }
+    return dag.getNode(ARMISD.VMOVDRR, new EVT(MVT.f64), arg1, arg2);
+  }
+
   @Override
   public SDValue lowerFormalArguments(SDValue chain,
                                       CallingConv callingConv,
@@ -742,27 +774,55 @@ public class ARMTargetLowering extends TargetLowering {
     MachineFunction mf = dag.getMachineFunction();
     MachineFrameInfo mfi = mf.getFrameInfo();
     ArrayList<CCValAssign> argLocs = new ArrayList<>();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    DebugLoc dl = new DebugLoc();
     ARMCCState ccInfo = new ARMCCState(callingConv, varArg, getTargetMachine(),
         argLocs, dag.getContext(), CCState.ParmContext.Prologue);
     ccInfo.analyzeFormalArguments(ins, ccAssignFnForNode(callingConv, false, varArg));
 
-    ArrayList<SDValue> argValues = new ArrayList<>();
-    int lastInsIndex = -1;
-    SDValue argValue = null;
+    //int lastInsIndex = -1;
+    SDValue argValue;
     for (int i = 0,  e = argLocs.size(); i < e; i++) {
       CCValAssign va = argLocs.get(i);
       if (va.isRegLoc()) {
         EVT regVT = va.getLocVT();
         if (va.needsCustom()) {
-          Util.shouldNotReachHere("custom cc is not supported yet!");
-        }
-        MCRegisterClass rc;
-        if (!regVT.equals(new EVT(MVT.i32)))
-          Util.shouldNotReachHere("float point is not supported yet!");
+          // f64 and vector types are split up into multiple registers or combinations of registers and stack slots.
+          regVT = new EVT(MVT.i32);
+          if (va.getLocVT().equals(new EVT(MVT.v2f64))) {
+            // get the first f64
+            SDValue op0 = getF64FormalArgument(va, argLocs.get(++i), chain, dag, dl);
 
-        rc = ARMGenRegisterInfo.GPRRegisterClass;
-        int reg = mf.addLiveIn(va.getLocReg(), rc);
-        argValue = dag.getCopyFromReg(chain, reg, regVT);
+            // get the second f64.
+            va = argLocs.get(++i);
+            SDValue op1 = getF64FormalArgument(va, argLocs.get(++i), chain, dag, dl);
+
+            // create vector with both f64.
+            SDValue vec = dag.getNode(ISD.UNDEF, new EVT(MVT.v2f64));
+            vec = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v2f64), vec, op0, dag.getIntPtrConstant(0, true));
+            argValue = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v2f64), vec, op1, dag.getIntPtrConstant(1, true));
+          }
+          else {
+            argValue = getF64FormalArgument(va, argLocs.get(++i), chain, dag, dl);
+          }
+        }
+        else {
+          MCRegisterClass rc = null;
+          if (regVT.equals(new EVT(MVT.i32)))
+            rc = afi.isThumb1OnlyFunction() ? ARMGenRegisterInfo.tGPRRegisterClass :
+                ARMGenRegisterInfo.GPRRegisterClass;
+          else if (regVT.equals(new EVT(MVT.f32)))
+            rc = ARMGenRegisterInfo.SPRRegisterClass;
+          else if (regVT.equals(new EVT(MVT.f64)))
+            rc = ARMGenRegisterInfo.DPRRegisterClass;
+          else if (regVT.equals(new EVT(MVT.v2f64)))
+            rc = ARMGenRegisterInfo.QPRRegisterClass;
+          else
+            Util.shouldNotReachHere("regVT is not supported!");
+
+          int reg = mf.addLiveIn(va.getLocReg(), rc);
+          argValue = dag.getCopyFromReg(chain, reg, regVT);
+        }
 
         // handle extension.
         switch (va.getLocInfo()) {
@@ -786,27 +846,56 @@ public class ARMTargetLowering extends TargetLowering {
         inVals.add(argValue);
       }
       else {
-        Util.shouldNotReachHere("stack-based argument pass is not supported yet!");
-       /* Util.assertion(va.isMemLoc());
-        int index = argLocs.get(i).getValNo();
-        if (index != lastInsIndex) {
-          ArgFlagsTy flags = ins.get(index).flags;
-          if (flags.isByVal()) {
-            computeRegArea();
-
-          }
-          else {
-            int fi = mfi.createFixedObject(va.getLocVT().getSizeInBits()/8,
-                va.getLocMemOffset(), true);
-            SDValue fin = dag.getFrameIndex(fi, new EVT(getPointerTy()), false);
-            inVals.add(dag.getLoad(va.getValVT(), chain, fin,
-                PseudoSourceValue.getFixedStack(fi), 0, false, 0));
-          }
-          lastInsIndex = index;
-        }*/
+        Util.assertion(va.isMemLoc() && !va.getValVT().equals(new EVT(MVT.i64)));
+        int fi = mfi.createFixedObject(va.getLocVT().getSizeInBits()/8,
+            va.getLocMemOffset(), true);
+        SDValue fin = dag.getFrameIndex(fi, new EVT(getPointerTy()), false);
+        inVals.add(dag.getLoad(va.getValVT(), chain, fin,
+            PseudoSourceValue.getFixedStack(fi), 0, false, 0));
       }
     }
-    Util.assertion(!varArg, "variadic argument is not supported yet!");
+    if (varArg) {
+      final int[] GPRArgRegs = {ARMGenRegisterNames.R0, ARMGenRegisterNames.R1,
+                                 ARMGenRegisterNames.R2, ARMGenRegisterNames.R3};
+      // Return the starting index of GPRArgRegs to indicate which register was not allocated.
+      // When those unallocated registers are used to pass variable arguments, we have to save
+      // it on the stack slot for further use by loading it back to the register in the callee.
+      int numGPRs = ccInfo.getFirstUnallocated(GPRArgRegs);
+      int align = tm.getFrameLowering().getStackAlignment();
+      // stack space cost needed for variable arguments.
+      int vaRegSize = (4 - numGPRs) * 4;
+      int vaRegAligned = (vaRegSize + align - 1) & -align;
+      int argOffset = ccInfo.getNextStackOffset();
+      if (vaRegAligned != 0) {
+        afi.setVarArgsRegSaveSize(vaRegAligned);
+        // [ argOffset      ]
+        // [ stack alignment + argOffset]
+        // [stack alignment + argOffset + argRegSize]
+        afi.setVarArgsFrameIndex(mfi.createFixedObject(vaRegAligned,
+            argOffset + vaRegAligned - vaRegSize, false));
+        SDValue fin = dag.getFrameIndex(afi.getVarArgsFrameIndex(), new EVT(getPointerTy()), false);
+        // Store the value of unallocated registers to the stack slot.
+        ArrayList<SDValue> memOps = new ArrayList<>();
+        for (; numGPRs < 4; ++numGPRs) {
+          MCRegisterClass rc;
+          if (afi.isThumb1OnlyFunction())
+            rc = ARMGenRegisterInfo.tGPRRegisterClass;
+          else
+            rc = ARMGenRegisterInfo.GPRRegisterClass;
+
+          mf.addLiveIn(GPRArgRegs[numGPRs], rc);
+          SDValue reg = dag.getCopyFromReg(chain, GPRArgRegs[numGPRs], new EVT(MVT.i32));
+          chain = reg.getValue(1);
+          SDValue store = dag.getStore(chain, reg, fin, null, 0, false, 0);
+          memOps.add(store);
+          fin = dag.getNode(ISD.ADD, new EVT(getPointerTy()), fin, dag.getConstant(4, new EVT(getPointerTy()), false));
+        }
+        if (!memOps.isEmpty())
+          chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), memOps);
+      }
+      else
+        afi.setVarArgsFrameIndex(mfi.createFixedObject(4, argOffset, true));
+    }
     return chain;
   }
 
@@ -844,6 +933,58 @@ public class ARMTargetLowering extends TargetLowering {
     }
   }
 
+  private static SDValue createCopyOfByValArgument(SDValue src, SDValue dst, SDValue chain,
+                                                   ArgFlagsTy flags, SelectionDAG dag, DebugLoc dl) {
+    SDValue sizeNode = dag.getConstant(flags.getByValSize(), new EVT(MVT.i32), false);
+    return dag.getMemcpy(chain, dst, src, sizeNode, flags.getByValAlign(), false/*alwaysInline*/,
+        null, 0, null, 0);
+  }
+
+  private SDValue lowerMemOpCallTo(SDValue chain, SDValue stackPtr, SDValue arg,
+                                          DebugLoc dl, SelectionDAG dag, CCValAssign va,
+                                          ArgFlagsTy flags) {
+    int locMemOffset = va.getLocMemOffset();
+    SDValue ptrOffset = dag.getIntPtrConstant(locMemOffset);
+    ptrOffset = dag.getNode(ISD.ADD, new EVT(getPointerTy()), stackPtr, ptrOffset);
+    if (flags.isByVal()) {
+      return createCopyOfByValArgument(arg, ptrOffset, chain, flags, dag, dl);
+    }
+    return dag.getStore(chain, arg, ptrOffset, PseudoSourceValue.getStack(), locMemOffset, false, 0);
+  }
+
+  private void passF64ArgInRegs(DebugLoc dl, SelectionDAG dag,
+                                SDValue chain, SDValue arg,
+                                ArrayList<Pair<Integer, SDValue>> regsToPass,
+                                CCValAssign va, CCValAssign nextVA,
+                                SDValue stackPtr, ArrayList<SDValue> memOpChains,
+                                ArgFlagsTy flags) {
+    SDValue vmorrd = dag.getNode(ARMISD.VMOVRRD, dag.getVTList(new EVT(MVT.i32), new EVT(MVT.i32)), arg);
+    // move the first half of f64 to the register.
+    regsToPass.add(Pair.get(va.getLocReg(), vmorrd));
+    if (nextVA.isRegLoc())
+      // we can move the second half of f64 to the register as well
+      regsToPass.add(Pair.get(nextVA.getLocReg(), vmorrd.getValue(1)));
+    else {
+      // Otherwise, move the second half of f64 to the stack slot.
+      Util.assertion(nextVA.isMemLoc());
+      memOpChains.add(lowerMemOpCallTo(chain, stackPtr, arg, dl, dag, nextVA, flags));
+    }
+  }
+
+  /**
+   * Constructs the following serial of DAG operations.
+   * callseq_start <--- call <--- callseq_end.
+   * @param chain
+   * @param callee
+   * @param cc
+   * @param isVarArg
+   * @param isTailCall
+   * @param outs
+   * @param ins
+   * @param dag
+   * @param inVals
+   * @return
+   */
   @Override
   public SDValue lowerCall(SDValue chain,
                            SDValue callee,
@@ -854,7 +995,247 @@ public class ARMTargetLowering extends TargetLowering {
                            ArrayList<InputArg> ins,
                            SelectionDAG dag,
                            ArrayList<SDValue> inVals) {
-    return super.lowerCall(chain, callee, cc, isVarArg, isTailCall, outs, ins, dag, inVals);
+    // Analyze the argument locations where we have to write the function call parameters.
+    ArrayList<CCValAssign> argLocs = new ArrayList<>();
+    ARMCCState ccInfo = new ARMCCState(cc, isVarArg, tm, argLocs, dag.getContext(), CCState.ParmContext.Call);
+    ccInfo.analyzeCallOperands(outs, ccAssignFnForNode(cc, false/*isReturn*/, isVarArg));
+
+    // get number of bytes of stack space required for passing arguments.
+    int numBytes = ccInfo.getNextStackOffset();
+    // adjust the SP
+    chain = dag.getCALLSEQ_START(chain, dag.getIntPtrConstant(numBytes, true));
+
+    // SP register.
+    SDValue stackPtr = dag.getRegister(ARMGenRegisterNames.SP, new EVT(MVT.i32));
+    DebugLoc dl = new DebugLoc();
+    ArrayList<Pair<Integer, SDValue>> regsToPass = new ArrayList<>();
+    ArrayList<SDValue> memOpChains = new ArrayList<>();
+
+    // Handle outgoing arguments.
+    for (int i = 0, e = argLocs.size(); i < e; ++i) {
+      CCValAssign va = argLocs.get(i);
+      SDValue arg = outs.get(i).val;
+      ArgFlagsTy flags = outs.get(i).flags;
+
+      // perform needed type conversion based on the arg flag.
+      switch (va.getLocInfo()) {
+        case Full: break;
+        case SExt:
+          arg = dag.getNode(ISD.SIGN_EXTEND, va.getLocVT(), arg);
+          break;
+        case ZExt:
+          arg = dag.getNode(ISD.ZERO_EXTEND, va.getLocVT(), arg);
+          break;
+        case AExt:
+          arg = dag.getNode(ISD.ANY_EXTEND, va.getLocVT(), arg);
+          break;
+        case BCvt:
+          arg = dag.getNode(ISD.BIT_CONVERT, va.getLocVT(), arg);
+          break;
+        default:
+          Util.assertion("Unknown loc info!");
+      }
+      // handle f64 or 2xf64 with custom code.
+      if (va.needsCustom()) {
+        if (va.getLocVT().equals(new EVT(MVT.v2f64))) {
+          // we need four i32 registers to pass the argument of type v2f64.
+          SDValue op0 = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f64), arg, dag.getConstant(0, new EVT(MVT.i32), false));
+          SDValue op1 = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f64), arg, dag.getConstant(1, new EVT(MVT.i32), false));
+
+          // first f64.
+          passF64ArgInRegs(dl, dag, chain, op0, regsToPass, va, argLocs.get(++i), stackPtr, memOpChains, flags);
+
+          // second f64
+          va = argLocs.get(++i);
+          if (va.isRegLoc()) {
+            passF64ArgInRegs(dl, dag, chain, op1, regsToPass, va, argLocs.get(++i), stackPtr, memOpChains, flags);
+          }
+          else {
+            Util.assertion(va.isMemLoc());
+            memOpChains.add(lowerMemOpCallTo(chain, stackPtr, arg, dl, dag, va, flags));
+          }
+        }
+        else {
+          passF64ArgInRegs(dl, dag, chain, arg, regsToPass, va, argLocs.get(++i), stackPtr, memOpChains, flags);
+        }
+      }
+      else if (va.isRegLoc()) {
+        regsToPass.add(Pair.get(va.getLocReg(), arg));
+      }
+      else {
+        Util.assertion(va.isMemLoc(), "Unknown loc type!");
+        memOpChains.add(lowerMemOpCallTo(chain, stackPtr, arg, dl, dag, va, flags));
+      }
+    }
+
+    if (!memOpChains.isEmpty())
+      chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), memOpChains);
+    // build a sequence of copy-to-reg nodes for each argument copy.
+    SDValue inFlag = new SDValue();
+    for (int i = 0, e = regsToPass.size(); i < e; ++i) {
+      chain = dag.getCopyToReg(chain, regsToPass.get(i).first, regsToPass.get(i).second, inFlag);
+      inFlag = chain.getValue(1);
+    }
+
+    // if the callee is an External Symbol or Global Address, change it to TargetExternalSymbol or
+    // TargetGlobalAddress.
+    boolean isDirect = false;
+    boolean isARMFunc = false;
+    boolean isLocalARMFunc = false;
+    if (callee.getNode() instanceof SDNode.GlobalAddressSDNode) {
+      SDNode.GlobalAddressSDNode g = (SDNode.GlobalAddressSDNode) callee.getNode();
+      GlobalValue gv = g.getGlobalValue();
+      isDirect = true;
+      // is external
+      boolean isExt = gv.isDeclaration() || gv.isWeakForLinker();
+      boolean isStub = (isExt && subtarget.isTargetDarwin()) &&
+          tm.getRelocationModel() != TargetMachine.RelocModel.Static;
+      isARMFunc = !subtarget.isThumb() || isStub;
+      isLocalARMFunc = !subtarget.isThumb() && !isExt;
+      if (isARMFunc && subtarget.isThumb1Only() && !subtarget.hasV5TOps()) {
+        ARMConstantPoolValue cpv = ARMConstantPoolConstant.create(gv, ARMPCLabelIndex, ARMCP.ARMCPKind.CPValue, 4);
+        SDValue cpAddr = dag.getTargetConstantPool(cpv, new EVT(getPointerTy()), 4, 0, true, 0);
+        cpAddr = dag.getNode(ARMISD.Wrapper, new EVT(MVT.i32), cpAddr);
+        callee = dag.getLoad(new EVT(getPointerTy()), dag.getEntryNode(), cpAddr,
+            PseudoSourceValue.getConstantPool(), 0, false, 0);
+        SDValue picLabel = dag.getConstant(ARMPCLabelIndex, new EVT(MVT.i32), false);
+        callee = dag.getNode(ARMISD.PIC_ADD, new EVT(getPointerTy()), callee, picLabel);
+      }
+      else {
+        // On ELF target for PIC mode, direct calls should go through PLT.
+        int opFlags = 0;
+        if (subtarget.isTargetELF() && tm.getRelocationModel() == TargetMachine.RelocModel.PIC_)
+          opFlags = ARMII.MO_PLT;
+        callee = dag.getTargetGlobalAddress(gv, new EVT(getPointerTy()), 0, opFlags);
+      }
+    }
+    else if (callee.getNode() instanceof SDNode.ExternalSymbolSDNode) {
+      SDNode.ExternalSymbolSDNode exn = (SDNode.ExternalSymbolSDNode) callee.getNode();
+      isDirect = true;
+      boolean isStub = subtarget.isTargetDarwin() &&
+          tm.getRelocationModel() != TargetMachine.RelocModel.Static;
+      isARMFunc = !subtarget.isThumb() || isStub;
+      // tBX taks a register source operand.
+      String sym = exn.getExtSymol();
+      if (isARMFunc && subtarget.isThumb1Only() && !subtarget.hasV5TOps()) {
+        ARMConstantPoolValue cpv = ARMConstantPoolSymbol.create(dag.getContext(), sym, ARMPCLabelIndex, 4);
+        SDValue cpAddr = dag.getTargetConstantPool(cpv, new EVT(getPointerTy()), 4, 0, true, 0);
+        cpAddr = dag.getNode(ARMISD.Wrapper, new EVT(MVT.i32), cpAddr);
+        callee = dag.getLoad(new EVT(getPointerTy()), dag.getEntryNode(), cpAddr,
+            PseudoSourceValue.getConstantPool(), 0, false, 0);
+        SDValue picLabel = dag.getConstant(ARMPCLabelIndex, new EVT(MVT.i32), false);
+        callee = dag.getNode(ARMISD.PIC_ADD, new EVT(getPointerTy()), callee, picLabel);
+      }
+      else {
+        // On ELF target for PIC mode, direct calls should go through PLT.
+        int opFlags = 0;
+        if (subtarget.isTargetELF() && tm.getRelocationModel() == TargetMachine.RelocModel.PIC_)
+          opFlags = ARMII.MO_PLT;
+        callee = dag.getTargetExternalSymbol(sym, new EVT(getPointerTy()), opFlags);
+      }
+    }
+
+    int callOpc;
+    if (subtarget.isThumb()) {
+      if ((!isDirect || isARMFunc) && !subtarget.hasV5TOps())
+        callOpc = ARMISD.CALL_NOLINK;
+      else
+        callOpc = isARMFunc ? ARMISD.CALL : ARMISD.tCALL;
+    }
+    else {
+      callOpc = (isDirect || subtarget.hasV5TOps()) ?
+          (isLocalARMFunc ? ARMISD.CALL_PRED : ARMISD.CALL) : ARMISD.CALL_NOLINK;
+    }
+
+    ArrayList<SDValue> ops = new ArrayList<>();
+    ops.add(chain);
+    ops.add(callee);
+
+    // add argument registers to the end of operands list.
+    regsToPass.forEach(pair-> ops.add(dag.getRegister(pair.first, pair.second.getValueType())));
+
+    if (inFlag.getNode() != null)
+      ops.add(inFlag);
+
+    SDNode.SDVTList vts = dag.getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
+    chain = dag.getNode(callOpc, vts, ops);
+    inFlag = chain.getValue(1);
+
+    chain = dag.getCALLSEQ_END(chain, dag.getIntPtrConstant(numBytes, true), dag.getIntPtrConstant(0, true), inFlag);
+    if (!ins.isEmpty())
+      inFlag = chain.getValue(1);
+
+    // handle result.
+    return lowerCallResult(chain, inFlag, cc, isVarArg, ins, new DebugLoc(), dag, inVals);
+  }
+
+  private SDValue lowerCallResult(SDValue chain, SDValue inFlag,
+                                  CallingConv cc, boolean isVarArg,
+                                  ArrayList<InputArg> ins,
+                                  DebugLoc dl, SelectionDAG dag,
+                                  ArrayList<SDValue> inVals)  {
+    // Analyze the return arguments locations where we have to write the function return value.
+    ArrayList<CCValAssign> retLocs = new ArrayList<>();
+    ARMCCState ccInfo = new ARMCCState(cc, isVarArg, tm, retLocs, dag.getContext(), CCState.ParmContext.Call);
+    ccInfo.analyzeCallResult(ins, ccAssignFnForNode(cc, true/*isReturn*/, isVarArg));
+
+    for (int i = 0, e = retLocs.size(); i < e; ++i) {
+      CCValAssign va = retLocs.get(i);
+      SDValue val = new SDValue();
+      if (va.needsCustom()) {
+        // handle f64 and 2xf64.
+        SDValue lo = dag.getCopyFromReg(chain, va.getLocReg(), new EVT(MVT.i32), inFlag);
+        chain = lo.getValue(1);
+        inFlag = lo.getValue(2);
+
+        va = retLocs.get(++i);
+        SDValue hi = dag.getCopyFromReg(chain, va.getLocReg(), new EVT(MVT.i32), inFlag);
+        chain = hi.getValue(1);
+        inFlag = hi.getValue(2);
+
+        // merge it to a wider one.
+        val = dag.getNode(ARMISD.VMOVDRR, new EVT(MVT.f64), lo, hi);
+
+        if (va.getLocVT().equals(new EVT(MVT.v2f64))) {
+          // create a vec of type v2f64, insert the first f64 to the first position.
+          SDValue vec = dag.getNode(ISD.UNDEF, new EVT(MVT.v2f64));
+          vec = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v2f64), vec, val, dag.getConstant(0, new EVT(MVT.i32), false));
+
+          va = retLocs.get(++i);
+          lo = dag.getCopyFromReg(chain, va.getLocReg(), new EVT(MVT.i32), inFlag);
+          chain = lo.getValue(1);
+          inFlag = lo.getValue(2);
+
+          va = retLocs.get(++i);
+          hi = dag.getCopyFromReg(chain, va.getLocReg(), new EVT(MVT.i32), inFlag);
+          chain = hi.getValue(1);
+          inFlag = hi.getValue(2);
+
+          // merge it to a wider one.
+          val = dag.getNode(ARMISD.VMOVDRR, new EVT(MVT.f64), lo, hi);
+
+          // insert second f64 to the second position of vec.
+          val = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v2f64), vec, val, dag.getConstant(1, new EVT(MVT.i32), false));
+        }
+      }
+      else {
+        Util.assertion(va.isRegLoc(), "must be reg loc!");
+        val = dag.getCopyFromReg(chain, va.getLocReg(), va.getValVT(), inFlag);
+        chain = val.getValue(1);
+        inFlag = val.getValue(2);
+      }
+
+      switch (va.getLocInfo()) {
+        case Full: break;
+        case BCvt:
+          val = dag.getNode(ISD.BIT_CONVERT, va.getValVT(), val);
+          break;
+        default:
+          Util.assertion("Unknown loc info!");
+      }
+      inVals.add(val);
+    }
+    return chain;
   }
 
   @Override
@@ -866,7 +1247,7 @@ public class ARMTargetLowering extends TargetLowering {
     ArrayList<CCValAssign> retLocs = new ArrayList<>();
     MachineFunction mf = dag.getMachineFunction();
     MachineFrameInfo mfi = mf.getFrameInfo();
-    ARMCCState ccInfo = new ARMCCState(cc, isVarArg, getTargetMachine(),
+    ARMCCState ccInfo = new ARMCCState(cc, isVarArg, tm,
         retLocs, dag.getContext(), CCState.ParmContext.Call);
 
     ccInfo.analyzeReturn(outs, ccAssignFnForNode(cc, true, isVarArg));
@@ -1393,9 +1774,17 @@ public class ARMTargetLowering extends TargetLowering {
     return null;
   }
   private SDValue lowerVASTART(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    // store the variable argument stack offset to the pointer operand of {@linkplain ISD#VASTART}
+    SDValue chain = op.getOperand(0);
+    SDValue pointer = op.getOperand(1);
+    Value srcValue = ((SDNode.SrcValueSDNode)op.getOperand(2).getNode()).getValue();
+    MachineFunction mf = dag.getMachineFunction();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    int fi = afi.getVarArgsFrameIndex();
+    SDValue fin = dag.getTargetFrameIndex(fi, new EVT(getPointerTy()));
+    return dag.getStore(chain, fin, pointer, srcValue, 0, false, 0);
   }
+
   private SDValue lowerMEMBARRIER(SDValue op, SelectionDAG dag)  {
     Util.shouldNotReachHere();
     return null;
@@ -1478,14 +1867,7 @@ public class ARMTargetLowering extends TargetLowering {
     Util.shouldNotReachHere();
     return null;
   }
-  private SDValue lowerCallResult(SDValue chain, SDValue inFlag,
-                                  CallingConv cc, boolean isVarArg,
-                                  ArrayList<InputArg> ins,
-                                  DebugLoc dl, SelectionDAG dag,
-                                  ArrayList<SDValue> inVals)  {
-    Util.shouldNotReachHere();
-    return null;
-  }
+
   private void varArgStyleRegisters(CCState ccInfo, SelectionDAG dag,
                                     DebugLoc dl, SDValue chain, int argOffset)  {
     Util.shouldNotReachHere();
