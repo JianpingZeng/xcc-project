@@ -29,12 +29,17 @@ package backend.target.arm;
 
 import backend.codegen.*;
 import backend.debug.DebugLoc;
+import backend.mc.MCInstrDesc;
+import backend.mc.MCRegisterClass;
 import backend.target.TargetFrameLowering;
+import tools.OutRef;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.target.TargetOptions.DisableFPElim;
 import static backend.target.arm.ARMRegisterInfo.*;
 
 /**
@@ -42,13 +47,11 @@ import static backend.target.arm.ARMRegisterInfo.*;
  * @version 0.4
  */
 public class ARMFrameLowering extends TargetFrameLowering {
-  private ARMTargetMachine tm;
   private ARMSubtarget subtarget;
   private int framePtr;
 
   public ARMFrameLowering(ARMTargetMachine tm) {
-    super(StackDirection.StackGrowDown, tm.getSubtarget().getStackAlignment(), -4);
-    this.tm = tm;
+    super(StackDirection.StackGrowDown, tm.getSubtarget().getStackAlignment(), 0);
     this.subtarget = tm.getSubtarget();
     framePtr = (subtarget.isThumb() || subtarget.isTargetDarwin()) ?
         ARMGenRegisterNames.R7 : ARMGenRegisterNames.R11;
@@ -194,7 +197,8 @@ public class ARMFrameLowering extends TargetFrameLowering {
     afi.setDPRCalleeSavedAreaOffset(dprCSOffset);
     afi.setGPRCalleeSavedArea1Offset(gprCS1Offset);
     afi.setGPRCalleeSavedArea2Offset(gprCS2Offset);
-    afi.setFramePtrSpillOffset(mfi.getObjectOffset(framePtrSpillFI) + numBytes);
+    if (hasFP(mf))
+      afi.setFramePtrSpillOffset(mfi.getObjectOffset(framePtrSpillFI) + numBytes);
 
     numBytes = dprCSOffset;
     // if the offset of DPR callee-saved-register area is not zero, adjust SP.
@@ -389,8 +393,367 @@ public class ARMFrameLowering extends TargetFrameLowering {
         mfi.isFrameAddressTaken();
   }
 
+  private static int estimateStackSize(MachineFunction mf) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    int maxAlign = mfi.getMaxAlignment();
+    int offset = 0;
+    for (int i = mfi.getObjectIndexBegin(); i != 0; ++i) {
+      int fixedOff = -mfi.getObjectOffset(i);
+      if (fixedOff > offset)
+        offset = fixedOff;
+    }
+
+    for (int i = 0, e = mfi.getObjectIndexEnd(); i != e; ++i) {
+      if (mfi.isDeadObjectIndex(i))
+        continue;
+
+      offset += mfi.getObjectSize(i);
+      int align = mfi.getObjectAlignment(i);
+      offset = (offset + align - 1)/align * align;
+    }
+    offset = (offset + maxAlign - 1)/ maxAlign * maxAlign;
+    return offset;
+  }
+
   @Override
   public void processFunctionBeforeCalleeSavedScan(MachineFunction mf, RegScavenger scavenger) {
-    // TODO
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    ARMRegisterInfo regInfo = subtarget.getRegisterInfo();
+    boolean canEliminateFrame = true;
+    int numGPRSpills = 0;
+    boolean lrSpilled = false;
+    boolean cs1Spilled = false;
+    LinkedList<Integer> unspilledCS1GPRs = new LinkedList<>();
+    LinkedList<Integer> unspilledCS2GPRs = new LinkedList<>();
+
+    // Spill R4 if Thumb2 function requires stack realignment - it will be used as
+    // scratch register. Also spill R4 if Thumb2 function has varsized objects,
+    // since it's not always possible to restore sp from fp in a single
+    // instruction.
+    if (afi.isThumb2Function() && (mfi.hasVarSizedObjects() || regInfo.needsStackRealignment(mf))) {
+      mf.getMachineRegisterInfo().setPhysRegUsed(ARMGenRegisterNames.R4);
+    }
+
+    if (afi.isThumb1OnlyFunction()) {
+      // Spill LR if Thumb1 function uses variable length argument lists.
+      if (afi.getVarArgsRegSaveSize() > 0)
+        mf.getMachineRegisterInfo().setPhysRegUsed(ARMGenRegisterNames.LR);
+
+      int stackSize = estimateStackSize(mf);
+      if (mfi.hasVarSizedObjects() || stackSize > 508)
+        mf.getMachineRegisterInfo().setPhysRegUsed(ARMGenRegisterNames.R4);
+    }
+
+    // spill the BasePtr if it is used.
+    if (regInfo.hasBasePointer(mf))
+      mf.getMachineRegisterInfo().setPhysRegUsed(regInfo.getBaseRegister());
+
+    // Don't spill FP if the frame can be eliminated. This is determined
+    // by scanning the callee-save registers to see if any is used.
+    int[] csregs = regInfo.getCalleeSavedRegs(mf);
+    if (csregs != null && csregs.length > 0)
+    for (int i = 0; i != csregs.length; ++i) {
+      int reg = csregs[i];
+      boolean spilled = false;
+      if (mf.getMachineRegisterInfo().isPhysicalReg(reg)) {
+        spilled = true;
+        canEliminateFrame = false;
+      } else {
+        // check alias register.
+        int[] alias = regInfo.getAliasSet(reg);
+        if (alias != null && alias.length > 0) {
+          for (int ar : alias) {
+            if (mf.getMachineRegisterInfo().isPhysicalReg(ar)) {
+              spilled = true;
+              canEliminateFrame = false;
+            }
+          }
+        }
+      }
+
+      if (!ARMGenRegisterInfo.GPRRegisterClass.contains(reg))
+        continue;
+
+      if (spilled) {
+        ++numGPRSpills;
+        if (!subtarget.isTargetDarwin()) {
+          if (reg == ARMGenRegisterNames.LR)
+            lrSpilled = true;
+          cs1Spilled = true;
+          continue;
+        }
+
+        // keep track if LR and any of R4, R5, R6, R7 is spilled.
+        switch (reg) {
+          case ARMGenRegisterNames.LR:
+            lrSpilled = true;
+            // fall through
+          case ARMGenRegisterNames.R4:
+          case ARMGenRegisterNames.R5:
+          case ARMGenRegisterNames.R6:
+          case ARMGenRegisterNames.R7:
+            cs1Spilled = true;
+            break;
+          default:
+            break;
+        }
+      } else {
+        if (!subtarget.isTargetDarwin()) {
+          unspilledCS1GPRs.add(reg);
+          continue;
+        }
+
+        switch (reg) {
+          case ARMGenRegisterNames.LR:
+          case ARMGenRegisterNames.R4:
+          case ARMGenRegisterNames.R5:
+          case ARMGenRegisterNames.R6:
+          case ARMGenRegisterNames.R7:
+            unspilledCS1GPRs.add(reg);
+            break;
+          default:
+            unspilledCS2GPRs.add(reg);
+            break;
+        }
+      }
+    }
+
+    boolean forceLRSpill = false;
+    if (!lrSpilled && afi.isThumb1OnlyFunction()) {
+      int fnSize = getFunctionSizeInBytes(mf, subtarget.getInstrInfo());
+      // Force LR to be spilled if the Thumb function size is > 2048. This enables
+      // use of BL to implement far jump. If it turns out that it's not needed
+      // then the branch fix up path will undo it.
+      if (fnSize >= (1 << 11)) {
+        canEliminateFrame = false;
+        forceLRSpill = true;
+      }
+    }
+
+    // If any of the stack slot references may be out of range of an immediate
+    // offset, make sure a register (or a spill slot) is available for the
+    // register scavenger. Note that if we're indexing off the frame pointer, the
+    // effective stack size is 4 bytes larger since the FP points to the stack
+    // slot of the previous FP. Also, if we have variable sized objects in the
+    // function, stack slot references will often be negative, and some of
+    // our instructions are positive-offset only, so conservatively consider
+    // that case to want a spill slot (or register) as well. Similarly, if
+    // the function adjusts the stack pointer during execution and the
+    // adjustments aren't already part of our stack size estimate, our offset
+    // calculations may be off, so be conservative.
+    boolean extraCSSpill = false;
+    if (!canEliminateFrame || cannotEliminateFrame(mf)) {
+      afi.setHasStackFrame(true);
+
+      // If LR is not spilled, but at least one of R4, R5, R6, and R7 is spilled.
+      // Spill LR as well so we can fold BX_RET to the registers restore (LDM).
+      if (!lrSpilled && cs1Spilled) {
+        mf.getMachineRegisterInfo().setPhysRegUsed(ARMGenRegisterNames.LR);
+        ++numGPRSpills;
+        unspilledCS1GPRs.remove(Integer.valueOf(ARMGenRegisterNames.LR));
+        forceLRSpill = false;
+        extraCSSpill = true;
+      }
+
+      if (hasFP(mf)) {
+        mf.getMachineRegisterInfo().setPhysRegUsed(framePtr);
+        ++numGPRSpills;
+      }
+
+      // If stack and double are 8-byte aligned and we are spilling an odd number
+      // of GPRs, spill one extra callee save GPR so we won't have to pad between
+      // the integer and double callee save areas.
+      int targetAlign = getStackAlignment();
+      if (targetAlign == 8 && (numGPRSpills & 1) != 0) {
+        if (cs1Spilled && !unspilledCS1GPRs.isEmpty()) {
+          for (int reg : unspilledCS1GPRs) {
+            // Don't spill high register if the function is thumb1
+            if (!afi.isThumb1OnlyFunction() ||
+            isARMLowRegister(reg) || reg == ARMGenRegisterNames.LR) {
+              mf.getMachineRegisterInfo().setPhysRegUsed(reg);
+              if (!regInfo.isReservedReg(mf, reg))
+                extraCSSpill = true;
+              break;
+            }
+          }
+        }
+        else if (!unspilledCS2GPRs.isEmpty() && !afi.isThumb1OnlyFunction()) {
+          int reg = unspilledCS2GPRs.get(0);
+          mf.getMachineRegisterInfo().setPhysRegUsed(reg);
+          if (!regInfo.isReservedReg(mf, reg))
+            extraCSSpill = true;
+        }
+      }
+
+      // Estimate if we might need to scavenge a register at some point in order
+      // to materialize a stack offset. If so, either spill one additional
+      // callee-saved register or reserve a special spill slot to facilitate
+      // register scavenging.
+      if (scavenger != null && !extraCSSpill && !afi.isThumb1OnlyFunction()) {
+        if (estimateStackSize(mf) >= estimateRSStackSizeLimit(mf)) {
+          // If any non-reserved CS register isn't spilled, just spill one or two
+          // extra. That should take care of it!
+          int numExtras = targetAlign / 4;
+          ArrayList<Integer> extras = new ArrayList<>();
+          while (numExtras != 0 && !unspilledCS1GPRs.isEmpty()) {
+            int reg = unspilledCS1GPRs.removeLast();
+            if (!regInfo.isReservedReg(mf, reg)) {
+              extras.add(reg);
+              --numExtras;
+            }
+          }
+
+          while (numExtras != 0 && !unspilledCS2GPRs.isEmpty()) {
+            int reg = unspilledCS2GPRs.removeLast();
+            if (!regInfo.isReservedReg(mf, reg)) {
+              extras.add(reg);
+              --numExtras;
+            }
+          }
+          if (!extras.isEmpty() && numExtras == 0) {
+            extras.forEach(reg -> {
+              mf.getMachineRegisterInfo().setPhysRegUsed(reg);
+            });
+          }
+          else {
+            // Reserve a slot closest to SP or frame pointer.
+            MCRegisterClass rc = ARMGenRegisterInfo.GPRRegisterClass;
+            scavenger.setScavengingFrameIndex(mfi.createStackObject(regInfo.getRegSize(rc),
+                regInfo.getSpillAlignment(rc)));
+          }
+        }
+      }
+    }
+    if (forceLRSpill) {
+      mf.getMachineRegisterInfo().setPhysRegUsed(ARMGenRegisterNames.LR);
+      afi.setLRIsSpilledForFarJump(true);
+    }
+  }
+
+  private int estimateRSStackSizeLimit(MachineFunction mf) {
+    int limit = (1 << 12) - 1;
+    for (int i = 0, e = mf.getNumBlocks(); i != e; ++i) {
+      MachineBasicBlock mbb = mf.getMBBAt(i);
+      for (int j = 0, sz = mbb.size(); j != sz; ++j) {
+        MachineInstr mi = mbb.getInstAt(i);
+        for (int opNum = 0, ops = mi.getNumOperands(); opNum != ops; ++opNum) {
+          if (!mi.getOperand(opNum).isFrameIndex())continue;
+
+          MCInstrDesc mid = mi.getDesc();
+          int addrMode = mid.tSFlags & ARMII.AddrModeMask;
+          if (addrMode == ARMII.AddrMode.AddrMode3.ordinal() ||
+              addrMode == ARMII.AddrMode.AddrModeT2_i8.ordinal())
+            return (1 << 8) - 1;
+
+          if (addrMode == ARMII.AddrMode.AddrMode5.ordinal() ||
+              addrMode == ARMII.AddrMode.AddrModeT2_i8s4.ordinal())
+            limit = Math.min(limit, ((1 << 8) - 1) * 4);
+
+          if (addrMode == ARMII.AddrMode.AddrModeT2_i12.ordinal() && hasFP(mf))
+            // When the stack offset is negative, we will end up using
+            // the i8 instructions instead.
+            return (1<< 8) - 1;
+          // at most one FI per instruction.
+          break;
+        }
+      }
+    }
+
+    return limit;
+  }
+
+  private boolean cannotEliminateFrame(MachineFunction mf) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    if (DisableFPElim.value && mfi.hasCalls())
+      return true;
+
+    return mfi.hasVarSizedObjects() || mfi.isFrameAddressTaken();
+  }
+
+  private static int getFunctionSizeInBytes(MachineFunction mf, ARMInstrInfo tii) {
+    int size = 0;
+    for (int i = 0, e = mf.getNumBlocks(); i != e; ++i) {
+      MachineBasicBlock mbb = mf.getMBBAt(i);
+      for (int j = 0, sz = mbb.size(); j != sz; ++j)
+        size += tii.getInstSizeInBytes(mbb.getInstAt(j));
+    }
+    return size;
+  }
+
+  int resolveFrameIndexReference(MachineFunction mf, int frameIndex,
+                                 OutRef<Integer> frameReg, int spAdj) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    ARMRegisterInfo regInfo = subtarget.getRegisterInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    int offset = mfi.getObjectOffset(frameIndex) + mfi.getStackSize();
+    int fpOffset = offset - afi.getFramePtrSpillOffset();
+    boolean isFixed = mfi.isFixedObjectIndex(frameIndex);
+
+    frameReg.set(ARMGenRegisterNames.SP);
+    offset += spAdj;
+    if (afi.isGPRCalleeSavedArea1Frame(frameIndex))
+      return offset - afi.getGPRCalleeSavedArea1Offset();
+    else if (afi.isGPRCalleeSavedArea2Frame(frameIndex))
+      return offset - afi.getGPRCalleeSavedArea2Offset();
+    else if (afi.isDPRCalleeSavedAreaFrame(frameIndex))
+      return offset - afi.getDPRCalleeSavedAreaOffset();
+
+    // When dynamically realigning the stack, use the frame pointer for
+    // parameters, and the stack/base pointer for locals.
+    if (regInfo.needsStackRealignment(mf)) {
+      Util.assertion(hasFP(mf));
+      if (isFixed) {
+        frameReg.set(regInfo.getFrameRegister(mf));
+        offset = fpOffset;
+      }
+      else if (mfi.hasVarSizedObjects()) {
+        frameReg.set(regInfo.getBaseRegister());
+      }
+      return offset;
+    }
+
+    // If there is a frame pointer, use it when we can.
+    if (hasFP(mf) && afi.hasStackFrame()) {
+      // Use frame pointer to reference fixed objects. Use it for locals if
+      // there are VLAs (and thus the SP isn't reliable as a base).
+      if (isFixed || (mfi.hasVarSizedObjects() && !regInfo.hasBasePointer(mf))) {
+        frameReg.set(regInfo.getFrameRegister(mf));
+        return fpOffset;
+      }
+      else if (mfi.hasVarSizedObjects()) {
+        Util.assertion(regInfo.hasBasePointer(mf), "missing base pointer");
+        if (afi.isThumb2Function()) {
+          if (fpOffset >= -255 && fpOffset < 0) {
+            frameReg.set(regInfo.getFrameRegister(mf));
+            return fpOffset;
+          }
+        }
+      }
+      else if (afi.isThumb2Function()) {
+        // Use  add <rd>, sp, #<imm8>
+        //      ldr <rd>, [sp, #<imm8>]
+        // if at all possible to save space.
+        if (offset >= 0 && (offset & 3) == 0 && offset <= 1020) {
+          return offset;
+        }
+
+        // In Thumb2 mode, the negative offset is very limited. Try to avoid
+        // out of range references. ldr <rt>,[<rn>, #-<imm8>]
+        if (fpOffset >= -255 && fpOffset < 0) {
+          frameReg.set(regInfo.getFrameRegister(mf));
+          return fpOffset;
+        }
+      }
+      else if (offset > (fpOffset < 0 ? -fpOffset : fpOffset)) {
+        frameReg.set(regInfo.getFrameRegister(mf));
+        return fpOffset;
+      }
+    }
+
+    // use the base pointer if we done.
+    if (regInfo.hasBasePointer(mf))
+      frameReg.set(regInfo.getBaseRegister());
+    return offset;
   }
 }

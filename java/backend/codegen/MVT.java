@@ -75,9 +75,9 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   public static final int v4f64 = 40;   //  4 x f64
   public static final int v8f64 = 41;   //  8 x f64
 
-  public static final int x86mmx = 109;  // 64
+  public static final int x86mmx = 42;  // 64
 
-  public static final int LAST_VALUETYPE = v8f64;   // This always remains at the end of the list.
+  public static final int LAST_VALUETYPE = x86mmx + 1;   // This always remains at the end of the list.
 
   // This is the current maximum for LAST_VALUETYPE.
   // EVT::MAX_ALLOWED_VALUETYPE is used for asserts and to size bit vectors

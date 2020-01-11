@@ -106,7 +106,15 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     }
 
     switch (opcode) {
-      case ARMISD.BRCOND:
+      default:
+        break;
+      case ISD.XOR: {
+        // select special operations if XOR node froms integer ABS pattern.
+        break;
+      }
+      case ARMISD.CMOV:
+        return selectCMOVOp(node);
+      case ARMISD.BRCOND: {
         // Pattern: (ARMbrcond:void (bb:Other):$dst, (imm:i32):$cc)
         // Emits: (Bcc:void (bb:Other):$dst, (imm:i32):$cc)
         // Pattern complexity = 6  cost = 1  size = 0
@@ -132,9 +140,9 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         // the CPSR register.
         Util.assertion(n3.getOpcode() == ISD.Register);
 
-        SDValue temp = curDAG.getTargetConstant(((SDNode.ConstantSDNode)n2.getNode()).getZExtValue(),
+        SDValue temp = curDAG.getTargetConstant(((SDNode.ConstantSDNode) n2.getNode()).getZExtValue(),
             new EVT(MVT.i32));
-        SDValue[] ops = new SDValue[] {n1, temp, n3, chain, inFlag};
+        SDValue[] ops = new SDValue[]{n1, temp, n3, chain, inFlag};
         SDNode resNode = curDAG.getMachineNode(opc, new EVT(MVT.Other), new EVT(MVT.Glue), ops);
         chain = new SDValue(resNode, 0);
         if (node.getNumValues() == 2) {
@@ -143,6 +151,25 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         }
         replaceUses(new SDValue(node, 0), chain);
         return null;
+      }
+      case ISD.FrameIndex: {
+        // select the frame index to the ADDri, FI, 0 which in turn will become ADDri SP, imm.
+        int fi = ((SDNode.FrameIndexSDNode)node).getFrameIndex();
+        SDValue fin = curDAG.getTargetFrameIndex(fi, new EVT(tli.getPointerTy()));
+        SDValue al = curDAG.getTargetConstant(ARMCC.CondCodes.AL.ordinal(), new EVT(MVT.i32));
+        if (subtarget.isThumb1Only()) {
+          SDValue[] ops = {fin, curDAG.getTargetConstant(0, new EVT(MVT.i32)),
+              al, curDAG.getRegister(0, new EVT(MVT.i32)), curDAG.getRegister(0, new EVT(MVT.i32))};
+          return curDAG.selectNodeTo(node, ARMGenInstrNames.tADDrSPi, new EVT(MVT.i32), ops);
+        }
+        else {
+          int opc = subtarget.isThumb() && subtarget.hasThumb2() ? ARMGenInstrNames.t2ADDri :
+              ARMGenInstrNames.ADDri;
+          SDValue[] ops = {fin, curDAG.getTargetConstant(0, new EVT(MVT.i32)),
+              al, curDAG.getRegister(0, new EVT(MVT.i32)), curDAG.getRegister(0, new EVT(MVT.i32))};
+          return curDAG.selectNodeTo(node, opc, new EVT(MVT.i32), ops);
+        }
+      }
     }
 
     SDNode resNode = selectCommonCode(node);
@@ -155,6 +182,213 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       System.err.println();
     }
     return resNode;
+  }
+
+  private SDNode selectCMOVOp(SDNode n) {
+    EVT vt = n.getValueType(0);
+    SDValue falseVal = n.getOperand(0);
+    SDValue trueVal = n.getOperand(1);
+    SDValue cc = n.getOperand(2);
+    SDValue ccr = n.getOperand(3);
+    SDValue inflag = n.getOperand(4);
+    Util.assertion(cc.getOpcode() == ISD.Constant);
+    Util.assertion(ccr.getOpcode() == ISD.Register);
+
+    ARMCC.CondCodes armcc = ARMCC.CondCodes.values()[(int) ((SDNode.ConstantSDNode)cc.getNode()).getZExtValue()];
+    if (!subtarget.isThumb1Only() && vt.equals(new EVT(MVT.i32))) {
+      // Pattern: (ARMcmov:i32 GPR:i32:$false, so_reg:i32:$true, (imm:i32):$cc)
+      // Emits: (MOVCCs:i32 GPR:i32:$false, so_reg:i32:$true, (imm:i32):$cc)
+      // Pattern complexity = 18  cost = 1  size = 0
+      if (subtarget.isThumb()) {
+        SDNode res = selectT2CMOVShiftOp(n, falseVal, trueVal, armcc, ccr, inflag);
+        if (res == null)
+          res = selectT2CMOVShiftOp(n, trueVal, falseVal, ARMCC.getOppositeCondition(armcc), ccr, inflag);
+        if (res != null)
+          return res;
+      }
+      else {
+        SDNode res = selectARMCMOVShiftOp(n, falseVal, trueVal, armcc, ccr, inflag);
+        if (res == null)
+          res = selectARMCMOVShiftOp(n, falseVal, trueVal, ARMCC.getOppositeCondition(armcc), ccr, inflag);
+        if (res != null)
+          return res;
+      }
+    }
+
+    // Pattern: (ARMcmov:i32 GPR:i32:$false,
+    //             (imm:i32)<<P:Pred_so_imm>>:$true,
+    //             (imm:i32):$cc)
+    // Emits: (MOVCCi:i32 GPR:i32:$false,
+    //           (so_imm:i32 (imm:i32):$true), (imm:i32):$cc)
+    // Pattern complexity = 10  cost = 1  size = 0
+    if (subtarget.isThumb()) {
+      SDNode res = selectT2CMOVImmOp(n, falseVal, trueVal, armcc, ccr, inflag);
+      if (res == null)
+        res = selectT2CMOVImmOp(n, falseVal, trueVal, ARMCC.getOppositeCondition(armcc), ccr, inflag);
+      if (res != null)
+        return res;
+    }
+    else {
+      SDNode res = selectARMCMOVImmOp(n, falseVal, trueVal, armcc, ccr, inflag);
+      if (res == null)
+        res = selectARMCMOVImmOp(n, falseVal, trueVal, ARMCC.getOppositeCondition(armcc), ccr, inflag);
+      if (res != null)
+        return res;
+    }
+
+    // Pattern: (ARMcmov:i32 GPR:i32:$false, GPR:i32:$true, (imm:i32):$cc)
+    // Emits: (MOVCCr:i32 GPR:i32:$false, GPR:i32:$true, (imm:i32):$cc)
+    // Pattern complexity = 6  cost = 1  size = 0
+    //
+    // Pattern: (ARMcmov:i32 GPR:i32:$false, GPR:i32:$true, (imm:i32):$cc)
+    // Emits: (tMOVCCr:i32 GPR:i32:$false, GPR:i32:$true, (imm:i32):$cc)
+    // Pattern complexity = 6  cost = 11  size = 0
+    //
+    // Also VMOVScc and VMOVDcc.
+    SDValue tmp2 = curDAG.getTargetConstant(armcc.ordinal(), new EVT(MVT.i32));
+    SDValue[] ops = new SDValue[] {falseVal, trueVal, tmp2, ccr, inflag};
+    int opc = 0;
+    switch (vt.getSimpleVT().simpleVT) {
+      default:
+        Util.assertion("Illegal conditional move type!");
+      case MVT.i32:
+        opc = subtarget.isThumb() ? (subtarget.isThumb2() ?
+            ARMGenInstrNames.t2MOVCCr : ARMGenInstrNames.tMOVCCr_pseudo) : ARMGenInstrNames.MOVCCr;
+        break;
+      case MVT.f32:
+        opc = ARMGenInstrNames.VMOVScc;
+        break;
+      case MVT.f64:
+        opc = ARMGenInstrNames.VMOVDcc;
+        break;
+    }
+
+    return curDAG.selectNodeTo(n, opc, vt, ops);
+  }
+
+  private SDNode selectT2CMOVShiftOp(SDNode n, SDValue falseVal, SDValue trueVal,
+                                      ARMCC.CondCodes armcc, SDValue ccr, SDValue inflag) {
+    SDValue[] tmp = new SDValue[2];
+    if (selectT2ShifterOperandReg(trueVal, tmp)) {
+      SDValue tmp0 = tmp[0], tmp1 = tmp[1];
+      long soVal = ((SDNode.ConstantSDNode)tmp1.getNode()).getZExtValue();
+      ARM_AM.ShiftOpc soShOp = ARM_AM.getSORegShOp(soVal);
+      int opc = 0;
+      switch (soShOp) {
+        case lsl: opc = ARMGenInstrNames.t2MOVCClsl; break;
+        case lsr: opc = ARMGenInstrNames.t2MOVCClsr; break;
+        case asr: opc = ARMGenInstrNames.t2MOVCCasr; break;
+        case ror: opc = ARMGenInstrNames.t2MOVCCror; break;
+        default:
+          Util.shouldNotReachHere("Unknown shifter operator");
+          break;
+      }
+      SDValue soShImm = curDAG.getTargetConstant(ARM_AM.getSORegOffset(soVal), new EVT(MVT.i32));
+      SDValue cc = curDAG.getTargetConstant(armcc.ordinal(), new EVT(MVT.i32));
+      SDValue[] ops = new SDValue[] {falseVal, tmp0, soShImm, cc, ccr, inflag};
+      return curDAG.selectNodeTo(n, opc, new EVT(MVT.i32), ops);
+    }
+    return null;
+  }
+
+  private SDNode selectARMCMOVShiftOp(SDNode n, SDValue falseVal, SDValue trueVal,
+                       ARMCC.CondCodes armcc, SDValue ccr, SDValue inflag) {
+    SDValue[] tmp = new SDValue[2];
+    if (selectImmShifterOperand(trueVal, tmp)) {
+      SDValue cpTmp0 = tmp[0], cpTmp2 = tmp[1];
+      SDValue cc = curDAG.getTargetConstant(armcc.ordinal(), new EVT(MVT.i32));
+      SDValue[] ops = new SDValue[] {falseVal, cpTmp0, cpTmp2, cc, ccr, inflag};
+      return curDAG.selectNodeTo(n, ARMGenInstrNames.MOVCCsi, new EVT(MVT.i32), ops);
+    }
+    SDValue[] tmp1 = new SDValue[3];
+    if (selectRegShifterOperand(trueVal, tmp1)) {
+      SDValue cpTmp0 = tmp1[0], cpTmp1 = tmp[1], cpTmp2 = tmp1[2];
+      SDValue cc = curDAG.getTargetConstant(armcc.ordinal(), new EVT(MVT.i32));
+      SDValue[] ops = new SDValue[] {falseVal, cpTmp0, cpTmp1, cpTmp2, cc, ccr, inflag};
+      return curDAG.selectNodeTo(n, ARMGenInstrNames.MOVCCsr, new EVT(MVT.i32), ops);
+    }
+    return null;
+  }
+
+  private boolean is_so_imm(long imm) {
+    return ARM_AM.getSOImmVal((int) imm) != -1;
+  }
+
+  private boolean is_so_imm_not(long imm) {
+    return ARM_AM.getSOImmVal((int) ~imm) != -1;
+  }
+
+  private boolean is_t2_so_imm(long imm) {
+    return ARM_AM.getT2SOImmVal((int) imm) != -1;
+  }
+
+  private boolean is_t2_so_imm_not(long imm) {
+    return ARM_AM.getT2SOImmVal((int) ~imm) != -1;
+  }
+
+  private SDNode selectT2CMOVImmOp(SDNode n, SDValue falseVal, SDValue trueVal,
+                                   ARMCC.CondCodes armcc, SDValue ccr, SDValue inflag) {
+    if (!(trueVal.getNode() instanceof SDNode.ConstantSDNode))
+      return null;
+
+    SDNode.ConstantSDNode t = (SDNode.ConstantSDNode) trueVal.getNode();
+
+    int opc = 0;
+    long trueImm = t.getZExtValue();
+    if (is_t2_so_imm(trueImm)) {
+      opc = ARMGenInstrNames.t2MOVCCi;
+    }
+    else if (trueImm <= 0xffff) {
+      opc = ARMGenInstrNames.t2MOVCCi16;
+    }
+    else if (is_t2_so_imm_not(trueImm)) {
+      trueImm = ~trueImm;
+      opc = ARMGenInstrNames.t2MVNCCi;
+    }
+    else if (trueVal.getNode().hasOneUse() && subtarget.hasV6T2Ops()) {
+      // large immediate can be fitted into t2MOVCCi32imm if the armv6 is enabled.
+      opc = ARMGenInstrNames.t2MOVCCi32imm;
+    }
+    if (opc != 0) {
+      SDValue trueValue = curDAG.getTargetConstant(trueImm, new EVT(MVT.i32));
+      SDValue cc = curDAG.getTargetConstant(armcc.ordinal(), new EVT(MVT.i32));
+      SDValue[] ops = {falseVal, trueValue, cc, ccr, inflag};
+      return curDAG.selectNodeTo(n, opc, new EVT(MVT.i32), ops);
+    }
+    return null;
+  }
+
+  private SDNode selectARMCMOVImmOp(SDNode n, SDValue falseVal, SDValue trueVal,
+                                    ARMCC.CondCodes armcc, SDValue ccr, SDValue inflag) {
+    if (!(trueVal.getNode() instanceof SDNode.ConstantSDNode))
+      return null;
+
+    SDNode.ConstantSDNode t = (SDNode.ConstantSDNode) trueVal.getNode();
+
+    int opc = 0;
+    long trueImm = t.getZExtValue();
+    if (is_so_imm(trueImm)) {
+      opc = ARMGenInstrNames.MOVCCi;
+    }
+    else if (trueImm <= 0xffff && subtarget.hasV6T2Ops()) {
+      opc = ARMGenInstrNames.t2MOVCCi16;
+    }
+    else if (is_so_imm_not(trueImm)) {
+      trueImm = ~trueImm;
+      opc = ARMGenInstrNames.MVNCCi;
+    }
+    else if (trueVal.getNode().hasOneUse() && (subtarget.hasV6T2Ops() || ARM_AM.isSOImmTwoPartVal((int) trueImm))) {
+      // large immediate can be fitted into t2MOVCCi32imm if the armv6 is enabled.
+      opc = ARMGenInstrNames.MOVCCi32imm;
+    }
+
+    if (opc != 0) {
+      SDValue trueValue = curDAG.getTargetConstant(trueImm, new EVT(MVT.i32));
+      SDValue cc = curDAG.getTargetConstant(armcc.ordinal(), new EVT(MVT.i32));
+      SDValue[] ops = {falseVal, trueValue, cc, ccr, inflag};
+      return curDAG.selectNodeTo(n, opc, new EVT(MVT.i32), ops);
+    }
+    return null;
   }
 
   /**
@@ -224,7 +458,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     tmp[0] = baseReg;
     tmp[1] = shReg;
     tmp[2] = opc;
-    return false;
+    return true;
   }
 
   protected boolean selectImmShifterOperand(SDValue n, SDValue[] tmp) {
@@ -251,7 +485,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     SDValue opc = curDAG.getTargetConstant(ARM_AM.getSORegShOpc(shOpcVal, shImmVal), new EVT(MVT.i32));
     tmp[0] = baseReg;
     tmp[1] = opc;
-    return false;
+    return true;
   }
 
   protected boolean selectT2ShifterOperandReg(SDValue n, SDValue[] tmp) {
@@ -265,8 +499,8 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   }
 
   protected boolean selectShiftImmShifterOperand(SDValue n, SDValue[] tmp) {
-    // enable profitability checking.
-    return selectRegShifterOperand(n, tmp, true);
+    // disable profitability checking.
+    return selectImmShifterOperand(n, tmp, false);
   }
 
   /**
@@ -536,6 +770,41 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   protected boolean selectAddrMode3(SDValue n, SDValue[] tmp) {
     // Match the address mode 3.
     // tmp[0] = base, tmp[1] = offset , tmp[2] = opc.
+    if (n.getOpcode() == ISD.SUB) {
+      tmp[0] = n.getOperand(0);
+      tmp[1] = n.getOperand(1);
+      tmp[2] = curDAG.getTargetConstant(ARM_AM.getAM3Opc(ARM_AM.AddrOpc.sub, 0), new EVT(MVT.i32));
+      return true;
+    }
+
+    if (!curDAG.isBaseWithConstantOffset(n)) {
+      tmp[0] = n;
+      if (n.getOpcode() == ISD.FrameIndex) {
+        int fi = ((SDNode.FrameIndexSDNode)n.getNode()).getFrameIndex();
+        tmp[0] = curDAG.getTargetFrameIndex(fi, new EVT(tli.getPointerTy()));
+      }
+      tmp[1] = curDAG.getRegister(0, new EVT(MVT.i32));
+      tmp[2] = curDAG.getTargetConstant(ARM_AM.getAM3Opc(ARM_AM.AddrOpc.add, 0), new EVT(MVT.i32));
+      return true;
+    }
+    // If the RHS is +/- imm8, fold into addr mode.
+    OutRef<Integer> rhsc = new OutRef<>(0);
+    if (isScaledConstantInRange(n.getOperand(1), /*scale*/1, -256 + 1, 256, rhsc)) {
+      tmp[0] = n.getOperand(0);
+      if (tmp[0].getOpcode() == ISD.FrameIndex) {
+        int fi = ((SDNode.FrameIndexSDNode)tmp[0].getNode()).getFrameIndex();
+        tmp[0] = curDAG.getTargetFrameIndex(fi, new EVT(tli.getPointerTy()));
+      }
+      tmp[1] = curDAG.getRegister(0, new EVT(MVT.i32));
+      ARM_AM.AddrOpc addsub = ARM_AM.AddrOpc.add;
+      if (rhsc.get() < 0) {
+        rhsc.set(-rhsc.get());
+        addsub = ARM_AM.AddrOpc.sub;
+      }
+      tmp[2] = curDAG.getTargetConstant(ARM_AM.getAM3Opc(addsub, rhsc.get()), new EVT(MVT.i32));
+      return true;
+    }
+
     tmp[0] = n.getOperand(0);
     tmp[1] = n.getOperand(1);
     tmp[2] = curDAG.getTargetConstant(ARM_AM.getAM3Opc(ARM_AM.AddrOpc.add, 0), new EVT(MVT.i32));

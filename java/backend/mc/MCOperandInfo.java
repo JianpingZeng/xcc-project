@@ -49,10 +49,10 @@ public class MCOperandInfo {
   }
 
   public boolean isPredicate() {
-    return (flags & OperandFlags.Predicate) != 0;
+    return (flags & (1 << OperandFlags.Predicate)) != 0;
   }
 
   public boolean isOptionalDef() {
-    return (flags & OperandFlags.OptionalDef) != 0;
+    return (flags & (1 << OperandFlags.OptionalDef)) != 0;
   }
 }

@@ -103,7 +103,8 @@ public class ARMTargetMachine extends LLVMTargetMachine {
 
   @Override
   public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
-    return super.addPostRegAlloc(pm, level);
+    pm.add(ARMExpandPseudoInsts.createARMExpandPseudoPass());
+    return false;
   }
 
   @Override

@@ -130,4 +130,9 @@ public class MCNullStreamer extends MCStreamer {
   public void finish() {
 
   }
+
+  @Override
+  public void emitThumbFunc(MCSymbol func) {
+
+  }
 }

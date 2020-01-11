@@ -1112,6 +1112,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           continue;
         }
         case OPC_RecordMemRef:
+          Util.assertion(n.getNode() instanceof SDNode.MemSDNode,
+              String.format("The node must be a memory access operation, rather than '%s'", n.getNode().getOperationName(curDAG)));
           matchedMemRefs.add(((SDNode.MemSDNode) n.getNode()).getMemOperand());
           continue;
         case OPC_CaptureFlagInput:
@@ -1716,7 +1718,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         flags.setOrigAlign(originalAlign);
 
         EVT registerVT = tli.getRegisterType(dag.getContext(), vt);
-        int numRegs = tli.getNumRegisters(curDAG.getContext(), registerVT);
+        int numRegs = tli.getNumRegisters(curDAG.getContext(), vt);
         for (int i = 0; i < numRegs; i++) {
           InputArg myArgs = new InputArg(flags, registerVT, isArgUseEmpty);
           if (numRegs > 1 && i == 0) {
@@ -1748,7 +1750,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       computeValueVTs(tli, arg.getType(), vts);
       for (EVT vt : vts) {
         EVT partVT = tli.getRegisterType(dag.getContext(), vt);
-        int numParts = tli.getNumRegisters(curDAG.getContext(), partVT);
+        int numParts = tli.getNumRegisters(curDAG.getContext(), vt);
         if (!arg.isUseEmpty()) {
           int op = ISD.DELETED_NODE;
           if (fn.paramHasAttr(idx, Attribute.SExt))

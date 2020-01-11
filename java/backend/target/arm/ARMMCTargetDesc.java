@@ -27,7 +27,7 @@ package backend.target.arm;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import tools.Util;
+import backend.support.Triple;
 
 /**
  * @author Jianping Zeng.
@@ -35,9 +35,65 @@ import tools.Util;
  */
 public class ARMMCTargetDesc {
   public static String parseARMTriple(String tt) {
-    // Set the boolean corresponding to the current target triple, or the default
-    // if one cannot be determined, to true.
-    Util.shouldNotReachHere();
-    return "";
+    int len = tt.length();
+    int idx = 0;
+    boolean isThumb = false;
+    if (len >= 5 && tt.substring(0, 4).equals("armv"))
+      idx = 4;
+    else if (len >= 6 && tt.substring(0, 5).equals("thumb")) {
+      isThumb = true;
+      if (len >= 7 && tt.charAt(5) == 'v')
+        idx = 6;
+    }
+
+    String armArchFeature = null;
+    if (idx != 0) {
+      int subversion = tt.charAt(idx) - '0';
+      if (subversion >= 7 && subversion <= 9) {
+        if (len >= idx + 2 && tt.charAt(idx + 1) == 'm') {
+          // v7m: FeatureNoARM, FeatureDB, FeatureHWDiv, FeatureMClass
+          armArchFeature = "+v7,+noarm,+db,+hwdiv,+mclass";
+        }
+        else if (len >= idx + 3 && tt.charAt(idx + 1) == 'e' && tt.charAt(idx+2) == 'm') {
+          // v7em: FeatureNoARM, FeatureDB, FeatureHWDiv, FeatureDSPThumb2,
+          //       FeatureT2XtPk, FeatureMClass
+          armArchFeature = "+v7,+noarm,+db,+hwdiv,+t2dsp,t2xtpk,+mclass";
+        }
+        else
+          // v7a: FeatureNEON, FeatureDB, FeatureDSPThumb2, FeatureT2XtPk
+          armArchFeature = "+v7,+neon,+db,+t2dsp,+t2xtpk";
+      }
+      else if (subversion == 6) {
+        if (len >= idx + 3 && tt.charAt(idx+1) == 't' && tt.charAt(idx+2) == '2')
+          armArchFeature = "+v6t2";
+        else if (len >= idx + 2 && tt.charAt(idx + 1) == 'm')
+          // v6m: FeatureNoARM, FeatureMClass
+          armArchFeature = "+v6t2,+noarm,+mclass";
+      else
+          armArchFeature = "+v6";
+      }
+      else if (subversion == 5) {
+        if (len >= idx + 3 && tt.charAt(idx+1) == 't' && tt.charAt(idx+2) == 'e')
+          armArchFeature = "+v5t3";
+        else
+          armArchFeature = "+v5t";
+      }
+      else if(subversion == 4 && len >= idx + 2 && tt.charAt(idx + 1) == 't')
+        armArchFeature = "+v4t";
+    }
+    if (isThumb) {
+      if (armArchFeature == null)
+        armArchFeature = "+thumb-mode";
+      else
+        armArchFeature += ",+thumb-mode";
+    }
+    Triple triple = new Triple(tt);
+    if (triple.getOS() == Triple.OSType.NativeClient) {
+      if (armArchFeature == null)
+        armArchFeature = "+nacl-mode";
+      else
+        armArchFeature += ",+nacl-mode";
+    }
+    return armArchFeature;
   }
 }

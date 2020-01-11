@@ -208,8 +208,9 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     }
 
     int frameIndex = mi.getOperand(i).getIndex();
-    int frameReg = getFrameRegister(mf);
-    int offset = mfi.getObjectOffset(frameIndex);
+    OutRef<Integer> frameRegRef = new OutRef<>(0);
+    int offset = tfi.resolveFrameIndexReference(mf, frameIndex, frameRegRef, spAdj);
+    int frameReg = frameRegRef.get();
 
     // Modify MI as necessary to handle as much of 'Offset' as possible
     if (afi.isGPRCalleeSavedArea1Frame(frameIndex))
@@ -225,7 +226,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     }
 
     // modify MI as necessary to handle as much of 'Offset' as possible
-    boolean done = false;
+    boolean done;
     if (!afi.isThumbFunction()) {
       OutRef<Integer> ref = new OutRef<>(offset);
       done = rewriteARMFrameIndex(mi, i, frameReg, ref, subtarget.getInstrInfo());
@@ -827,7 +828,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     return emitARMRegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, cc, predReg, tii, 0);
   }
 
-  static int emitARMRegPlusImmediate(MachineBasicBlock mbb,
+  private static int emitARMRegPlusImmediate(MachineBasicBlock mbb,
                                              int mi,
                                              DebugLoc dl,
                                              int destReg,
@@ -865,6 +866,28 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   public int getFrameRegister(MachineFunction mf) {
     TargetFrameLowering tfl = mf.getTarget().getFrameLowering();
     return tfl.hasFP(mf) ? framePtr : ARMGenRegisterNames.SP;
+  }
+
+  public int getBaseRegister() {
+    return basePtr;
+  }
+
+  public boolean hasBasePointer(MachineFunction mf) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+
+    if (!EnableBasePointer.value) return false;
+
+    if (needsStackRealignment(mf) && mfi.hasVarSizedObjects())
+      return true;
+
+    if (afi.isThumbFunction() && mfi.hasVarSizedObjects()) {
+      if (afi.isThumb2Function() && mfi.getLocalFrameSize() < 128)
+        return false;
+      return true;
+    }
+
+    return false;
   }
 
   @Override

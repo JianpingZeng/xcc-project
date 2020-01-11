@@ -29,9 +29,12 @@ package backend.target.arm;
 
 import backend.codegen.*;
 import backend.debug.DebugLoc;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfoImpl;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import tools.OutRef;
 import tools.Pair;
@@ -76,7 +79,9 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
 
     if (gprDest && gprSrc) {
       int opc = ARMGenInstrNames.MOVr;
-      buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+      MachineInstrBuilder mib = buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+      addDefaultPred(mib);
+      addDefaultCC(mib);
       return true;
     }
 
@@ -148,7 +153,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
         MachineMemOperand.MOStore, 0, mfi.getObjectSize(frameIndex), align);
 
     ARMRegisterInfo tri = tm.getRegisterInfo();
-    switch (tri.getRegSize(rc)/8) {
+    switch (tri.getRegSize(rc)) {
       case 4:
         if (ARMGenRegisterInfo.GPRRegisterClass.hasSubClassEq(rc))
           addDefaultPred(buildMI(mbb, pos, dl, get(ARMGenInstrNames.STRi12))
@@ -255,7 +260,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
         MachineMemOperand.MOLoad, 0, mfi.getObjectSize(frameIndex), align);
 
     ARMRegisterInfo tri = tm.getRegisterInfo();
-    switch (tri.getRegSize(rc)/8) {
+    switch (tri.getRegSize(rc)) {
       case 4:
         if (ARMGenRegisterInfo.GPRRegisterClass.hasSubClassEq(rc))
           addDefaultPred(buildMI(mbb, pos, dl, get(ARMGenInstrNames.LDRi12), destReg)
@@ -585,6 +590,84 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(), tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, fltOpc, 0, true, 0);
     return true;
+  }
+
+  @Override
+  public int getInstSizeInBytes(MachineInstr mi) {
+    MachineBasicBlock mbb = mi.getParent();
+    MachineFunction mf = mbb.getParent();
+    MCAsmInfo mai = mf.getTarget().getMCAsmInfo();
+
+    MCInstrDesc mcid = mi.getDesc();
+    if (mi.getOpcode() == TargetOpcode.INLINEASM)
+      return getInlineAsmLength(mi.getOperand(0).getSymbolName(), mai);
+    if (mi.isLabel())
+      return 0;
+    int opc = mi.getOpcode();
+    switch (opc) {
+      case TargetOpcode.IMPLICIT_DEF:
+      case TargetOpcode.KILL:
+      case TargetOpcode.PROLOG_LABEL:
+      case TargetOpcode.EH_LABEL:
+      case TargetOpcode.DBG_VALUE:
+        return 0;
+      case ARMGenInstrNames.MOVi16_ga_pcrel:
+      case ARMGenInstrNames.MOVTi16_ga_pcrel:
+      case ARMGenInstrNames.t2MOVi16_ga_pcrel:
+      case ARMGenInstrNames.t2MOVTi16_ga_pcrel:
+        return 4;
+      case ARMGenInstrNames.MOVi32imm:
+      case ARMGenInstrNames.t2MOVi32imm:
+        return 8;
+      case ARMGenInstrNames.CONSTPOOL_ENTRY:
+        // If this machine instr is a constant pool entry, its size is recorded as
+        // operand #2.
+        return (int) mi.getOperand(2).getImm();
+      case ARMGenInstrNames.Int_eh_sjlj_longjmp:
+        return 16;
+      case ARMGenInstrNames.tInt_eh_sjlj_longjmp:
+        return 10;
+      case ARMGenInstrNames.Int_eh_sjlj_setjmp:
+      case ARMGenInstrNames.Int_eh_sjlj_setjmp_nofp:
+        return 20;
+      case ARMGenInstrNames.tInt_eh_sjlj_setjmp:
+      case ARMGenInstrNames.t2Int_eh_sjlj_setjmp:
+      case ARMGenInstrNames.t2Int_eh_sjlj_setjmp_nofp:
+        return 12;
+      case ARMGenInstrNames.BR_JTr:
+      case ARMGenInstrNames.BR_JTm:
+      case ARMGenInstrNames.BR_JTadd:
+      case ARMGenInstrNames.tBR_JTr:
+      case ARMGenInstrNames.t2BR_JT:
+      case ARMGenInstrNames.t2TBB_JT:
+      case ARMGenInstrNames.t2TBH_JT: {
+        // These are jumptable branches, i.e. a branch followed by an inlined
+        // jumptable. The size is 4 + 4 * number of entries. For TBB, each
+        // entry is one byte; TBH two byte each.
+        int entrySize = opc == ARMGenInstrNames.t2TBB_JT ? 1 : (opc == ARMGenInstrNames.t2TBH_JT ? 2 : 4);
+        int numOops = mi.getNumOperands();
+        MachineOperand jtop = mi.getOperand(numOops - (mcid.isPredicable() ? 3 : 2));
+        int jti = jtop.getIndex();
+        MachineJumpTableInfo mjti = mf.getJumpTableInfo();
+        Util.assertion(mjti != null);
+        ArrayList<MachineJumpTableEntry> jt = mjti.getJumpTables();
+        Util.assertion(jti < jt.size());
+
+        int instSize = (opc == ARMGenInstrNames.tBR_JTr || opc == ARMGenInstrNames.t2BR_JT) ? 2 : 4;
+        int numEntries = getNumJTEntries(jt, jti);
+        if (opc == ARMGenInstrNames.t2TBB_JT && (numEntries & 1) != 0)
+          ++numEntries;
+
+        return numEntries * entrySize + instSize;
+      }
+      default:
+        // otherwise, return zero for pseudo instruction.
+        return 0;
+    }
+  }
+
+  private static int getNumJTEntries(ArrayList<MachineJumpTableEntry> jt, int jti) {
+    return jt.get(jti).mbbs.size();
   }
 
   @Override

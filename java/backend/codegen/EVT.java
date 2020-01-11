@@ -232,6 +232,8 @@ public class EVT implements Comparable<EVT> {
         return "i64";
       case i128:
         return "i128";
+      case f16:
+        return "f16";
       case f32:
         return "f32";
       case f64:
@@ -288,6 +290,10 @@ public class EVT implements Comparable<EVT> {
         return "v2f64";
       case v4f64:
         return "v4f64";
+      case v8f64:
+        return "v8f64";
+      case x86mmx:
+        return "x86mmx";
     }
   }
 

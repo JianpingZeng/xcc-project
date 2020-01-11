@@ -763,7 +763,8 @@ public class MachineInstr implements Cloneable {
 
     // Saves all virtual registers. We will print all register class for each virtual register.
     HashMap<MCRegisterClass, ArrayList<Integer>> virtRegs = new HashMap<>();
-    while (getNumOperands() != 0 && getOperand(startOp).isRegister() &&
+    int numOps = getNumOperands();
+    while (startOp != numOps && getOperand(startOp).isRegister() &&
         getOperand(startOp).isDef() && !getOperand(startOp).isImplicit()) {
 
       if (startOp != 0)

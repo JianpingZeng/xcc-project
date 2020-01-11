@@ -39,7 +39,7 @@ public abstract class MCInstPrinter {
     return "";
   }
 
-  public abstract void printInst(MCInst inst);
+  public abstract void printInstruction(MCInst inst);
 
   public abstract String getRegisterName(int regNo);
 

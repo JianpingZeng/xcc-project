@@ -30,6 +30,7 @@ package backend.target.arm;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.debug.DebugLoc;
+import backend.intrinsic.Intrinsic;
 import backend.mc.MCRegisterClass;
 import backend.support.BackendCmdOptions;
 import backend.support.CallingConv;
@@ -39,6 +40,7 @@ import backend.target.TargetLoweringObjectFile;
 import backend.target.TargetMachine;
 import backend.target.TargetOptions;
 import backend.target.arm.ARMConstantPoolValue.ARMCP;
+import backend.value.BlockAddress;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
 import backend.value.Value;
@@ -1425,14 +1427,53 @@ public class ARMTargetLowering extends TargetLowering {
     }
   }
 
-  private SDValue lowerGlobalAddress(SDValue op, SelectionDAG dag) {
-    Util.shouldNotReachHere();
-    return null;
+  /**
+   * ConstantPool, JumpTable, GlobalAddress, and ExternalSymbol are lowered as their
+   * target counterpart wrapped in the {@linkplain ARMISD#Wrapper} node.
+   * @param op
+   * @param dag
+   * @return
+   */
+  private SDValue lowerConstantPool(SDValue op, SelectionDAG dag) {
+    SDNode.ConstantPoolSDNode csp = (SDNode.ConstantPoolSDNode) op.getNode();
+    SDValue res;
+    EVT ptrVT = op.getValueType();
+    if (csp.isMachineConstantPoolValue())
+      res = dag.getTargetConstantPool(csp.getMachineConstantPoolValue(), ptrVT,
+          csp.getAlignment(), csp.getOffset(), true, csp.getTargetFlags());
+    else
+      res = dag.getTargetConstantPool(csp.getConstantValue(), ptrVT,
+          csp.getAlignment(), csp.getOffset(), csp.getTargetFlags());
+    return dag.getNode(ARMISD.Wrapper, new EVT(MVT.i32), res);
   }
+
   private SDValue lowerBlockAddress(SDValue op, SelectionDAG dag) {
-    Util.shouldNotReachHere();
-    return null;
+    SDNode.BlockAddressSDNode ban = (SDNode.BlockAddressSDNode) op.getNode();
+    BlockAddress ba = ban.getBlockAddress();
+    EVT ptrVT = new EVT(getPointerTy());
+    TargetMachine.RelocModel rm = tm.getRelocationModel();
+    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getInfo();
+
+    SDValue cpAddr;
+    if (rm == TargetMachine.RelocModel.Static)
+      cpAddr = dag.getTargetConstantPool(ba, ptrVT, 4, 0, 0);
+    else {
+      int pcAdj = subtarget.isThumb() ? 4 : 8;
+      ARMPCLabelIndex = afi.createPICLabelUId();
+      ARMConstantPoolValue cpv = ARMConstantPoolConstant.create(ba,
+          ARMPCLabelIndex, ARMCP.ARMCPKind.CPBlockAddress, pcAdj);
+      cpAddr = dag.getTargetConstantPool(cpv, ptrVT, 4, 0, true, 0);
+    }
+    cpAddr = dag.getNode(ARMISD.Wrapper, new EVT(MVT.i32), cpAddr);
+    SDValue result = dag.getLoad(ptrVT, dag.getEntryNode(), cpAddr,
+        PseudoSourceValue.getConstantPool(), 0);
+    if (rm == TargetMachine.RelocModel.Static)
+      return result;
+
+    SDValue picLabel = dag.getConstant(ARMPCLabelIndex, new EVT(MVT.i32), false);
+    return dag.getNode(ARMISD.PIC_ADD, ptrVT, result, picLabel);
   }
+
   private SDValue lowerGlobalAddressDarwin(SDValue op, SelectionDAG dag)  {
     Util.shouldNotReachHere();
     return null;
@@ -1495,16 +1536,75 @@ public class ARMTargetLowering extends TargetLowering {
   }
 
   private SDValue lowerBR_JT(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    SDValue chain = op.getOperand(0);
+    SDValue table = op.getOperand(1);
+    SDValue index = op.getOperand(2);
+    DebugLoc dl = op.getDebugLoc();
+
+    EVT ptrTy = new EVT(getPointerTy());
+    SDNode.JumpTableSDNode jt = (SDNode.JumpTableSDNode) table.getNode();
+    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getInfo();
+    SDValue uid = dag.getConstant(afi.createJumpTableUId(), ptrTy, false);
+    SDValue jti = dag.getTargetJumpTable(jt.getJumpTableIndex(), ptrTy, 0);
+    table = dag.getNode(ARMISD.WrapperJT, new EVT(MVT.i32), jti, uid);
+    index = dag.getNode(ISD.MUL, ptrTy, index, dag.getConstant(4, ptrTy, false));
+    SDValue addr = dag.getNode(ISD.ADD, ptrTy, index, table);
+    if (subtarget.isThumb2()) {
+      return dag.getNode(ARMISD.BR2_JT, new EVT(MVT.Other), chain, addr, op.getOperand(2), jti, uid);
+    }
+    if (tm.getRelocationModel() == TargetMachine.RelocModel.PIC_) {
+      addr = dag.getLoad(new EVT(MVT.i32), chain, addr, PseudoSourceValue.getJumpTable(), 0);
+      chain = addr.getValue(1);
+      addr = dag.getNode(ISD.ADD, ptrTy, addr, table);
+      return dag.getNode(ARMISD.BR_JT, new EVT(MVT.Other), chain, addr, jti, uid);
+    }
+    else {
+      addr = dag.getLoad(ptrTy, chain, addr, PseudoSourceValue.getJumpTable(), 0);
+      chain = addr.getValue(1);
+      return dag.getNode(ARMISD.BR_JT, new EVT(MVT.Other), chain, addr, jti, uid);
+    }
   }
+
+  /**
+   * Convert the {@linkplain ISD#SELECT} to the {@linkplain ISD#SELECT_CC} with the condition
+   * cond != 0
+   * @param op
+   * @param dag
+   * @return
+   */
   private SDValue lowerSELECT(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    SDValue cond = op.getOperand(0);
+    SDValue zero = dag.getConstant(0, cond.getValueType(), false);
+    return dag.getSelectCC(cond, zero, op.getOperand(1), op.getOperand(2),
+        CondCode.SETNE);
   }
   private SDValue lowerSELECT_CC(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    SDValue lhsCond = op.getOperand(0), rhsCond = op.getOperand(1);
+    SDValue trueVal = op.getOperand(2), falseVal = op.getOperand(3);
+    CondCode cc = ((SDNode.CondCodeSDNode)(op.getOperand(4).getNode())).getCondition();
+    EVT vt = op.getValueType();
+    DebugLoc dl = op.getDebugLoc();
+    SDValue ccr = dag.getRegister(ARMGenRegisterNames.CPSR, new EVT(MVT.i32));
+
+    if (lhsCond.getValueType().equals(new EVT(MVT.i32))) {
+      SDValue armcc = new SDValue();
+      SDValue cmp = getARMCmp(lhsCond, rhsCond, cc, armcc, dag, dl);
+      return dag.getNode(ARMISD.CMOV, vt, falseVal, trueVal, armcc, ccr, cmp);
+    }
+
+    // float point.
+    ARMCC.CondCodes[] res = FPCCToARMCC(cc);
+    ARMCC.CondCodes cc1 = res[0], cc2 = res[1];
+    SDValue armcc = dag.getConstant(cc1.ordinal(), new EVT(MVT.i32), false);
+    SDValue cmp = getVFPCmp(lhsCond, rhsCond, dag, dl);
+    SDValue result = dag.getNode(ARMISD.CMOV, vt, falseVal, trueVal, armcc, ccr, cmp);
+    if (cc2 != ARMCC.CondCodes.AL) {
+      // more predicate.
+      SDValue cmp2 = getVFPCmp(lhsCond, rhsCond, dag, dl);
+      SDValue armcc2 = dag.getConstant(cc2.ordinal(), new EVT(MVT.i32), false);
+      result = dag.getNode(ARMISD.CMOV, vt, result, trueVal, armcc2, ccr, cmp2);
+    }
+    return result;
   }
 
   /**
@@ -1762,13 +1862,73 @@ public class ARMTargetLowering extends TargetLowering {
     return null;
   }
   private SDValue lowerShiftRightParts(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    Util.assertion(op.getNumOperands() == 3, "Not a double-shift");
+    EVT vt = op.getValueType();
+    int vtBits = vt.getSizeInBits();
+    DebugLoc dl = op.getDebugLoc();
+    SDValue shOpLo = op.getOperand(0);
+    SDValue shOpHi = op.getOperand(1);
+    SDValue amt = op.getOperand(2);
+    SDValue armcc = new SDValue();
+
+    Util.assertion(op.getOpcode() == ISD.SRA_PARTS || op.getOpcode() == ISD.SRL_PARTS, "expected sra and srl");
+    int opc = op.getOpcode() == ISD.SRA_PARTS ? ISD.SRA : ISD.SRL;
+
+    SDValue revShAmt = dag.getNode(ISD.SUB, new EVT(MVT.i32), dag.getConstant(vtBits, new EVT(MVT.i32), false),
+        amt);
+    SDValue tmp1 = dag.getNode(ISD.SRL, vt, shOpLo, revShAmt);
+    SDValue extraShAmt = dag.getNode(ISD.SUB, new EVT(MVT.i32), amt, dag.getConstant(vtBits, new EVT(MVT.i32), false));
+
+    SDValue tmp2 = dag.getNode(ISD.SHL, vt, shOpHi, amt);
+    SDValue falseVal = dag.getNode(ISD.OR, vt, tmp1, tmp2);
+    SDValue trueVal = dag.getNode(opc, vt, shOpHi, extraShAmt);
+
+    SDValue ccr = dag.getRegister(ARMGenRegisterNames.CPSR, new EVT(MVT.i32));
+    SDValue cmp = getARMCmp(extraShAmt, dag.getConstant(0, new EVT(MVT.i32), false), CondCode.SETGE,
+        armcc, dag, dl);
+
+    SDValue lo = dag.getNode(opc, vt, shOpHi, amt);
+    SDValue hi = dag.getNode(ARMISD.CMOV, vt, falseVal, trueVal, armcc, ccr, cmp);
+
+    return dag.getMergeValues(new SDValue[] {lo, hi});
   }
+
+  /**
+   * Lower SHL_PARTS which returns two i32 values and take a 2 x i32 value to
+   * shift plus a shift amount.
+   * @param op
+   * @param dag
+   * @return
+   */
   private SDValue lowerShiftLeftParts(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    Util.assertion(op.getNumOperands() == 3, "Not a double-shift");
+    EVT vt = op.getValueType();
+    int vtBits = vt.getSizeInBits();
+    DebugLoc dl = op.getDebugLoc();
+    SDValue shOpLo = op.getOperand(0);
+    SDValue shOpHi = op.getOperand(1);
+    SDValue amt = op.getOperand(2);
+    SDValue armcc = new SDValue();
+
+
+    Util.assertion(op.getOpcode() == ISD.SHL_PARTS);
+    SDValue revShAmt = dag.getNode(ISD.SUB, new EVT(MVT.i32), dag.getConstant(vtBits, new EVT(MVT.i32), false),
+        amt);
+    SDValue tmp1 = dag.getNode(ISD.SRL, vt, shOpLo, revShAmt);
+    SDValue extraShAmt = dag.getNode(ISD.SUB, new EVT(MVT.i32), amt, dag.getConstant(vtBits, new EVT(MVT.i32), false));
+    SDValue tmp2 = dag.getNode(ISD.SHL, vt, shOpHi, amt);
+    SDValue tmp3 = dag.getNode(ISD.SHL, vt, shOpLo, extraShAmt);
+
+    SDValue falseVal = dag.getNode(ISD.OR, vt, tmp1, tmp2);
+    SDValue ccr = dag.getRegister(ARMGenRegisterNames.CPSR, new EVT(MVT.i32));
+    SDValue cmp = getARMCmp(extraShAmt, dag.getConstant(0, new EVT(MVT.i32), false), CondCode.SETGE,
+        armcc, dag, dl);
+    SDValue lo = dag.getNode(ISD.SHL, vt, shOpLo, amt);
+    SDValue hi = dag.getNode(ARMISD.CMOV, vt, falseVal, tmp3, armcc, ccr, cmp);
+
+    return dag.getMergeValues(new SDValue[] {lo, hi});
   }
+
   private SDValue lowerBUILD_VECTOR(SDValue op, SelectionDAG dag)  {
     Util.shouldNotReachHere();
     return null;
@@ -1781,46 +1941,228 @@ public class ARMTargetLowering extends TargetLowering {
     MachineFunction mf = dag.getMachineFunction();
     ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
     int fi = afi.getVarArgsFrameIndex();
-    SDValue fin = dag.getTargetFrameIndex(fi, new EVT(getPointerTy()));
+    SDValue fin = dag.getFrameIndex(fi, new EVT(getPointerTy()), false);
     return dag.getStore(chain, fin, pointer, srcValue, 0, false, 0);
   }
 
   private SDValue lowerMEMBARRIER(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    DebugLoc dl = op.getDebugLoc();
+    if (!subtarget.hasDataBarrier()) {
+      // Some ARMv6 cpus can support data barriers with an mcr instruction.
+      // Thumb1 and pre-v6 ARM mode use a libcall instead and should never get
+      // here.
+      return dag.getNode(ARMISD.MEMBARRIER_MCR, new EVT(MVT.Other), op.getOperand(0),
+          dag.getConstant(0, new EVT(MVT.i32), false));
+    }
+    SDValue op5 = op.getOperand(5);
+    boolean isDeviceBarrier = ((SDNode.ConstantSDNode)op5.getNode()).getZExtValue() != 0;
+    long isLL = ((SDNode.ConstantSDNode)op.getOperand(1).getNode()).getZExtValue();
+    long isLS = ((SDNode.ConstantSDNode)op.getOperand(2).getNode()).getZExtValue();
+    boolean isOnlyStoreBarrier = isLL == 0 && isLS == 0;
+
+    int dmbOpt;
+    if (isDeviceBarrier)
+      dmbOpt = isOnlyStoreBarrier ? ARM_MB.ST : ARM_MB.SY;
+    else
+      dmbOpt = isOnlyStoreBarrier ? ARM_MB.ISHST : ARM_MB.ISH;
+    return dag.getNode(ARMISD.MEMBARRIER, new EVT(MVT.Other), op.getOperand(0),
+        dag.getConstant(dmbOpt, new EVT(MVT.i32), false));
   }
+
   private SDValue lowerATOMIC_FENCE(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    DebugLoc dl = op.getDebugLoc();
+    if (!subtarget.hasDataBarrier()) {
+      // Some ARMv6 cpus can support data barriers with an mcr instruction.
+      // Thumb1 and pre-v6 ARM mode use a libcall instead and should never get
+      // here.
+      return dag.getNode(ARMISD.MEMBARRIER_MCR, new EVT(MVT.Other), op.getOperand(0),
+          dag.getConstant(0, new EVT(MVT.i32), false));
+    }
+    return dag.getNode(ARMISD.MEMBARRIER, new EVT(MVT.Other), op.getOperand(0),
+        dag.getConstant(ARM_MB.ISH, new EVT(MVT.i32), false));
   }
+
+  /**
+   * Usually, arm use preload instruction to achieve prefetch.
+   * @param op
+   * @param dag
+   * @return
+   */
   private SDValue lowerPREFETCH(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    // ARM pre v5TE and Thumb1 does not have preload instructions.
+    if (!(subtarget.isThumb2() || (!subtarget.isThumb1Only() && subtarget.hasV5TEOps()))) {
+      // just preserve the chain.
+      return op.getOperand(0);
+    }
+
+    DebugLoc dl = op.getDebugLoc();
+    boolean isRead = (~((SDNode.ConstantSDNode)op.getOperand(2).getNode()).getZExtValue() & 1 ) != 0;
+    if (isRead && (!subtarget.hasV7Ops() || !subtarget.hasMPExtension())) {
+      // ARMv7 with MP extension has PLDW.
+      return op.getOperand(0);
+    }
+
+    boolean isData = ((SDNode.ConstantSDNode)op.getOperand(4).getNode()).getZExtValue() != 0;
+    if (subtarget.isThumb()) {
+      // invert the bits.
+      isRead = !isRead;
+      isData = !isData;
+    }
+    return dag.getNode(ARMISD.PRELOAD, new EVT(MVT.Other), op.getOperand(0),
+        op.getOperand(1), dag.getConstant(isRead, new EVT(MVT.i32), false),
+        dag.getConstant(isData, new EVT(MVT.i32), false));
   }
+
+  private static SDValue lowerVectorINT_TO_FP(SDValue op, SelectionDAG dag) {
+    EVT vt = op.getValueType();
+    DebugLoc dl = op.getDebugLoc();
+    Util.assertion(op.getOperand(0).getValueType().equals(new EVT(MVT.v4i16)),
+        "invalid type for custom lowring!");
+    if (!vt.equals(new EVT(MVT.v4i16)))
+      return dag.unrollVectorOp(op.getNode());
+
+    int castOpc;
+    int opc;
+    switch (op.getOpcode()) {
+      default:
+        Util.assertion("invalid opc!");
+        castOpc = 0;
+        opc = 0;
+        break;
+      case ISD.SINT_TO_FP:
+        castOpc = ISD.SIGN_EXTEND;
+        opc = ISD.SINT_TO_FP;
+        break;
+      case ISD.UINT_TO_FP:
+        castOpc = ISD.ZERO_EXTEND;
+        opc = ISD.UINT_TO_FP;
+        break;
+    }
+    op = dag.getNode(castOpc, new EVT(MVT.v4i16), op.getOperand(0));
+    return dag.getNode(opc, vt, op);
+  }
+
   private SDValue lowerINT_TO_FP(SDValue op, SelectionDAG dag) {
-    Util.shouldNotReachHere();
-    return null;
+    EVT vt = op.getValueType();
+    if (vt.isVector())
+      return lowerVectorINT_TO_FP(op, dag);
+
+    DebugLoc dl = op.getDebugLoc();
+    int opc = 0;
+    switch (op.getOpcode()) {
+      default:
+        Util.assertion("Invalid opcode!");
+        break;
+      case ISD.SINT_TO_FP:
+        opc = ARMISD.SITOF;
+        break;
+      case ISD.UINT_TO_FP:
+        opc = ARMISD.UITOF;
+        break;
+    }
+    op = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f32), op.getOperand(0));
+    return dag.getNode(opc, vt, op);
   }
   private SDValue lowerFP_TO_INT(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    int opc = 0;
+    EVT vt = op.getValueType();
+    switch (op.getOpcode()) {
+      default:
+        Util.assertion("Invalid opcode");
+        break;
+      case ISD.FP_TO_SINT:
+        opc = ARMISD.FTOSI;
+        break;
+      case ISD.FP_TO_UINT:
+        opc = ARMISD.FTOUI;
+        break;
+    }
+    return dag.getNode(opc, vt, op.getOperand(0));
   }
+
   private SDValue lowerINTRINSIC_WO_CAHIN(SDValue op, SelectionDAG dag)  {
     Util.shouldNotReachHere();
     return null;
   }
   private SDValue expandBITCAST(SDNode n, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    DebugLoc dl = n.getDebugLoc();
+    SDValue op = n.getOperand(0);
+
+    EVT srcVT = op.getValueType();
+    EVT dstVT = n.getValueType(0);
+    Util.assertion(srcVT.equals(new EVT(MVT.i64)) || dstVT.equals(new EVT(MVT.i64)),
+        "expandBITCAST called for non-i64 type!");
+
+    // turn i64->f64 into VMOVDRR.
+    TargetLowering tli = tm.getTargetLowering();
+
+    if (srcVT.equals(new EVT(MVT.i64)) && tli.isTypeLegal(dstVT)) {
+      // first separate the i64 to double i32
+      // then merge it to a f64
+      // then bit cast.
+      SDValue lo = dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32), op,
+          dag.getConstant(0, new EVT(MVT.i32), false));
+      SDValue hi = dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32), op,
+          dag.getConstant(1, new EVT(MVT.i32), false));
+      return dag.getNode(ISD.BIT_CONVERT, dstVT, dag.getNode(ARMISD.VMOVDRR, new EVT(MVT.f64),
+          lo, hi));
+    }
+
+    // turn f64->i64 into VMOVRRD.
+    if (dstVT.equals(new EVT(MVT.i64)) && tli.isTypeLegal(srcVT)) {
+      SDValue split = dag.getNode(ARMISD.VMOVRRD, dag.getVTList(new EVT(MVT.i32), new EVT(MVT.i32)),
+          op);
+      // merge it
+      return dag.getNode(ISD.BUILD_PAIR, new EVT(MVT.i64), split, split.getValue(1));
+    }
+    return new SDValue();
   }
+
   private SDValue lowerShift(SDNode n, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    EVT vt = n.getValueType(0);
+    DebugLoc dl = n.getDebugLoc();
+
+    if (!vt.isVector())
+      return new SDValue();
+
+    // we must use neon to support vector shifter.
+    Util.assertion(subtarget.hasNEON(), "unexpected vector shift!");
+
+    if (n.getOpcode() == ISD.SHL)
+      return dag.getNode(ISD.INTRINSIC_WO_CHAIN, vt,
+          dag.getConstant(Intrinsic.ID.arm_neon_vshiftu.ordinal(), new EVT(MVT.i32), false),
+          n.getOperand(0), n.getOperand(1));
+
+    Util.assertion(n.getOpcode() == ISD.SRA || n.getOpcode() == ISD.SRL);
+    EVT shiftVT = n.getOperand(1).getValueType();
+    SDValue negatedCount = dag.getNode(ISD.SUB, shiftVT, getZeroVector(shiftVT, dag),
+        n.getOperand(1));
+    Intrinsic.ID vshiftInt = n.getOpcode() == ISD.SRA ? Intrinsic.ID.arm_neon_vshifts :
+        Intrinsic.ID.arm_neon_vshiftu;
+
+    return dag.getNode(ISD.INTRINSIC_WO_CHAIN, vt,
+        dag.getConstant(vshiftInt.ordinal(), new EVT(MVT.i32), false), n.getOperand(0), negatedCount);
   }
+
+  private static SDValue getZeroVector(EVT vt, SelectionDAG dag) {
+    Util.assertion(vt.isVector(), "expect vector type");
+    SDValue encodedVal = dag.getTargetConstant(0, new EVT(MVT.i32));
+    EVT vmovVT = vt.is128BitVector() ? new EVT(MVT.v4i32) : new EVT(MVT.v2i32);
+    SDValue vmov = dag.getNode(ARMISD.VMOVIMM, vmovVT, encodedVal);
+    return dag.getNode(ISD.BIT_CONVERT, vt, vmov);
+  }
+
   private SDValue lowerCTTZ(SDNode n, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+      EVT vt = n.getValueType(0);
+      DebugLoc dl = n.getDebugLoc();
+
+      if (!subtarget.hasV6T2Ops())
+        return new SDValue();
+
+      SDValue rbit = dag.getNode(ARMISD.RBIT, vt, n.getOperand(0));
+      return dag.getNode(ISD.CTLZ, vt, rbit);
   }
+
   private SDValue lowerVSETCC(SDValue op, SelectionDAG dag)  {
     Util.shouldNotReachHere();
     return null;
@@ -1830,17 +2172,54 @@ public class ARMTargetLowering extends TargetLowering {
     return null;
   }
   private SDValue lowerEXTRACT_VECTOR_ELT(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    // extract_vector_elt only valid for immediate index.
+    SDValue lane = op.getOperand(1);
+    if (!(lane.getNode() instanceof SDNode.ConstantSDNode))
+      return new SDValue();
+
+    SDValue vec = op.getOperand(0);
+    if (op.getValueType().equals(new EVT(MVT.i32)) &&
+        vec.getValueType().getVectorElementType().getSizeInBits() < 32) {
+      DebugLoc dl = op.getDebugLoc();
+      return dag.getNode(ARMISD.VGETLANEu, new EVT(MVT.i32), vec, lane);
+    }
+    return op;
   }
+
   private SDValue lowerCONCAT_VECTORS(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    // The only time a CONCAT_VECTORS operation can have legal types is when
+    // two 64-bit vectors are concatenated to a 128-bit vector.
+    Util.assertion(op.getValueType().is128BitVector() && op.getNumOperands() == 2, "unexpected CONCAT_VECTORS");
+
+    DebugLoc dl = op.getDebugLoc();
+    SDValue val = dag.getUNDEF(new EVT(MVT.v2f64));
+    SDValue op0 = op.getOperand(0);
+    SDValue op1 = op.getOperand(1);
+    if (op0.getOpcode() != ISD.UNDEF)
+      val = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v2f64), val,
+          dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f64), op0), dag.getIntPtrConstant(0));
+    if (op1.getOpcode() != ISD.UNDEF)
+      val = dag.getNode(ISD.INSERT_VECTOR_ELT, new EVT(MVT.v2f64), val,
+          dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f64), op1), dag.getIntPtrConstant(1));
+
+    return dag.getNode(ISD.BIT_CONVERT, op.getValueType(), val);
   }
+
   private SDValue lowerFLT_ROUNDS(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    // The rounding mode is in bits 23:22 of the FPSCR.
+    // The ARM rounding mode value to FLT_ROUNDS mapping is 0->1, 1->2, 2->3, 3->0
+    // The formula we use to implement this is (((FPSCR + 1 << 22) >> 22) & 3)
+    // so that the shift + and get folded into a bitfield extract.
+    SDValue fpcsr = dag.getNode(ISD.INTRINSIC_WO_CHAIN, new EVT(MVT.i32),
+        dag.getConstant(Intrinsic.ID.arm_get_fpscr.ordinal(), new EVT(MVT.i32), false));
+    SDValue fltRounds = dag.getNode(ISD.ADD, new EVT(MVT.i32), fpcsr,
+        dag.getConstant(1<<22, new EVT(MVT.i32), false));
+    SDValue rmode = dag.getNode(ISD.SRL, new EVT(MVT.i32), fltRounds,
+        dag.getConstant(22, new EVT(MVT.i32), false));
+
+    return dag.getNode(ISD.ADD, new EVT(MVT.i32), rmode, dag.getConstant(3, new EVT(MVT.i32), false));
   }
+
   private SDValue lowerMUL(SDValue op, SelectionDAG dag)  {
     Util.shouldNotReachHere();
     return null;
@@ -1854,8 +2233,24 @@ public class ARMTargetLowering extends TargetLowering {
     return null;
   }
   private SDValue lowerADDC_ADDE_SUBC_SUBE(SDValue op, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    EVT vt = op.getValueType();
+    SDNode.SDVTList vts = dag.getVTList(vt, new EVT(MVT.i32));
+
+    int opc = 0;
+    boolean extraOp = false;
+    switch (op.getOpcode()) {
+      default:
+        Util.assertion("invalid opc");
+        break;
+      case ISD.ADDC: opc = ARMISD.ADDC; break;
+      case ISD.ADDE: opc = ARMISD.ADDE; extraOp = true; break;
+      case ISD.SUBC: opc = ARMISD.SUBC; break;
+      case ISD.SUBE: opc = ARMISD.SUBE; extraOp = true; break;
+    }
+
+    if (!extraOp)
+      return dag.getNode(opc, vts, op.getOperand(0), op.getOperand(1));
+    return dag.getNode(opc, vts, op.getOperand(0), op.getOperand(1), op.getOperand(2));
   }
 
   private static SDValue lowerAtomicLoadStore(SDValue op, SelectionDAG dag) {
@@ -1884,7 +2279,7 @@ public class ARMTargetLowering extends TargetLowering {
       default:
         Util.shouldNotReachHere("Don't know how to custom lower this!");
         return null;
-      case ISD.ConstantPool: return lowerGlobalAddress(op, dag);
+      case ISD.ConstantPool: return lowerConstantPool(op, dag);
       case ISD.BlockAddress: return lowerBlockAddress(op, dag);
       case ISD.GlobalAddress:
         return subtarget.isTargetWindows() ? lowerGlobalAddressDarwin(op, dag) :
@@ -1988,13 +2383,38 @@ public class ARMTargetLowering extends TargetLowering {
         replaceATOMIC_OP_64(n, results, dag, ARMISD.ATOMCMPXCHG64_DAG);
         return;
     }
-    if (res != null)
+    if (res != null && res.getNode() != null)
       results.add(res);
   }
 
   private SDValue expand64BitShift(SDNode n, SelectionDAG dag)  {
-    Util.shouldNotReachHere();
-    return null;
+    EVT vt = n.getValueType(0);
+    DebugLoc dl = n.getDebugLoc();
+
+    if (!vt.equals(new EVT(MVT.i64)))
+      return new SDValue();
+
+    int opc = n.getOpcode();
+    Util.assertion(opc == ISD.SRL || opc == ISD.SRA, "unknown shift to lower!");
+
+    // We only lower SRA, SRL of 1 here, all others use generic lowering.
+    if (!(n.getOperand(1).getNode() instanceof SDNode.ConstantSDNode) ||
+        ((SDNode.ConstantSDNode)n.getOperand(1).getNode()).getZExtValue() != 1)
+      return new SDValue();
+
+    // if we are in thumb mode, don't have RRX.
+    if (subtarget.isThumb1Only()) return new SDValue();
+
+    SDValue lo = dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32), n.getOperand(0),
+        dag.getConstant(0, new EVT(MVT.i32), false));
+    SDValue hi = dag.getNode(ISD.EXTRACT_ELEMENT, new EVT(MVT.i32), n.getOperand(0),
+        dag.getConstant(1, new EVT(MVT.i32), false));
+
+    opc = opc == ISD.SRL ? ARMISD.SRL_FLAG : ARMISD.SRA_FLAG;
+    hi = dag.getNode(opc, dag.getVTList(new EVT(MVT.i32), new EVT(MVT.Glue)), hi);
+    lo = dag.getNode(ARMISD.RRX, new EVT(MVT.i32), lo, hi.getValue(1));
+
+    return dag.getNode(ISD.BUILD_PAIR, new EVT(MVT.i64), lo, hi);
   }
 
   /**

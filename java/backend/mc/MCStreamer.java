@@ -140,4 +140,6 @@ public abstract class MCStreamer {
   public String getRegisterName(int reg) {
     return "";
   }
+
+  public abstract void emitThumbFunc(MCSymbol func);
 }

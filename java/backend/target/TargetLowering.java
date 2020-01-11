@@ -1117,8 +1117,7 @@ public abstract class TargetLowering {
       if (!vt.isInteger())
         break;
 
-      numRegistersForVT[expandedReg] =
-          2 * numRegistersForVT[expandedReg - 1];
+      numRegistersForVT[expandedReg] = 2 * numRegistersForVT[expandedReg - 1];
       registerTypeForVT[expandedReg] = new EVT(new MVT(largetestIntReg));
       transformToType[expandedReg] = new EVT(new MVT(expandedReg - 1));
       valueTypeAction.setTypeAction(vt, Expand);
@@ -1149,8 +1148,9 @@ public abstract class TargetLowering {
     // Decide how to handle f64. If the target does not have native f64 support,
     // expand it to i64 and we will be generating soft float library calls.
     if (!isTypeLegal(new EVT(new MVT(MVT.f64)))) {
-      numRegistersForVT[MVT.i64] = numRegistersForVT[MVT.i64];
-      registerTypeForVT[MVT.i64] = transformToType[MVT.i64] = new EVT(new MVT(MVT.i64));
+      numRegistersForVT[MVT.f64] = numRegistersForVT[MVT.i64];
+      registerTypeForVT[MVT.f64] = registerTypeForVT[MVT.i64];
+      transformToType[MVT.f64] = new EVT(new MVT(MVT.i64));
       valueTypeAction.setTypeAction(new EVT(MVT.f64), Expand);
     }
 

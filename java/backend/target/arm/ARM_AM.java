@@ -118,7 +118,7 @@ public class ARM_AM {
     int rotAmt = tz & ~1;
 
     if ((rotr32(val, rotAmt) & ~255) == 0)
-      return (32 - rotAmt) & 21;
+      return (32 - rotAmt) & 31;
 
     if ((val & 63) != 0) {
       int tz2 = Util.countTrailingZeros(val & ~63);
@@ -214,7 +214,7 @@ public class ARM_AM {
   }
 
   static ShiftOpc getSORegShOp(long imm) {
-    return ShiftOpc.values()[(int) imm];
+    return ShiftOpc.values()[(int) imm & 7];
   }
 
   static long getSORegShOpc(ShiftOpc shOp, long imm) {

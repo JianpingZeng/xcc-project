@@ -121,7 +121,7 @@ public class TargetOptions {
       new BooleanOpt(optionName("soft-float"),
           desc("Generate software floating point library calls"),
           init(false));
-  public static final Opt<FloatABI> FloatABIForCalls =
+  public static final Opt<FloatABI> FloatABIForType =
       new Opt<FloatABI>(new Parser<>(),
           optionName("float-abi"),
           desc("Choose float ABI type"),

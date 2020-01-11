@@ -178,9 +178,10 @@ public class DAGTypeLegalizer {
         if (!ignoreNodeResults(n)) {
           for (int i = 0, numResults = n.getNumValues(); i < numResults; i++) {
             EVT resultVT = n.getValueType(i);
-            switch (getTypeAction(resultVT)) {
+            LegalizeAction action = getTypeAction(resultVT);
+            switch (action) {
               default:
-                Util.assertion("Unknown action!");
+                Util.assertion("Unknown action '%s'!".format(action.name()));
                 break;
               case Legal:
                 break;
@@ -190,6 +191,9 @@ public class DAGTypeLegalizer {
                 break nodeDone;
               case ExpandInteger:
                 expandIntegerResult(n, i);
+                break nodeDone;
+              case SoftenFloat:
+                softenFloatResult(n, i);
                 break nodeDone;
               case ExpandFloat:
                 expandFloatResult(n, i);

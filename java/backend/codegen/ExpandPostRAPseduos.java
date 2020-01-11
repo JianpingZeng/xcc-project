@@ -276,7 +276,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
    */
   private void transferDeadFlag(MachineInstr mi, int destReg, TargetRegisterInfo tri) {
     MachineBasicBlock mbb = mi.getParent();
-    for (int i = mi.getIndexInMBB() - 1; ; i--) {
+    for (int i = mi.getIndexInMBB() - 1; i >= 0 ; i--) {
       if (mbb.getInstAt(i).addRegisterDead(destReg, tri))
         break;
       Util.assertion(i != 0, "copyPhysReg doesn't reference destination register!");

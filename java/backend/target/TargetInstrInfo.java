@@ -633,7 +633,7 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * @return
    */
   public int getInstSizeInBytes(MachineInstr mi) {
-    Util.assertion("Target didn't implement RISCVGenInstrInfo::GetInstSize!");
+    Util.assertion("Target didn't implement getInstSizeInBytes!");
     return 0;
   }
 
@@ -658,7 +658,7 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
     for (int i = 0, e = str.length(); i < e; ++i) {
       if (str.charAt(i) == '\n' || str.substring(i, tai.getSeparatorChar().length()+i).equals(tai.getSeparatorChar()))
         atInstStart = true;
-      if (atInstStart && Character.isSpace(str.charAt(i))) {
+      if (atInstStart && Character.isSpaceChar(str.charAt(i))) {
         length += tai.getMaxInstLength();
         atInstStart = false;
       }

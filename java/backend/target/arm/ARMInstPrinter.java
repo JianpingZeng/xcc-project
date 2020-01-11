@@ -46,6 +46,151 @@ public abstract class ARMInstPrinter extends MCInstPrinter {
     return new ARMGenInstPrinter(os, mai);
   }
 
+  @Override
+  public void printInstruction(MCInst inst) {
+    // check for some MOVs and print canonical forms.
+    int opc = inst.getOpcode();
+    switch (opc) {
+      case ARMGenInstrNames.MOVsr: {
+        MCOperand dst = inst.getOperand(0);
+        MCOperand mo1 = inst.getOperand(1);
+        MCOperand mo2 = inst.getOperand(2);
+        MCOperand mo3 = inst.getOperand(3);
+
+        os.print('\t');
+        os.print(getRegisterName(dst.getReg()));
+        os.print(", ");
+        os.print(getRegisterName(mo1.getReg()));
+        os.print(", ");
+        os.print(getRegisterName(mo2.getReg()));
+        Util.assertion(ARM_AM.getSORegOffset(mo3.getImm()) == 0);
+        return;
+      }
+      case ARMGenInstrNames.MOVsi: {
+        MCOperand dst = inst.getOperand(0);
+        MCOperand mo1 = inst.getOperand(1);
+        MCOperand mo2 = inst.getOperand(2);
+
+        os.print('\t');
+        os.print(ARM_AM.getShiftOpcStr(ARM_AM.getSORegShOp(mo2.getImm())));
+        printSBitModifierOperand(inst, 5);
+        printPredicateOperand(inst, 3);
+
+        os.print('\t');
+        os.print(getRegisterName(dst.getReg()));
+        os.print(", ");
+        os.print(getRegisterName(mo1.getReg()));
+
+        if (ARM_AM.getSORegShOp(mo2.getImm()) == ARM_AM.ShiftOpc.rrx)
+          return;
+
+        os.print(", #");
+        os.print(translateShiftImm(ARM_AM.getSORegOffset(mo2.getImm())));
+        return;
+      }
+      case ARMGenInstrNames.STMDB_UPD:
+      case ARMGenInstrNames.t2STMDB_UPD: {
+        if (inst.getOperand(0).getReg() == ARMGenRegisterNames.SP) {
+          // A8.6.123 PUSH
+          os.print("\tpush");
+          printPredicateOperand(inst, 2);
+          if (opc == ARMGenInstrNames.t2STMDB_UPD)
+            os.print(".w");
+
+          os.print('\t');
+          printRegisterList(inst, 4);
+          return;
+        }
+      }
+      case ARMGenInstrNames.STR_PRE_IMM: {
+        // A8.6.123 PUSH
+        if (inst.getOperand(2).getReg() == ARMGenRegisterNames.SP &&
+            inst.getOperand(3).getImm() == -4) {
+          os.print("\tpush");
+          printPredicateOperand(inst, 4);
+          os.print("\t{");
+          os.print(getRegisterName(inst.getOperand(1).getReg()));
+          os.print('}');
+          return;
+        }
+      }
+      case ARMGenInstrNames.LDMIA_UPD:
+      case ARMGenInstrNames.t2LDMIA_UPD: {
+        // A8.6.122 POP
+        if (inst.getOperand(0).getReg() == ARMGenRegisterNames.SP) {
+          os.print("\tpop");
+          printPredicateOperand(inst, 2);
+          if (opc == ARMGenInstrNames.t2LDMIA_UPD)
+            os.print(".w");
+
+          os.print('\t');
+          printRegisterList(inst, 4);
+          return;
+        }
+      }
+      case ARMGenInstrNames.LDR_POST_IMM: {
+        if (inst.getOperand(2).getReg() == ARMGenRegisterNames.SP &&
+            inst.getOperand(4).getImm() == 4) {
+          os.print("\tpop");
+          printPredicateOperand(inst, 5);
+          os.print("\t{");
+          os.print(getRegisterName(inst.getOperand(0).getReg()));
+          os.print('}');
+          return;
+        }
+      }
+      case ARMGenInstrNames.VSTMSDB_UPD:
+      case ARMGenInstrNames.VSTMDDB_UPD: {
+        if (inst.getOperand(0).getReg() == ARMGenRegisterNames.SP) {
+          // A8.6.355 VPUSH
+          os.print("\tvpush");
+          printPredicateOperand(inst, 2);
+          os.print('\t');
+          printRegisterList(inst, 4);
+          return;
+        }
+      }
+      case ARMGenInstrNames.VLDMSIA_UPD:
+      case ARMGenInstrNames.VLDMDIA_UPD: {
+        if (inst.getOperand(0).getReg() == ARMGenRegisterNames.SP) {
+          os.print("\tvpop");
+          printPredicateOperand(inst, 2);
+          os.print('\t');
+          printRegisterList(inst, 4);
+          return;
+        }
+      }
+      case ARMGenInstrNames.tLDMIA: {
+        boolean writeback = true;
+        int baseReg = inst.getOperand(0).getReg();
+        for (int i = 3; i < inst.getNumOperands(); ++i) {
+          if (inst.getOperand(i).getReg() == baseReg)
+            writeback = false;
+        }
+
+        os.print("\tldm");
+        printPredicateOperand(inst, 1);
+        os.print('\t');
+        os.print(getRegisterName(baseReg));
+        if (writeback) os.print('!');
+        os.print(", ");
+        printRegisterList(inst, 3);
+        return;
+      }
+      case ARMGenInstrNames.tMOVr: {
+        if (inst.getOperand(0).getReg() == ARMGenRegisterNames.R8 &&
+            inst.getOperand(1).getReg() == ARMGenRegisterNames.R8) {
+          os.print("\tnop");
+          printPredicateOperand(inst, 2);
+          return;
+        }
+      }
+    }
+    printInst(inst);
+  }
+
+  protected abstract void printInst(MCInst inst);
+
   protected void printOperand(MCInst mi, int opIdx) {
     MCOperand op = mi.getOperand(opIdx);
     if (op.isReg())

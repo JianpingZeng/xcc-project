@@ -32,6 +32,7 @@ package backend.target;
  * @version 0.4
  */
 public class RegClassInfo {
+  // Note that, all size are in bits.
   public int regSize;
   public int spillSize;
   public int spillAlignment;

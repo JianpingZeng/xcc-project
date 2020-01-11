@@ -200,25 +200,24 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
     return false;
   }
 
-
   public int getSpillSize(MCRegisterClass rc) {
-    return getRegClassInfo(rc).spillSize;
+    return getRegClassInfo(rc).spillSize/8;
   }
 
   public int getRegSizeInBit(MCRegisterClass rc) {
-    return getRegClassInfo(rc).regSize / 8;
-  }
-
-  public int getRegSize(MCRegisterClass rc) {
     return getRegClassInfo(rc).regSize;
   }
 
+  public int getRegSize(MCRegisterClass rc) {
+    return getRegClassInfo(rc).regSize/8;
+  }
+
   public int getSpillAlignmentInBit(MCRegisterClass rc) {
-    return getRegClassInfo(rc).spillAlignment / 8;
+    return getRegClassInfo(rc).spillAlignment;
   }
 
   public int getSpillAlignment(MCRegisterClass rc) {
-    return getRegClassInfo(rc).spillAlignment;
+    return getRegClassInfo(rc).spillAlignment/8;
   }
 
   public int[] getRegisterClassVTs(MCRegisterClass rc) {

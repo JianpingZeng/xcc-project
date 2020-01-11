@@ -98,6 +98,13 @@ public abstract class MipsInstPrinter extends MCInstPrinter {
     return new MipsGenInstPrinter(os, mai);
   }
 
+  @Override
+  public void printInstruction(MCInst inst) {
+    printInst(inst);
+  }
+
+  protected abstract void printInst(MCInst inst);
+
   private static String mipsFCCToString(CondCode cc) {
     switch (cc) {
       case FCOND_F:

@@ -127,4 +127,9 @@ public class MCObjectStreamer extends MCStreamer {
   public void finish() {
 
   }
+
+  @Override
+  public void emitThumbFunc(MCSymbol func) {
+
+  }
 }

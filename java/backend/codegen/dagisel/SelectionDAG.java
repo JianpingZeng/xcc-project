@@ -2522,6 +2522,11 @@ public class SelectionDAG {
     return false;
   }
 
+  public SDValue unrollVectorOp(SDNode node) {
+    Util.shouldNotReachHere("unroll vector op is not supported yet!");
+    return null;
+  }
+
   static class UseMemo {
     SDNode user;
     int index;
@@ -3920,7 +3925,7 @@ public class SelectionDAG {
       }
       EVT lvt = new EVT(MVT.i64);
       while (!tli.isTypeLegal(lvt))
-        lvt = new EVT(lvt.getSimpleVT().simpleVT + 1);
+        lvt = new EVT(lvt.getSimpleVT().simpleVT - 1);
       Util.assertion(lvt.isInteger());
       if (vt.bitsGT(lvt))
         vt = lvt;

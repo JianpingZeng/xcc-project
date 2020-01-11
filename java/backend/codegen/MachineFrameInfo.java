@@ -108,6 +108,7 @@ public class MachineFrameInfo {
   private int maxAlignment;
 
   private ArrayList<CalleeSavedInfo> csInfo;
+  private long localFrameSize;
 
   private boolean csIValid;
 
@@ -323,7 +324,7 @@ public class MachineFrameInfo {
   }
 
   public int createStackObject(MCRegisterClass rc) {
-    return createStackObject(tri.getRegSize(rc)/8, tri.getSpillAlignment(rc)/8);
+    return createStackObject(tri.getRegSize(rc), tri.getSpillAlignment(rc));
   }
 
   /**
@@ -391,5 +392,14 @@ public class MachineFrameInfo {
 
   public void dump(MachineFunction mf) {
     print(mf, System.err);
+  }
+
+
+  public long getLocalFrameSize() {
+    return localFrameSize;
+  }
+
+  public void setLocalFrameSize(long size) {
+    localFrameSize = size;
   }
 }

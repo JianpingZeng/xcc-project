@@ -167,6 +167,14 @@ public class MCAsmStreamer extends MCStreamer {
       case MCAF_SubsectionsViaSymbols:
         fos.print(".subsections_via_symbols");
         break;
+      case MCAF_SyntaxUnified:
+        os.print("\t.syntax unified"); break;
+      case MCAF_Code16:
+        os.printf("\t%s", mai.Code16Directive); break;
+      case MCAF_Code32:
+        os.printf("\t%s", mai.Code32Directive); break;
+      case MCAF_Code64:
+        os.printf("\t%s", mai.Code64Directive); break;
       default:
         Util.assertion("invalid flag");
         break;
@@ -524,7 +532,7 @@ public class MCAsmStreamer extends MCStreamer {
     }
 
     if (instPrinter != null)
-      instPrinter.printInst(inst);
+      instPrinter.printInstruction(inst);
     else
       inst.print(os, mai);
     emitEOL();
@@ -538,5 +546,15 @@ public class MCAsmStreamer extends MCStreamer {
   @Override
   public String getRegisterName(int reg) {
     return instPrinter.getRegisterName(reg);
+  }
+
+  @Override
+  public void emitThumbFunc(MCSymbol func) {
+    os.print("\t.thumb_func");
+    if (mai.hasSubsectionsViaSymbols()) {
+      os.print("\t");
+      func.print(os);
+    }
+    emitEOL();
   }
 }

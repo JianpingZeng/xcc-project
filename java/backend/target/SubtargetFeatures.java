@@ -21,6 +21,7 @@ import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Manages the enabling and disabling of subtarget
@@ -197,60 +198,49 @@ public class SubtargetFeatures {
    */
   public long getBits(String cpu, SubtargetFeatureKV[] cpuTable,
                      SubtargetFeatureKV[] featureTable) {
-    Util.assertion(cpuTable != null, "missing CPU table");
-    Util.assertion(featureTable != null, "missing features table");
+    if (cpuTable == null || cpuTable.length == 0 ||
+        featureTable == null || featureTable.length == 0)
+      return 0;
 
     long bit = 0;
-
-    if (!features.isEmpty() && features.get(0).equals("help")) {
+    if (cpu.equals("help")) {
       help(cpuTable, featureTable);
     }
 
-    SubtargetFeatureKV cpuEntry = null;
-    for (SubtargetFeatureKV kv : cpuTable) {
-      if (!features.isEmpty() && kv.key.equals(features.get(0))) {
-        cpuEntry = kv;
-        break;
+    // Find CPU entry if CPU name is specified.
+    if (!cpu.isEmpty()) {
+      int idx = Arrays.binarySearch(cpuTable, new SubtargetFeatureKV(cpu, "", 0, 0));
+      if (idx >= 0) {
+        SubtargetFeatureKV cpuEntry = cpuTable[idx];
+        bit = cpuEntry.value;
+
+        for (int i = 0; i < featureTable.length; i++) {
+          SubtargetFeatureKV kv = featureTable[i];
+          if ((cpuEntry.value & kv.value) != 0)
+            bit = setImpliedBits(bit, kv, featureTable);
+        }
+      } else {
+        if (Util.DEBUG && !features.isEmpty()) {
+          System.err.print("'" + features.get(0)
+              + "' is not a recognized processor for this target"
+              + " (ignoring processor)");
+        }
       }
     }
-
-    if (cpuEntry != null) {
-      bit = cpuEntry.value;
-
-      for (int i = 0; i < featureTable.length; i++) {
-        SubtargetFeatureKV kv = featureTable[i];
-        if ((cpuEntry.value & kv.value) != 0)
-          bit = setImpliedBits(bit, kv, featureTable);
-      }
-    } else {
-      if (Util.DEBUG && !features.isEmpty()) {
-        System.err.print("'" + features.get(0)
-            + "' is not a recognized processor for this target"
-            + " (ignoring processor)");
-      }
-    }
-    for (int i = 1; i < features.size(); i++) {
+    for (int i = 0; i < features.size(); i++) {
       String feature = features.get(i);
 
       if (feature.equals("help"))
         help(cpuTable, featureTable);
 
-      SubtargetFeatureKV featureEntry = null;
-      for (SubtargetFeatureKV kv : featureTable) {
-        if (kv.key.equals(stripFlag(feature))) {
-          featureEntry = kv;
-          break;
-        }
-      }
-
-      if (featureEntry != null) {
+      int idx = Arrays.binarySearch(featureTable, new SubtargetFeatureKV(stripFlag(feature), "", 0, 0));
+      if (idx >= 0) {
+        SubtargetFeatureKV featureEntry = featureTable[idx];
         if (isEnabled(feature)) {
           bit |= featureEntry.value;
-
           bit = setImpliedBits(bit, featureEntry, featureTable);
         } else {
           bit &= ~featureEntry.value;
-
           bit = clearImpliedBits(bit, featureEntry, featureTable);
         }
       } else {

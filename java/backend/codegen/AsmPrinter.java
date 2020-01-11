@@ -854,7 +854,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     }
   }
 
-  private TargetLoweringObjectFile getObjFileLowering() {
+  protected TargetLoweringObjectFile getObjFileLowering() {
     return tm.getTargetLowering().getObjFileLowering();
   }
 

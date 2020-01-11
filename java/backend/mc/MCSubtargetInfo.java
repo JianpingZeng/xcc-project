@@ -15,6 +15,8 @@ import backend.target.SubtargetFeatureKV;
 import backend.target.SubtargetFeatures;
 import tools.Util;
 
+import java.util.Arrays;
+
 /**
  * @author Jianping Zeng.
  * @version 0.4
@@ -46,6 +48,8 @@ public class MCSubtargetInfo {
     operandCycles = oc;
     forwardingPathes = fp;
     SubtargetFeatures features = new SubtargetFeatures(fs);
+    Arrays.sort(procDesc);
+    Arrays.sort(procFeatures);
     featureBits = features.getBits(cpu, procDesc, procFeatures);
   }
 

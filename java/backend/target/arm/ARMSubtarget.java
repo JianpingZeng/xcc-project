@@ -31,6 +31,7 @@ import backend.mc.InstrItineraryData;
 import backend.support.Triple;
 import backend.target.TargetData;
 
+import static backend.target.arm.ARMMCTargetDesc.parseARMTriple;
 import static backend.target.arm.ARMSubtarget.ARMProcFamilyEnum.CortexA8;
 import static backend.target.arm.ARMSubtarget.ARMProcFamilyEnum.CortexA9;
 import static backend.target.arm.ARMSubtarget.TargetABI.ARM_ABI_AAPCS;
@@ -116,13 +117,19 @@ public class ARMSubtarget extends ARMGenSubtarget {
     if (cpuString == null || cpuString.isEmpty())
       cpuString = "generic";
 
-    // TODO
     // Insert the architecture feature derived from the target triple into the
     // feature string. This is important for setting features that are implied
     // based on the architecture version.
+    String archFS = parseARMTriple(tt);
+    if (fs != null && !fs.isEmpty()) {
+      if (!archFS.isEmpty())
+        archFS = archFS + "," + fs;
+      else
+        archFS = fs;
+    }
 
     // parse subtarget features.
-    parseSubtargetFeatures(fs, cpuString);
+    parseSubtargetFeatures(archFS, cpuString);
 
     if (!hasV6T2Ops && hasThumb2)
       hasV4TOps = hasV5TOps = hasV5TEOps = hasV6Ops = hasV6T2Ops = true;

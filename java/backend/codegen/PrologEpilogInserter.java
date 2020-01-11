@@ -1380,7 +1380,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     }
 
     mfi.setStackSize((int) (offset + tfl.getLocalAreaOffset()));
-
+    mfi.setLocalFrameSize(offset);
     mfi.setMaxAlignment(maxAlign);
   }
 
@@ -1582,7 +1582,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       }
       if (!csrRestore.get(mbb).isEmpty()) {
         if (!csrSave.get(mbb).isEmpty())
-          System.err.printf("    ");
+          System.err.print("    ");
         System.err.printf("Restore[%s] = %s\n",
             getBasicBlockName(mbb),
             stringifyCSRegSet(csrRestore.get(mbb)));
