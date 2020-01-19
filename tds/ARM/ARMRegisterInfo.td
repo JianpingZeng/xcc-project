@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2019, Jianping Zeng.
+ * Copyright (c) 2015-2020, Jianping Zeng.
  * All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without

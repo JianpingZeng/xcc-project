@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2019, Jianping Zeng.
+ * Copyright (c) 2015-2020, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2."" (the "License");
  * you may not use this file except in compliance with the License.

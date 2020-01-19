@@ -1,6 +1,6 @@
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2019, Jianping Zeng.
+ * Copyright (c) 2015-2020, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1150,7 +1150,7 @@ public final class LLParser {
   /**
    * CallingConvention
    * ///   ::= empty
-   * ///   ::= 'ccc'
+   * ///   ::= 'cc'
    * ///   ::= 'fastcc'
    * ///   ::= 'coldcc'
    * ///   ::= 'x86_stdcallcc'
@@ -1158,7 +1158,6 @@ public final class LLParser {
    * ///   ::= 'arm_apcscc'
    * ///   ::= 'arm_aapcscc'
    * ///   ::= 'arm_aapcs_vfpcc'
-   * ///   ::= 'cc' UINT
    *
    * @param cc
    * @return
