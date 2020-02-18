@@ -15,7 +15,6 @@
  * permissions and limitations under the License.
  */
 
-#include "NativeLauncher.h"
 #include <jni.h>
 #include <string.h>
 #include <libgen.h>
@@ -24,7 +23,9 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 #include "version.h"
+#include "NativeLauncher.h"
 
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
@@ -43,7 +44,10 @@ JNIEnv* createVM(char* cmdPath)
 #else
     char absolute[4086] = {0};
 #endif
-    realpath(cmdPath, absolute);
+    if (!realpath(cmdPath, absolute)) {
+        fprintf(stderr, "something get wrong on path '%s', %s", cmdPath, strerror(errno));
+        exit(errno);
+    }
 #ifdef DEBUG
     fprintf(stderr, "%s\n", absolute);
 #endif
