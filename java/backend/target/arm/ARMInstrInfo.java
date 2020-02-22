@@ -41,7 +41,9 @@ import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static backend.codegen.MachineInstrBuilder.*;
@@ -51,10 +53,65 @@ import static backend.codegen.MachineInstrBuilder.*;
  * @version 0.4
  */
 public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
+  /**
+   * Record information about MLA / MLS instructions.
+   */
+  private static class ARM_MLxEntry {
+    int mlxOpc;     // MLA / MLS opcode
+    int mulOpc;     // Expanded multiplication opcode
+    int addSubOpc;  // Expanded add / sub opcode
+    boolean negAcc;         // True if the acc is negated before the add / sub.
+    boolean hasLane;        // True if instruction has an extra "lane" operand.
+
+    ARM_MLxEntry(int mlxOpc, int mulOpc, int addSubOpc, boolean negAcc, boolean hasLane) {
+      this.mlxOpc = mlxOpc;
+      this.mulOpc = mulOpc;
+      this.addSubOpc = addSubOpc;
+      this.negAcc = negAcc;
+      this.hasLane = hasLane;
+    }
+  }
+
+  private final static ARM_MLxEntry[] ARM_MLxTable = {
+      // mlxOpc,          mulOpc,                        addSubOpc,                negAcc, hasLane
+      // fp scalar ops
+      new ARM_MLxEntry(ARMGenInstrNames.VMLAS,       ARMGenInstrNames.VMULS,       ARMGenInstrNames.VADDS,      false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLSS,       ARMGenInstrNames.VMULS,       ARMGenInstrNames.VSUBS,      false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLAD,       ARMGenInstrNames.VMULD,       ARMGenInstrNames.VADDD,      false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLSD,       ARMGenInstrNames.VMULD,       ARMGenInstrNames.VSUBD,      false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VNMLAS,      ARMGenInstrNames.VNMULS,      ARMGenInstrNames.VSUBS,      true,   false),
+      new ARM_MLxEntry(ARMGenInstrNames.VNMLSS,      ARMGenInstrNames.VMULS,       ARMGenInstrNames.VSUBS,      true,   false),
+      new ARM_MLxEntry(ARMGenInstrNames.VNMLAD,      ARMGenInstrNames.VNMULD,      ARMGenInstrNames.VSUBD,      true,   false),
+      new ARM_MLxEntry(ARMGenInstrNames.VNMLSD,      ARMGenInstrNames.VMULD,       ARMGenInstrNames.VSUBD,      true,   false),
+
+      // fp SIMD ops
+      new ARM_MLxEntry(ARMGenInstrNames.VMLAfd,      ARMGenInstrNames.VMULfd,      ARMGenInstrNames.VADDfd,     false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLSfd,      ARMGenInstrNames.VMULfd,      ARMGenInstrNames.VSUBfd,     false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLAfq,      ARMGenInstrNames.VMULfq,      ARMGenInstrNames.VADDfq,     false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLSfq,      ARMGenInstrNames.VMULfq,      ARMGenInstrNames.VSUBfq,     false,  false),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLAslfd,    ARMGenInstrNames.VMULslfd,    ARMGenInstrNames.VADDfd,     false,  true ),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLSslfd,    ARMGenInstrNames.VMULslfd,    ARMGenInstrNames.VSUBfd,     false,  true ),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLAslfq,    ARMGenInstrNames.VMULslfq,    ARMGenInstrNames.VADDfq,     false,  true ),
+      new ARM_MLxEntry(ARMGenInstrNames.VMLSslfq,    ARMGenInstrNames.VMULslfq,    ARMGenInstrNames.VSUBfq,     false,  true ),
+  };
+
   private ARMTargetMachine tm;
+  private TreeMap<Integer, Integer> mlxEntryMap;
+  private HashSet<Integer> mlxHazardOpcodes;
+
   protected ARMInstrInfo(ARMTargetMachine tm) {
     super(ARMGenInstrNames.ADJCALLSTACKDOWN, ARMGenInstrNames.ADJCALLSTACKUP);
     this.tm = tm;
+    mlxEntryMap = new TreeMap<>();
+    mlxHazardOpcodes = new HashSet<>();
+    int i = 0;
+    for (ARM_MLxEntry entry : ARM_MLxTable) {
+      Util.assertion(!mlxEntryMap.containsKey(entry.mlxOpc), "duplicated entries?");
+      mlxEntryMap.put(entry.mlxOpc, i);
+      mlxHazardOpcodes.add(entry.addSubOpc);
+      mlxHazardOpcodes.add(entry.mulOpc);
+      ++i;
+    }
   }
 
   public static TargetInstrInfo createARMInstrInfo(ARMTargetMachine tm) {
@@ -69,7 +126,8 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
                              MCRegisterClass dstRC,
                              MCRegisterClass srcRC) {
     Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg) &&
-        TargetRegisterInfo.isPhysicalRegister(dstReg), "copy virtual register should be coped with COPY!");
+        TargetRegisterInfo.isPhysicalRegister(dstReg),
+        "copy virtual register should be coped with COPY!");
     DebugLoc dl = DebugLoc.getUnknownLoc();
     if (insertPos != mbb.size())
       dl = mbb.getInstAt(insertPos).getDebugLoc();
@@ -118,7 +176,8 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
             ARMGenRegisterInfo.QQQQPRRegisterClass.contains(srcReg))) {
       TargetRegisterInfo tri = tm.getSubtarget().getRegisterInfo();
       int endSubReg = (ARMGenRegisterInfo.QQPRRegisterClass.contains(dstReg) &&
-          ARMGenRegisterInfo.QQPRRegisterClass.contains(srcReg)) ? ARMGenRegisterInfo.qsub_1 : ARMGenRegisterInfo.qsub_3;
+          ARMGenRegisterInfo.QQPRRegisterClass.contains(srcReg)) ?
+          ARMGenRegisterInfo.qsub_1 : ARMGenRegisterInfo.qsub_3;
       for (int i = ARMGenRegisterInfo.qsub_0, e = endSubReg + 1; i < e; ++i) {
         int dest = tri.getSubReg(dstReg, i);
         int src = tri.getSubReg(dstReg, i);
@@ -366,12 +425,14 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
             oldOpcode == ARMGenInstrNames.tADJCALLSTACKDOWN) {
           // PredReg is the 2'nd operand.
           int predReg = old.getOperand(2).getReg();
-          ARMFrameLowering.emitSPUpdate(isARM, old.getParent(), old.getIndexInMBB(), dl, tm.getInstrInfo(), -imm, cc, predReg);
+          ARMFrameLowering.emitSPUpdate(isARM, old.getParent(),
+              old.getIndexInMBB(), dl, tm.getInstrInfo(), -imm, cc, predReg);
         }
         else {
           // PredReg is the 3'rd operand.
           int predReg = old.getOperand(3).getReg();
-          ARMFrameLowering.emitSPUpdate(isARM, old.getParent(), old.getIndexInMBB(), dl, tm.getInstrInfo(), imm, cc, predReg);
+          ARMFrameLowering.emitSPUpdate(isARM, old.getParent(),
+              old.getIndexInMBB(), dl, tm.getInstrInfo(), imm, cc, predReg);
         }
       }
     }
@@ -455,15 +516,18 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     List<CalleeSavedInfo> tmp;
 
     // load float callee saved register.
-    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(), tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(),
+        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
     pos = emitPopInst(mbb, pos, tmp, fltOpc, 0, isVarArg, true);
 
     // load integer callee saved register area 2.
-    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea2Register(calleeSavedInfo.getReg(), tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea2Register(calleeSavedInfo.getReg(),
+        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
     pos = emitPopInst(mbb, pos, tmp, ldmOpc, ldrOpc, isVarArg, false);
 
     // load integer callee saved register area 1.
-    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea1Register(calleeSavedInfo.getReg(), tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea1Register(calleeSavedInfo.getReg(),
+        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
     pos = emitPopInst(mbb, pos, tmp, ldmOpc, ldrOpc, isVarArg, false);
     return true;
   }
@@ -579,15 +643,18 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     List<CalleeSavedInfo> tmp;
 
     // push integer callee saved register area 1.
-    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea1Register(calleeSavedInfo.getReg(), tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea1Register(calleeSavedInfo.getReg(),
+        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, pushOpc, pushOneOpc, false, 0);
 
     // push integer callee saved register area 2.
-    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea2Register(calleeSavedInfo.getReg(), tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea2Register(calleeSavedInfo.getReg(),
+        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, pushOpc, pushOneOpc, false, 0);
 
     // push float callee saved register.
-    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(), tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+    tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(),
+        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, fltOpc, 0, true, 0);
     return true;
   }
@@ -670,58 +737,318 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     return jt.get(jti).mbbs.size();
   }
 
+  static boolean isUncondBranchOpcode(int opc) {
+    return opc == ARMGenInstrNames.B || opc == ARMGenInstrNames.tB || opc == ARMGenInstrNames.t2B;
+  }
+
+  static boolean isCondBranchOpcode(int opc) {
+    return opc == ARMGenInstrNames.Bcc || opc == ARMGenInstrNames.tBcc || opc == ARMGenInstrNames.t2Bcc;
+  }
+
+  static boolean isJumpTableBranchOpcode(int opc) {
+    return opc == ARMGenInstrNames.BR_JTr || opc == ARMGenInstrNames.BR_JTm || opc == ARMGenInstrNames.BR_JTadd ||
+        opc == ARMGenInstrNames.tBR_JTr || opc == ARMGenInstrNames.t2BR_JT;
+  }
+
+  static boolean isIndirectBranchOpcode(int opc) {
+    return opc == ARMGenInstrNames.BX || opc == ARMGenInstrNames.MOVPCRX || opc == ARMGenInstrNames.tBRIND;
+  }
+
   @Override
-  public int insertBranch(MachineBasicBlock mbb, MachineBasicBlock tbb, MachineBasicBlock fbb, ArrayList<MachineOperand> cond, DebugLoc dl) {
-    return super.insertBranch(mbb, tbb, fbb, cond, dl);
+  public int insertBranch(MachineBasicBlock mbb, MachineBasicBlock tbb,
+                          MachineBasicBlock fbb, ArrayList<MachineOperand> cond, DebugLoc dl) {
+    ARMFunctionInfo afi = (ARMFunctionInfo) mbb.getParent().getInfo();
+    int bOpc = !afi.isThumbFunction() ? ARMGenInstrNames.B :
+        afi.isThumb2Function() ? ARMGenInstrNames.t2B : ARMGenInstrNames.tB;
+    int bccOpc = !afi.isThumbFunction() ? ARMGenInstrNames.Bcc :
+        afi.isThumb2Function() ? ARMGenInstrNames.t2Bcc : ARMGenInstrNames.tBcc;
+    boolean isThumb = afi.isThumbFunction() || afi.isThumb2Function();
+
+    Util.assertion(tbb != null);
+    Util.assertion(cond.size() == 2 || cond.isEmpty());
+
+    if (fbb  == null) {
+      if (cond.isEmpty()) {
+        // unconditional branch
+        if (isThumb)
+          addDefaultPred(buildMI(mbb, dl, get(bOpc)).addMBB(tbb));
+        else
+          buildMI(mbb, dl, get(bOpc)).addMBB(tbb);
+      }
+      else {
+        buildMI(mbb, dl, get(bccOpc)).addMBB(tbb).addImm(cond.get(0).getImm()).addReg(cond.get(1).getReg());
+      }
+      return 1;
+    }
+
+    // two branches.
+    buildMI(mbb, dl, get(bccOpc)).addMBB(tbb).addImm(cond.get(0).getImm()).addReg(cond.get(1).getReg());
+    if (isThumb)
+      addDefaultPred(buildMI(mbb, dl, get(bOpc)).addMBB(fbb));
+    else
+      buildMI(mbb, dl, get(bOpc)).addMBB(fbb);
+    return 2;
   }
 
   @Override
   public boolean reverseBranchCondition(ArrayList<MachineOperand> cond) {
-    return super.reverseBranchCondition(cond);
+    ARMCC.CondCodes cc = ARMCC.getCondCodes((int) cond.get(0).getImm());
+    cond.get(0).setImm(ARMCC.getOppositeCondition(cc).ordinal());
+    return false;
   }
 
   @Override
   public int removeBranch(MachineBasicBlock mbb) {
-    return super.removeBranch(mbb);
+    if (mbb.isEmpty()) return 0;
+
+    int opc = mbb.getLastInst().getOpcode();
+    if (!isUncondBranchOpcode(opc) && !isCondBranchOpcode(opc))
+      return 0;
+
+    mbb.getLastInst().removeFromParent();;
+    if (mbb.isEmpty()) return 1;
+    if (!isCondBranchOpcode(mbb.getLastInst().getOpcode()))
+      return 1;
+
+    mbb.getLastInst().removeFromParent();
+    return 2;
   }
 
   @Override
-  public boolean analyzeBranch(MachineBasicBlock mbb, MachineBasicBlock tbb, MachineBasicBlock fbb, ArrayList<MachineOperand> cond, boolean allowModify) {
-    return super.analyzeBranch(mbb, tbb, fbb, cond, allowModify);
+  public boolean analyzeBranch(MachineBasicBlock mbb, MachineBasicBlock tbb,
+                               MachineBasicBlock fbb, ArrayList<MachineOperand> cond, boolean allowModify) {
+    Util.shouldNotReachHere("analyzeBranch is not implemented for ARM as yet!");
+    return false;
   }
 
   @Override
   public boolean predicateInstruction(MachineInstr mi, ArrayList<MachineOperand> pred) {
-    return super.predicateInstruction(mi, pred);
+    int opc = mi.getOpcode();
+    if (isUncondBranchOpcode(opc)) {
+      mi.setDesc(get(getMatchingCondBranchOpcode(opc)));
+      mi.addOperand(MachineOperand.createImm(pred.get(0).getImm()));
+      mi.addOperand(MachineOperand.createReg(pred.get(1).getReg(), false, false));
+      return true;
+    }
+
+    int pIdx = mi.findFirstPredOperandIdx();
+    if (pIdx != -1) {
+      MachineOperand pmo = mi.getOperand(pIdx);
+      pmo.setImm(pred.get(0).getImm());
+      mi.getOperand(pIdx+1).setReg(pred.get(1).getReg());
+      return true;
+    }
+    return false;
+  }
+
+  static int getMatchingCondBranchOpcode(int opc) {
+    switch (opc) {
+      case ARMGenInstrNames.B:
+        return ARMGenInstrNames.Bcc;
+      case ARMGenInstrNames.tB:
+        return ARMGenInstrNames.tBcc;
+      case ARMGenInstrNames.t2B:
+        return ARMGenInstrNames.t2Bcc;
+      default:
+        Util.shouldNotReachHere("unknown unconditional branch opcode");
+        return 0;
+    }
   }
 
   @Override
   public boolean isPredicated(MachineInstr mi) {
-    return super.isPredicated(mi);
+    int pidx = mi.findFirstPredOperandIdx();
+    return pidx != -1 && mi.getOperand(pidx).getImm() != ARMCC.CondCodes.AL.ordinal();
   }
 
   @Override
   public int isLoadFromStackSlot(MachineInstr mi, OutRef<Integer> frameIndex) {
-    return super.isLoadFromStackSlot(mi, frameIndex);
+    switch (mi.getOpcode()) {
+      default:break;
+      case ARMGenInstrNames.LDRrs:
+      case ARMGenInstrNames.t2LDRs:
+        if (mi.getOperand(1).isFrameIndex() &&
+            mi.getOperand(2).isRegister() &&
+            mi.getOperand(3).isImm() &&
+            mi.getOperand(2).getReg() == 0 &&
+            mi.getOperand(3).getImm() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+        break;
+      case ARMGenInstrNames.LDRi12:
+      case ARMGenInstrNames.t2LDRi12:
+      case ARMGenInstrNames.tLDRspi:
+      case ARMGenInstrNames.VLDRD:
+      case ARMGenInstrNames.VLDRS:
+        if (mi.getOperand(1).isFrameIndex() &&
+            mi.getOperand(2).isImm() &&
+            mi.getOperand(2).getImm() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+        break;
+      case ARMGenInstrNames.VLD1q64Pseudo:
+      case ARMGenInstrNames.VLDMQIA:
+        if (mi.getOperand(1).isFrameIndex() &&
+            mi.getOperand(0).getSubReg() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+        break;
+    }
+    return 0;
   }
 
   @Override
   public int isStoreToStackSlot(MachineInstr mi, OutRef<Integer> frameIndex) {
-    return super.isStoreToStackSlot(mi, frameIndex);
+    switch (mi.getOpcode()) {
+      default:break;
+      case ARMGenInstrNames.STRrs:
+      case ARMGenInstrNames.t2STRs:
+        if (mi.getOperand(1).isFrameIndex() &&
+            mi.getOperand(2).isRegister() &&
+            mi.getOperand(3).isImm() &&
+            mi.getOperand(2).getReg() == 0 &&
+            mi.getOperand(3).getImm() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+        break;
+      case ARMGenInstrNames.STRi12:
+      case ARMGenInstrNames.t2STRi12:
+      case ARMGenInstrNames.tSTRspi:
+      case ARMGenInstrNames.VSTRD:
+      case ARMGenInstrNames.VSTRS:
+        if (mi.getOperand(1).isFrameIndex() &&
+            mi.getOperand(2).isImm() &&
+            mi.getOperand(2).getImm() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+        break;
+      case ARMGenInstrNames.VST1q64Pseudo:
+      case ARMGenInstrNames.VSTMQIA:
+        if (mi.getOperand(1).isFrameIndex() &&
+            mi.getOperand(0).getSubReg() == 0) {
+          frameIndex.set(mi.getOperand(1).getIndex());
+          return mi.getOperand(0).getReg();
+        }
+        break;
+    }
+    return 0;
+  }
+
+  static int duplicateCPV(MachineFunction mf, OutRef<Integer> cpi) {
+    MachineConstantPool mcp = mf.getConstantPool();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+
+    MachineConstantPoolEntry mcpe = mcp.getConstants().get(cpi.get());
+    Util.assertion(mcpe.isMachineConstantPoolEntry(), "expecting a machine constantpool entry!");
+    ARMConstantPoolValue armPV = (ARMConstantPoolValue) mcpe.getValueAsCPV();
+
+    int pcLabelId = afi.createPICLabelUId();
+    ARMConstantPoolValue newCPV = null;
+    if (armPV.isGlobalValue()) {
+      newCPV = ARMConstantPoolConstant.create(((ARMConstantPoolConstant) armPV).getGlobalValue(),
+          pcLabelId, ARMConstantPoolValue.ARMCP.ARMCPKind.CPValue, 4);
+    }
+    else if (armPV.isExtSymbol()) {
+      newCPV = ARMConstantPoolSymbol.create(mf.getFunction().getContext(),
+          ((ARMConstantPoolSymbol) armPV).getSymbol(),
+          pcLabelId, 4);
+    }
+    else if (armPV.isBlockAddress()) {
+      newCPV = ARMConstantPoolConstant.create(((ARMConstantPoolConstant) armPV).getBlockAddress(),
+          pcLabelId, ARMConstantPoolValue.ARMCP.ARMCPKind.CPBlockAddress, 4);
+    }
+    else if (armPV.isLSDA()) {
+      newCPV = ARMConstantPoolConstant.create(mf.getFunction(),
+          pcLabelId, ARMConstantPoolValue.ARMCP.ARMCPKind.CPLSDA, 4);
+    }
+    else if (armPV.isMachineBasicBlock()) {
+      newCPV = ARMConstantPoolMBB.create(mf.getFunction().getContext(), ((ARMConstantPoolMBB)armPV).getMBB(), pcLabelId, 4);
+    }
+    else {
+      Util.shouldNotReachHere("Unexpected ARM constantpool value type!");
+    }
+    cpi.set(mcp.getConstantPoolIndex(newCPV, mcpe.getAlignment()));
+    return pcLabelId;
   }
 
   @Override
   public void reMaterialize(MachineBasicBlock mbb, int insertPos, int destReg, int subIdx, MachineInstr origin) {
-    super.reMaterialize(mbb, insertPos, destReg, subIdx, origin);
+    int opcode = origin.getOpcode();
+    switch (opcode) {
+      default: {
+        MachineInstr mi = origin.clone();
+        mi.substituteRegister(origin.getOperand(0).getReg(), destReg, subIdx, tm.getRegisterInfo());
+        mbb.insert(insertPos, mi);
+        break;
+      }
+      case ARMGenInstrNames.tLDRpci_pic:
+      case ARMGenInstrNames.t2LDRpci_pic: {
+        int cpi = origin.getOperand(1).getIndex();
+        OutRef<Integer> tmp = new OutRef<>(cpi);
+        int pcLabelId = duplicateCPV(mbb.getParent(), tmp);
+        cpi = tmp.get();
+        MachineInstrBuilder mib = buildMI(mbb, insertPos, origin.getDebugLoc(), get(opcode),
+            destReg).addConstantPoolIndex(pcLabelId, 0, 0).addImm(pcLabelId);
+        mib.setMemRefs(origin.getMemOperands());
+        break;
+      }
+    }
   }
 
   @Override
   public boolean subsumesPredicate(ArrayList<MachineOperand> pred1, ArrayList<MachineOperand> pred2) {
-    return super.subsumesPredicate(pred1, pred2);
+    if (pred1.size() > 2 || pred2.size() > 2)
+      return false;
+
+    ARMCC.CondCodes cc1 = ARMCC.getCondCodes((int) pred1.get(0).getImm());
+    ARMCC.CondCodes cc2 = ARMCC.getCondCodes((int) pred2.get(0).getImm());
+    if (cc1 == cc2)
+      return true;
+
+    switch (cc1) {
+      default:
+        return false;
+      case AL:
+        return true;
+      case HS:
+        return cc2 == ARMCC.CondCodes.HI;
+      case LS:
+        return cc2 == ARMCC.CondCodes.LO || cc2 == ARMCC.CondCodes.EQ;
+      case GE:
+        return cc2 == ARMCC.CondCodes.GT;
+      case LE:
+        return cc2 == ARMCC.CondCodes.LT;
+    }
   }
 
   @Override
   public boolean definesPredicate(MachineInstr mi, ArrayList<MachineOperand> pred) {
-    return super.definesPredicate(mi, pred);
+    MCInstrDesc mcid = mi.getDesc();
+    if (mcid.getImplicitDefs() == null && !mcid.hasOptionalDef())
+      return false;
+
+    boolean found = false;
+    for (int i = 0, e = mi.getNumOperands(); i < e; ++i) {
+      MachineOperand mo = mi.getOperand(i);
+      if (mo.isRegister() && mo.getReg() == ARMGenRegisterNames.CPSR) {
+        pred.add(mo);
+        found = true;
+      }
+    }
+    return found;
+  }
+
+  /**
+   * Return true if the specified opcode is a fp MLA / MLS instruction.
+   * @param opcode
+   * @return
+   */
+  public boolean isFpMLxInstruction(int opcode) {
+    return mlxEntryMap.containsKey(opcode);
   }
 }

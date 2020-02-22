@@ -53,7 +53,8 @@ public class ARMTargetMachine extends LLVMTargetMachine {
    * @param cpu
    * @param features
    */
-  protected ARMTargetMachine(Target t, String triple, String cpu, String features, RelocModel rm, CodeModel cm) {
+  protected ARMTargetMachine(Target t, String triple, String cpu,
+                             String features, RelocModel rm, CodeModel cm) {
     super(t, triple);
     subtarget = new ARMSubtarget(this, triple, cpu, features, false);
     frameInfo = new ARMFrameLowering(this);

@@ -117,6 +117,31 @@ public class ARMConstantPoolValue extends MachineConstantPoolValue {
     return 2;
   }
 
+  public ARMCP.ARMCPModifier getModifier() { return modifier; }
+  public String getModifieText() {
+    switch (modifier) {
+      case no_modifier: return "none";
+      case TLSGD: return "tlsgd";
+      case GOT: return "GOT";
+      case GOTOFF: return "GOTOFF";
+      case GOTTPOFF: return "gottpoff";
+      case TPOFF: return "tpoff";
+      default:
+        Util.shouldNotReachHere("Unknown modifier?");
+        return "";
+    }
+  }
+
+  public boolean hasModifier() { return modifier != ARMCP.ARMCPModifier.no_modifier; }
+  public boolean mustAddCurrentAddress() { return addCurrentAddress; }
+  public int getLabelID() { return labelID; }
+  public int getPCAdjust() { return pcAdjust; }
+  public boolean isGlobalValue() { return kind == ARMCP.ARMCPKind.CPValue; }
+  public boolean isExtSymbol() { return kind == ARMCP.ARMCPKind.CPExtSymbol; }
+  public boolean isBlockAddress() { return kind == ARMCP.ARMCPKind.CPBlockAddress; }
+  public boolean isLSDA() { return kind == ARMCP.ARMCPKind.CPLSDA; }
+  public boolean isMachineBasicBlock() { return kind == ARMCP.ARMCPKind.CPMachineBasicBlock; }
+
   @Override
   public int getExistingMachineCPValue(MachineConstantPool pool, int align) {
     Util.shouldNotReachHere("should be overrided by sub class");

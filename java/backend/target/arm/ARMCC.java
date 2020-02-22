@@ -77,6 +77,10 @@ public class ARMCC {
     }
   }
 
+  static CondCodes getCondCodes(int cc) {
+    return CondCodes.values()[cc];
+  }
+
   static String ARMCondCodeToString(CondCodes cc) {
     switch (cc) {
       default: Util.shouldNotReachHere("Unknown condition code");

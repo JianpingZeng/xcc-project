@@ -858,7 +858,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     return tm.getTargetLowering().getObjFileLowering();
   }
 
-  private void emitMachineConstantPoolValue(MachineConstantPoolValue cpv) {
+  protected void emitMachineConstantPoolValue(MachineConstantPoolValue cpv) {
     Util.shouldNotReachHere("Target does not support EmitMachineConstantPoolValue");
   }
 

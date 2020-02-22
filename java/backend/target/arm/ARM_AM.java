@@ -217,7 +217,7 @@ public class ARM_AM {
     return ShiftOpc.values()[(int) imm & 7];
   }
 
-  static long getSORegShOpc(ShiftOpc shOp, long imm) {
+  static long getSORegOpc(ShiftOpc shOp, long imm) {
     return shOp.ordinal() | (imm << 3);
   }
 
@@ -227,6 +227,16 @@ public class ARM_AM {
 
   static int getAM2IdxMode(long am2Opc) {
     return (int) (am2Opc >>> 16);
+  }
+
+  static int getSOImmTwoPartFirst(int val) {
+    return rotr32(255, getSOImmValRotate(val)) & val;
+  }
+
+  static int getSOImmTwoPartSecond(int val) {
+    val = rotr32(~255, getSOImmValRotate(val) & val);
+    Util.assertion(val == (rotr32(255, getSOImmValRotate(val)) & val));
+    return val;
   }
 
   public enum ShiftOpc {

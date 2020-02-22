@@ -8,6 +8,8 @@ import backend.value.GlobalValue;
 import backend.value.MDNode;
 import tools.Util;
 
+import java.util.ArrayList;
+
 import static backend.codegen.MachineMemOperand.MOLoad;
 import static backend.codegen.MachineMemOperand.MOStore;
 
@@ -295,5 +297,10 @@ public final class MachineInstrBuilder {
   public MachineInstrBuilder setMIFlags(int flags) {
     mi.setFlag(flags);
     return this;
+  }
+
+  public void setMemRefs(ArrayList<MachineMemOperand> memOperands) {
+    mi.getMemOperands().clear();
+    mi.getMemOperands().addAll(memOperands);
   }
 }

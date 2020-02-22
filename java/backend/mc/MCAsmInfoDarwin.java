@@ -16,8 +16,6 @@ package backend.mc;
  * permissions and limitations under the License.
  */
 
-import backend.mc.MCAsmInfo;
-
 import static backend.mc.MCAsmInfo.MCSymbolAttr.MCSA_Global;
 import static backend.mc.MCAsmInfo.MCSymbolAttr.MCSA_PrivateExtern;
 
@@ -48,6 +46,13 @@ public class MCAsmInfoDarwin extends MCAsmInfo {
     ZeroDirective = "\t.space\t";  // ".space N" emits N zeros.
     HasMachoZeroFillDirective = true;  // Uses .zerofill
     HasStaticCtorDtorReferenceInStaticMode = true;
+
+    CodeBegin = "L$start$code$";
+    DataBegin = "L$start$data$";
+    JT8Begin  = "L$start$jt8$";
+    JT16Begin = "L$start$jt16$";
+    JT32Begin = "L$start$jt32$";
+    SupportsDataRegions = true;
 
     HiddenVisibilityAttr = MCSA_PrivateExtern;
     // Doesn't support protected visibility.

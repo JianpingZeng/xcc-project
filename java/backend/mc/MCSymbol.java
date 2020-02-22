@@ -231,5 +231,9 @@ public class MCSymbol {
                                      SectionKind kind) {
       return getMachOSection(segment, section, typeAndAttributes, 0, kind);
     }
+
+    public MCAsmInfo getAsmInfo() {
+      return mai;
+    }
   }
 }

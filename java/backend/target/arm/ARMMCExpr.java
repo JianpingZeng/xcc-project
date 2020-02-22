@@ -39,7 +39,7 @@ import java.io.PrintStream;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public class ARMExpr extends MCTargetExpr {
+public class ARMMCExpr extends MCTargetExpr {
   public interface VariantKind {
     int VK_ARM_None = 0;
     int VK_ARM_HI16 = 1;  // The R_ARM_MOVT_ABS relocation (:upper16: in the .s file)
@@ -49,21 +49,21 @@ public class ARMExpr extends MCTargetExpr {
   private int kind;
   private MCExpr expr;
 
-  private ARMExpr(int kind, MCExpr expr) {
+  private ARMMCExpr(int kind, MCExpr expr) {
     this.kind = kind;
     this.expr = expr;
   }
 
-  public static ARMExpr create(int kind,
-                        MCExpr expr) {
-    return new ARMExpr(kind, expr);
+  public static ARMMCExpr create(int kind,
+                                 MCExpr expr) {
+    return new ARMMCExpr(kind, expr);
   }
 
-  public static ARMExpr createExprLower16(MCExpr expr) {
+  public static ARMMCExpr createLower16(MCExpr expr) {
     return create(VariantKind.VK_ARM_LO16, expr);
   }
 
-  public static ARMExpr createExprUpper16(MCExpr expr) {
+  public static ARMMCExpr createUpper16(MCExpr expr) {
     return create(VariantKind.VK_ARM_HI16, expr);
   }
 

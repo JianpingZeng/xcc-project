@@ -156,6 +156,20 @@ public class MCAsmInfo {
   protected String Code32Directive;             // Defaults to ".code32"
   protected String Code64Directive;             // Defaults to ".code64"
 
+  /**
+   * These magic labels are used to marked a region as
+   * data or code, and are used to provide additional information for
+   * correct disassembly on targets that like to mix data and code within
+   * a segment.  These labels will be implicitly suffixed by the streamer
+   * to give them unique names.
+   */
+    protected String DataBegin;                   // Defaults to "$d."
+    protected String CodeBegin;                   // Defaults to "$a."
+    protected String JT8Begin;                    // Defaults to "$a."
+    protected String JT16Begin;                   // Defaults to "$a."
+    protected String JT32Begin;                   // Defaults to "$a."
+    protected boolean SupportsDataRegions;
+  
   /// GPRel32Directive - if non-null, a directive that is used to emit a word
   /// which should be relocated as a 32-bit GP-relative offset, e.g. .gpword
   /// on Mips or .gprel32 on Alpha.
@@ -328,6 +342,12 @@ public class MCAsmInfo {
     Code16Directive = "\t.code16\t";
     Code32Directive = "\t.code32\t";
     Code64Directive = "\t.code64\t";
+    DataBegin = "$d.";
+    CodeBegin = "$a.";
+    JT8Begin = "$d.";
+    JT16Begin = "$d.";
+    JT32Begin = "$d.";
+    SupportsDataRegions = false;
     SunStyleELFSectionSwitchSyntax = false;
     UsesELFSectionDirectiveForBSS = false;
     AlignDirective = "\t.align\t";
@@ -638,5 +658,29 @@ public class MCAsmInfo {
 
   public boolean isLittleEndian() {
     return isLittleEndian;
+  }
+
+  public boolean isSupportsDataRegions() {
+    return SupportsDataRegions;
+  }
+
+  public String getCodeBeginLabelName() {
+    return CodeBegin;
+  }
+
+  public String getDataBeginLabelName() {
+    return DataBegin;
+  }
+
+  public String getJumpTable8RegionLabel() {
+    return JT8Begin;
+  }
+
+  public String getJumpTable16RegionLabel() {
+    return JT16Begin;
+  }
+
+  public String getJumpTable32RegionLabel() {
+    return JT32Begin;
   }
 }

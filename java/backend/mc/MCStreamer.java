@@ -142,4 +142,82 @@ public abstract class MCStreamer {
   }
 
   public abstract void emitThumbFunc(MCSymbol func);
+
+  /**
+   * Indicator of whether the previous data-or-code indicator was for
+   * code or not.  Used to determine when we need to emit a new indicator.
+   */
+  protected enum DataType {
+    Data,
+    Code,
+    JumpTable8,
+    JumpTable16,
+    JumpTable32
+  }
+  protected DataType regionIndicator;
+  protected int uniqueCodeBeginSuffix;
+  protected int uniqueDataBeginSuffix;
+
+  public void emitCodeRegion() {
+    if (regionIndicator == DataType.Code) return;
+
+    MCSymbol.MCContext ctx = getContext();
+    MCAsmInfo mai = ctx.getAsmInfo();
+    if (!mai.isSupportsDataRegions()) return;
+
+    // generate a unique symbol name.
+    MCSymbol sym = ctx.getOrCreateSymbol(mai.getCodeBeginLabelName() +
+        (uniqueCodeBeginSuffix++));
+    emitLabel(sym);
+    regionIndicator = DataType.Code;
+  }
+
+  public void emitDataRegion() {
+    if (regionIndicator == DataType.Data) return;
+
+    MCSymbol.MCContext ctx = getContext();
+    MCAsmInfo mai = ctx.getAsmInfo();
+    if (!mai.isSupportsDataRegions()) return;
+
+    // generate a unique symbol name.
+    MCSymbol sym = ctx.getOrCreateSymbol(mai.getDataBeginLabelName() +
+        (uniqueDataBeginSuffix++));
+    emitLabel(sym);
+    regionIndicator = DataType.Data;
+  }
+
+  public void emitJumpTable8Region() {
+    if (regionIndicator == DataType.JumpTable8) return;
+
+    MCAsmInfo mai = context.getAsmInfo();
+    if (!mai.isSupportsDataRegions()) return;
+    // generate a unique symbol name.
+    MCSymbol sym = context.getOrCreateSymbol(mai.getJumpTable8RegionLabel() +
+        (uniqueDataBeginSuffix++));
+    emitLabel(sym);
+    regionIndicator = DataType.JumpTable8;
+  }
+  public void emitJumpTable16Region() {
+    if (regionIndicator == DataType.JumpTable16) return;
+
+    MCAsmInfo mai = context.getAsmInfo();
+    if (!mai.isSupportsDataRegions()) return;
+    // generate a unique symbol name.
+    MCSymbol sym = context.getOrCreateSymbol(mai.getJumpTable16RegionLabel() +
+        (uniqueDataBeginSuffix++));
+    emitLabel(sym);
+    regionIndicator = DataType.JumpTable16;
+  }
+
+  public void emitJumpTable32Region() {
+    if (regionIndicator == DataType.JumpTable32) return;
+
+    MCAsmInfo mai = context.getAsmInfo();
+    if (!mai.isSupportsDataRegions()) return;
+    // generate a unique symbol name.
+    MCSymbol sym = context.getOrCreateSymbol(mai.getJumpTable32RegionLabel() +
+        (uniqueDataBeginSuffix++));
+    emitLabel(sym);
+    regionIndicator = DataType.JumpTable32;
+  }
 }

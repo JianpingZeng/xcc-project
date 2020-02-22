@@ -31,8 +31,12 @@ import backend.codegen.*;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
+import backend.support.LLVMContext;
 import backend.target.TargetFrameLowering;
 import backend.target.TargetRegisterInfo;
+import backend.type.Type;
+import backend.value.Constant;
+import backend.value.ConstantInt;
 import tools.BitMap;
 import tools.OutRef;
 import tools.Util;
@@ -40,7 +44,7 @@ import tools.commandline.BooleanOpt;
 import tools.commandline.OptionHidden;
 import tools.commandline.OptionHiddenApplicator;
 
-import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.codegen.MachineInstrBuilder.*;
 import static backend.target.TargetOptions.EnableRealignStack;
 import static backend.target.arm.ARMGenRegisterNames.*;
 import static tools.commandline.Desc.desc;
@@ -51,7 +55,7 @@ import static tools.commandline.OptionNameApplicator.optionName;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
+public abstract class ARMRegisterInfo extends TargetRegisterInfo {
 
   private static final BooleanOpt ForceAllBaseRegAlloc = new BooleanOpt(
       optionName("arm-force-base-reg-alloc"),
@@ -75,6 +79,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   private int basePtr;
   private ARMSubtarget subtarget;
   private ARMFrameLowering tfl;
+
   protected ARMRegisterInfo(ARMTargetMachine tm) {
     this.subtarget = tm.getSubtarget();
     framePtr = subtarget.isTargetDarwin() || subtarget.isThumb() ?
@@ -90,23 +95,23 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   private static final int[] CalleeSavedRegs = {
       ARMGenRegisterNames.LR,
       ARMGenRegisterNames.R11, ARMGenRegisterNames.R10, ARMGenRegisterNames.R9, ARMGenRegisterNames.R8,
-      ARMGenRegisterNames.R7, ARMGenRegisterNames.R6,  ARMGenRegisterNames.R5,  ARMGenRegisterNames.R4,
+      ARMGenRegisterNames.R7, ARMGenRegisterNames.R6, ARMGenRegisterNames.R5, ARMGenRegisterNames.R4,
 
       ARMGenRegisterNames.D15, ARMGenRegisterNames.D14, ARMGenRegisterNames.D13, ARMGenRegisterNames.D12,
-      ARMGenRegisterNames.D11, ARMGenRegisterNames.D10, ARMGenRegisterNames.D9,  ARMGenRegisterNames.D8,
+      ARMGenRegisterNames.D11, ARMGenRegisterNames.D10, ARMGenRegisterNames.D9, ARMGenRegisterNames.D8,
   };
 
   private static final int[] DarwinCalleeSavedRegs = {
       // Darwin ABI deviates from ARM standard ABI. R9 is not a callee-saved
       // register.
       ARMGenRegisterNames.LR,
-      ARMGenRegisterNames.R7,  ARMGenRegisterNames.R6, ARMGenRegisterNames.R5, ARMGenRegisterNames.R4,
+      ARMGenRegisterNames.R7, ARMGenRegisterNames.R6, ARMGenRegisterNames.R5, ARMGenRegisterNames.R4,
       ARMGenRegisterNames.R11, ARMGenRegisterNames.R10, ARMGenRegisterNames.R8,
 
       ARMGenRegisterNames.D15, ARMGenRegisterNames.D14, ARMGenRegisterNames.D13, ARMGenRegisterNames.D12,
-      ARMGenRegisterNames.D11, ARMGenRegisterNames.D10, ARMGenRegisterNames.D9,  ARMGenRegisterNames.D8,
+      ARMGenRegisterNames.D11, ARMGenRegisterNames.D10, ARMGenRegisterNames.D9, ARMGenRegisterNames.D8,
   };
-  
+
   @Override
   public int[] getCalleeSavedRegs(MachineFunction mf) {
     return subtarget.isTargetDarwin() ? DarwinCalleeSavedRegs : CalleeSavedRegs;
@@ -125,7 +130,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   private final MCRegisterClass[] ThumbCalleeSavedRegClasses = {
       ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
       ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass,
-      ARMGenRegisterInfo.tGPRRegisterClass,ARMGenRegisterInfo.tGPRRegisterClass,ARMGenRegisterInfo.tGPRRegisterClass,
+      ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass,
 
       ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
       ARMGenRegisterInfo.DPRRegisterClass,
@@ -144,9 +149,9 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   };
 
   private final MCRegisterClass[] DarwinThumbCalleeSavedRegClasses = {
-      ARMGenRegisterInfo.GPRRegisterClass,  ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass,
       ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.tGPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
-      ARMGenRegisterInfo.GPRRegisterClass,  ARMGenRegisterInfo.GPRRegisterClass,
+      ARMGenRegisterInfo.GPRRegisterClass, ARMGenRegisterInfo.GPRRegisterClass,
 
       ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
       ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass, ARMGenRegisterInfo.DPRRegisterClass,
@@ -179,7 +184,8 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
 
   public boolean isReservedReg(MachineFunction mf, int reg) {
     switch (reg) {
-      default: break;
+      default:
+        break;
       case ARMGenRegisterNames.SP:
       case ARMGenRegisterNames.PC:
         return true;
@@ -198,7 +204,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     MachineBasicBlock mbb = mi.getParent();
     MachineFrameInfo mfi = mf.getFrameInfo();
     ARMFrameLowering tfi = (ARMFrameLowering) mf.getTarget().getFrameLowering();
-    ARMFunctionInfo afi = (ARMFunctionInfo)mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
     Util.assertion(!afi.isThumb1OnlyFunction(), "This eliminateFrameIndex doesn't support Thumb1!");
 
     int i = 0;
@@ -231,8 +237,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       OutRef<Integer> ref = new OutRef<>(offset);
       done = rewriteARMFrameIndex(mi, i, frameReg, ref, subtarget.getInstrInfo());
       offset = ref.get();
-    }
-    else {
+    } else {
       Util.assertion(afi.isThumb2Function());
       OutRef<Integer> ref = new OutRef<>(offset);
       done = rewriteT2FrameIndex(mi, i, frameReg, ref, subtarget.getInstrInfo());
@@ -250,7 +255,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     int scratchReg;
     int pIdx = mi.findFirstPredOperandIdx();
     ARMCC.CondCodes pred = pIdx == -1 ? ARMCC.CondCodes.AL : ARMCC.CondCodes.values()[(int) mi.getOperand(pIdx).getImm()];
-    int predReg = pIdx == -1 ? 0 : mi.getOperand(pIdx+1).getReg();
+    int predReg = pIdx == -1 ? 0 : mi.getOperand(pIdx + 1).getReg();
     if (offset == 0)
       // must be addrmode 4/6
       mi.getOperand(i).changeToRegister(frameReg, false, false, false, false, false);
@@ -281,7 +286,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       addrMode = ARMII.AddrMode.AddrModeT2_i12;
 
     if (opcode == ARMGenInstrNames.t2ADDri || opcode == ARMGenInstrNames.t2ADDri12) {
-      offset.set((int) (offset.get() + mi.getOperand(frameRegIdx+1).getImm()));
+      offset.set((int) (offset.get() + mi.getOperand(frameRegIdx + 1).getImm()));
 
       OutRef<Integer> predReg = new OutRef<>();
       if (offset.get() == 0 && getInstrPredicate(mi, predReg) == ARMCC.CondCodes.AL) {
@@ -290,8 +295,8 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
         mi.getOperand(frameRegIdx).changeToRegister(frameReg, false);
         // Remove offset and remaining explicit predicate operands.
         do {
-          mi.removeOperand(frameRegIdx+1);
-        }while (mi.getNumOperands() > frameRegIdx+1);
+          mi.removeOperand(frameRegIdx + 1);
+        } while (mi.getNumOperands() > frameRegIdx + 1);
         addDefaultPred(new MachineInstrBuilder(mi));
         return true;
       }
@@ -301,15 +306,14 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
         offset.set(-offset.get());
         isSub = true;
         mi.setDesc(tii.get(ARMGenInstrNames.t2SUBri));
-      }
-      else {
+      } else {
         mi.setDesc(tii.get(ARMGenInstrNames.t2ADDri));
       }
 
       // Common case: small offset, fits into instruction.
       if (ARM_AM.getT2SOImmVal(offset.get()) != -1) {
         mi.getOperand(frameRegIdx).changeToRegister(frameReg, false);
-        mi.getOperand(frameRegIdx+1).changeToImmediate(offset.get());
+        mi.getOperand(frameRegIdx + 1).changeToImmediate(offset.get());
         if (!hasCCOut)
           mi.addOperand(MachineOperand.createReg(0, false, false));
         offset.set(0);
@@ -317,14 +321,14 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       }
 
       // Another common case: imm12.
-      if (offset.get() < 4096 && (!hasCCOut || mi.getOperand(mi.getNumOperands()-1).getReg() == 0)) {
+      if (offset.get() < 4096 && (!hasCCOut || mi.getOperand(mi.getNumOperands() - 1).getReg() == 0)) {
         int newOpc = isSub ? ARMGenInstrNames.t2SUBri12 : ARMGenInstrNames.t2ADDri12;
         mi.setDesc(tii.get(newOpc));
         mi.getOperand(frameRegIdx).changeToRegister(frameReg, false);
-        mi.getOperand(frameRegIdx+1).changeToImmediate(offset.get());
+        mi.getOperand(frameRegIdx + 1).changeToImmediate(offset.get());
         // remove cc_out operand.
         if (hasCCOut)
-          mi.removeOperand(mi.getNumOperands()-1);
+          mi.removeOperand(mi.getNumOperands() - 1);
         offset.set(0);
         return true;
       }
@@ -337,7 +341,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       // we will cope with there bits from offset, clear them.
       offset.set(offset.get() & ~thisImmVal);
       Util.assertion(ARM_AM.getT2SOImmVal(thisImmVal) != -1, "bit extract didn't work?");
-      mi.getOperand(frameRegIdx+1).changeToImmediate(thisImmVal);
+      mi.getOperand(frameRegIdx + 1).changeToImmediate(thisImmVal);
 
       // add cc_out operand if the original instruction doesn't have it.
       if (!hasCCOut)
@@ -368,21 +372,19 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
         // i8 supports only negative, and i12 supports only positive, so
         // based on Offset sign convert Opcode to the appropriate
         // instruction
-        offset.set((int) (offset.get() + mi.getOperand(frameRegIdx+1).getImm()));
+        offset.set((int) (offset.get() + mi.getOperand(frameRegIdx + 1).getImm()));
         if (offset.get() < 0) {
           newOpc = negativeOffsetOpcode(opcode);
           numBits = 8;
           isSub = true;
           offset.set(-offset.get());
-        }
-        else {
+        } else {
           newOpc = positiveOffsetOpcode(opcode);
           numBits = 12;
         }
-      }
-      else if (addrMode == ARMII.AddrMode.AddrMode5) {
+      } else if (addrMode == ARMII.AddrMode.AddrMode5) {
         // VFP address mode.
-        MachineOperand offMO = mi.getOperand(frameRegIdx+1);
+        MachineOperand offMO = mi.getOperand(frameRegIdx + 1);
         int instrOffset = ARM_AM.getAM5Offset((int) offMO.getImm());
         if (ARM_AM.getAM5Op((int) offMO.getImm()) == ARM_AM.AddrOpc.sub)
           instrOffset *= -1;
@@ -395,14 +397,13 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
           offset.set(-offset.get());
           isSub = true;
         }
-      }
-      else
+      } else
         Util.shouldNotReachHere("unsupported addressing mode");
 
       if (newOpc != opcode)
         mi.setDesc(tii.get(newOpc));
 
-      MachineOperand immOp = mi.getOperand(frameRegIdx+1);
+      MachineOperand immOp = mi.getOperand(frameRegIdx + 1);
       // Attempt to fold address computation
       // Common case: small offset, fits into instruction.
       int immOffset = offset.get() / scale;
@@ -445,14 +446,22 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
 
   private static int negativeOffsetOpcode(int opcode) {
     switch (opcode) {
-      case ARMGenInstrNames.t2LDRi12:   return ARMGenInstrNames.t2LDRi8;
-      case ARMGenInstrNames.t2LDRHi12:  return ARMGenInstrNames.t2LDRHi8;
-      case ARMGenInstrNames.t2LDRBi12:  return ARMGenInstrNames.t2LDRBi8;
-      case ARMGenInstrNames.t2LDRSHi12: return ARMGenInstrNames.t2LDRSHi8;
-      case ARMGenInstrNames.t2LDRSBi12: return ARMGenInstrNames.t2LDRSBi8;
-      case ARMGenInstrNames.t2STRi12:   return ARMGenInstrNames.t2STRi8;
-      case ARMGenInstrNames.t2STRBi12:  return ARMGenInstrNames.t2STRBi8;
-      case ARMGenInstrNames.t2STRHi12:  return ARMGenInstrNames.t2STRHi8;
+      case ARMGenInstrNames.t2LDRi12:
+        return ARMGenInstrNames.t2LDRi8;
+      case ARMGenInstrNames.t2LDRHi12:
+        return ARMGenInstrNames.t2LDRHi8;
+      case ARMGenInstrNames.t2LDRBi12:
+        return ARMGenInstrNames.t2LDRBi8;
+      case ARMGenInstrNames.t2LDRSHi12:
+        return ARMGenInstrNames.t2LDRSHi8;
+      case ARMGenInstrNames.t2LDRSBi12:
+        return ARMGenInstrNames.t2LDRSBi8;
+      case ARMGenInstrNames.t2STRi12:
+        return ARMGenInstrNames.t2STRi8;
+      case ARMGenInstrNames.t2STRBi12:
+        return ARMGenInstrNames.t2STRBi8;
+      case ARMGenInstrNames.t2STRHi12:
+        return ARMGenInstrNames.t2STRHi8;
 
       case ARMGenInstrNames.t2LDRi8:
       case ARMGenInstrNames.t2LDRHi8:
@@ -473,14 +482,22 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
 
   private static int positiveOffsetOpcode(int opcode) {
     switch (opcode) {
-      case ARMGenInstrNames.t2LDRi8:   return ARMGenInstrNames.t2LDRi12;
-      case ARMGenInstrNames.t2LDRHi8:  return ARMGenInstrNames.t2LDRHi12;
-      case ARMGenInstrNames.t2LDRBi8:  return ARMGenInstrNames.t2LDRBi12;
-      case ARMGenInstrNames.t2LDRSHi8: return ARMGenInstrNames.t2LDRSHi12;
-      case ARMGenInstrNames.t2LDRSBi8: return ARMGenInstrNames.t2LDRSBi12;
-      case ARMGenInstrNames.t2STRi8:   return ARMGenInstrNames.t2STRi12;
-      case ARMGenInstrNames.t2STRBi8:  return ARMGenInstrNames.t2STRBi12;
-      case ARMGenInstrNames.t2STRHi8:  return ARMGenInstrNames.t2STRHi12;
+      case ARMGenInstrNames.t2LDRi8:
+        return ARMGenInstrNames.t2LDRi12;
+      case ARMGenInstrNames.t2LDRHi8:
+        return ARMGenInstrNames.t2LDRHi12;
+      case ARMGenInstrNames.t2LDRBi8:
+        return ARMGenInstrNames.t2LDRBi12;
+      case ARMGenInstrNames.t2LDRSHi8:
+        return ARMGenInstrNames.t2LDRSHi12;
+      case ARMGenInstrNames.t2LDRSBi8:
+        return ARMGenInstrNames.t2LDRSBi12;
+      case ARMGenInstrNames.t2STRi8:
+        return ARMGenInstrNames.t2STRi12;
+      case ARMGenInstrNames.t2STRBi8:
+        return ARMGenInstrNames.t2STRBi12;
+      case ARMGenInstrNames.t2STRHi8:
+        return ARMGenInstrNames.t2STRHi12;
 
       case ARMGenInstrNames.t2LDRi12:
       case ARMGenInstrNames.t2LDRHi12:
@@ -498,17 +515,25 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
 
     return 0;
   }
-  
+
   private static int immediateOffsetOpcode(int opcode) {
     switch (opcode) {
-      case ARMGenInstrNames.t2LDRs:   return ARMGenInstrNames.t2LDRi12;
-      case ARMGenInstrNames.t2LDRHs:  return ARMGenInstrNames.t2LDRHi12;
-      case ARMGenInstrNames.t2LDRBs:  return ARMGenInstrNames.t2LDRBi12;
-      case ARMGenInstrNames.t2LDRSHs: return ARMGenInstrNames.t2LDRSHi12;
-      case ARMGenInstrNames.t2LDRSBs: return ARMGenInstrNames.t2LDRSBi12;
-      case ARMGenInstrNames.t2STRs:   return ARMGenInstrNames.t2STRi12;
-      case ARMGenInstrNames.t2STRBs:  return ARMGenInstrNames.t2STRBi12;
-      case ARMGenInstrNames.t2STRHs:  return ARMGenInstrNames.t2STRHi12;
+      case ARMGenInstrNames.t2LDRs:
+        return ARMGenInstrNames.t2LDRi12;
+      case ARMGenInstrNames.t2LDRHs:
+        return ARMGenInstrNames.t2LDRHi12;
+      case ARMGenInstrNames.t2LDRBs:
+        return ARMGenInstrNames.t2LDRBi12;
+      case ARMGenInstrNames.t2LDRSHs:
+        return ARMGenInstrNames.t2LDRSHi12;
+      case ARMGenInstrNames.t2LDRSBs:
+        return ARMGenInstrNames.t2LDRSBi12;
+      case ARMGenInstrNames.t2STRs:
+        return ARMGenInstrNames.t2STRi12;
+      case ARMGenInstrNames.t2STRBs:
+        return ARMGenInstrNames.t2STRBi12;
+      case ARMGenInstrNames.t2STRHs:
+        return ARMGenInstrNames.t2STRHi12;
 
       case ARMGenInstrNames.t2LDRi12:
       case ARMGenInstrNames.t2LDRHi12:
@@ -535,14 +560,14 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     return 0;
   }
 
-  private ARMCC.CondCodes getInstrPredicate(MachineInstr mi, OutRef<Integer> predReg) {
+  public ARMCC.CondCodes getInstrPredicate(MachineInstr mi, OutRef<Integer> predReg) {
     int idx = mi.findFirstPredOperandIdx();
     if (idx == -1) {
       predReg.set(0);
       return ARMCC.CondCodes.AL;
     }
 
-    predReg.set(mi.getOperand(idx+1).getReg());
+    predReg.set(mi.getOperand(idx + 1).getReg());
     return ARMCC.CondCodes.values()[(int) mi.getOperand(idx).getImm()];
   }
 
@@ -561,16 +586,15 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       addrMode = ARMII.AddrMode.AddrMode2;
 
     if (opcode == ARMGenInstrNames.ADDri) {
-      offset.set((int) (offset.get() + mi.getOperand(frameRegIdx+1).getImm()));
+      offset.set((int) (offset.get() + mi.getOperand(frameRegIdx + 1).getImm()));
       if (offset.get() == 0) {
         // turn it into a move.
         mi.setDesc(tii.get(ARMGenInstrNames.MOVr));
         mi.getOperand(frameRegIdx).changeToRegister(frameReg, false);
-        mi.removeOperand(frameRegIdx+1);
+        mi.removeOperand(frameRegIdx + 1);
         offset.set(0);
         return true;
-      }
-      else if (offset.get() < 0) {
+      } else if (offset.get() < 0) {
         offset.set(-offset.get());
         isSub = true;
         mi.setDesc(tii.get(ARMGenInstrNames.SUBri));
@@ -580,7 +604,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       if (ARM_AM.getSOImmVal(offset.get()) != -1) {
         // Replace the FrameIndex with sp / fp
         mi.getOperand(frameRegIdx).changeToRegister(frameReg, false);
-        mi.getOperand(frameRegIdx+1).changeToImmediate(offset.get());
+        mi.getOperand(frameRegIdx + 1).changeToImmediate(offset.get());
         offset.set(0);
         return true;
       }
@@ -592,9 +616,8 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
 
       offset.set(offset.get() & ~thisImmVal);
       Util.assertion(ARM_AM.getSOImmVal(thisImmVal) != -1, "bit extract didn't work?");
-      mi.getOperand(frameRegIdx+1).changeToImmediate(thisImmVal);
-    }
-    else {
+      mi.getOperand(frameRegIdx + 1).changeToImmediate(thisImmVal);
+    } else {
       int immIdx = 0;
       int instrOffset = 0;
       int numBits = 0;
@@ -650,7 +673,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
           mi.getOperand(frameRegIdx).changeToRegister(frameReg, false);
           if (isSub) {
             if (addrMode == ARMII.AddrMode.AddrMode_i12)
-              immOffset = - immOffset;
+              immOffset = -immOffset;
             else
               immOffset |= 1 << numBits;
           }
@@ -668,7 +691,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
             immOffset |= 1 << numBits;
         }
         immOp.changeToImmediate(immOffset);
-        offset.set(offset.get() & (~(mask*scale)));
+        offset.set(offset.get() & (~(mask * scale)));
       }
     }
     if (isSub)
@@ -677,46 +700,45 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   }
 
   static int emitT2RegPlusImmediate(MachineBasicBlock mbb,
-                                      int mi,
-                                      DebugLoc dl,
-                                      int destReg,
-                                      int baseReg,
-                                      int numBytes,
-                                      ARMCC.CondCodes pred,
-                                      int predReg,
-                                      ARMInstrInfo tii) {
+                                    int mi,
+                                    DebugLoc dl,
+                                    int destReg,
+                                    int baseReg,
+                                    int numBytes,
+                                    ARMCC.CondCodes pred,
+                                    int predReg,
+                                    ARMInstrInfo tii) {
     return emitT2RegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, pred, predReg, tii, 0);
   }
 
   static int emitT2RegPlusImmediate(MachineBasicBlock mbb,
-                                      int mi,
-                                      DebugLoc dl,
-                                      int destReg,
-                                      int baseReg,
-                                      int numBytes,
-                                      ARMCC.CondCodes pred,
-                                      int predReg,
-                                      ARMInstrInfo tii,
-                                      int miFlags) {
+                                    int mi,
+                                    DebugLoc dl,
+                                    int destReg,
+                                    int baseReg,
+                                    int numBytes,
+                                    ARMCC.CondCodes pred,
+                                    int predReg,
+                                    ARMInstrInfo tii,
+                                    int miFlags) {
     boolean isSub = numBytes < 0;
     if (isSub)
-      numBytes =-numBytes;
+      numBytes = -numBytes;
 
     // If profitable, use a movw or movt to materialize the offset.
     if (destReg != ARMGenRegisterNames.SP && destReg != baseReg &&
-    numBytes >= 4096 && ARM_AM.getT2SOImmVal(numBytes) == -1) {
+        numBytes >= 4096 && ARM_AM.getT2SOImmVal(numBytes) == -1) {
       boolean fits = false;
       if (numBytes < 65536) {
         // Use a movw to materialize the 16-bit constant.
         buildMI(mbb, mi++, dl, tii.get(ARMGenInstrNames.t2MOVi16), destReg)
-        .addImm(numBytes)
-        .addImm(pred.ordinal())
-        .addReg(predReg)
-        .setMIFlags(miFlags);
+            .addImm(numBytes)
+            .addImm(pred.ordinal())
+            .addReg(predReg)
+            .setMIFlags(miFlags);
         fits = true;
-      }
-      else if ((numBytes & 0xffff) == 0) {
-      // Use a movt to materialize the 32-bit constant.
+      } else if ((numBytes & 0xffff) == 0) {
+        // Use a movt to materialize the 32-bit constant.
         buildMI(mbb, mi++, dl, tii.get(ARMGenInstrNames.t2MOVTi16), destReg)
             .addReg(destReg)
             .addImm(numBytes >>> 16)
@@ -734,8 +756,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
               .addImm(pred.ordinal())
               .addReg(predReg)
               .addReg(0).setMIFlags(miFlags);
-        }
-        else {
+        } else {
           buildMI(mbb, mi, dl, tii.get(ARMGenInstrNames.t2ADDrr), destReg)
               .addReg(baseReg, MachineOperand.RegState.Kill)
               .addReg(destReg, MachineOperand.RegState.Kill)
@@ -760,8 +781,8 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
       if (baseReg == ARMGenRegisterNames.SP) {
         // sub sp, sp, #imm7
         if (destReg == ARMGenRegisterNames.SP && (thisVal < ((1 << 7) - 1) * 4)) {
-          Util.assertion((thisVal & 0x3) ==0, "stack update is not multiple of 4?");
-          addDefaultPred(buildMI(mbb, mi++, dl, tii.get(opc), destReg).addReg(baseReg).addImm(thisVal/4).setMIFlags(miFlags));
+          Util.assertion((thisVal & 0x3) == 0, "stack update is not multiple of 4?");
+          addDefaultPred(buildMI(mbb, mi++, dl, tii.get(opc), destReg).addReg(baseReg).addImm(thisVal / 4).setMIFlags(miFlags));
           numBytes = 0;
           continue;
         }
@@ -770,25 +791,21 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
         opc = isSub ? ARMGenInstrNames.t2SUBri : ARMGenInstrNames.t2ADDri;
         if (ARM_AM.getT2SOImmVal(numBytes) != -1) {
           numBytes = 0;
-        }
-        else {
+        } else {
           int rotAmt = Util.countLeadingZeros32(thisVal);
           thisVal = thisVal & ARM_AM.rotr32(0xff000000, rotAmt);
           numBytes &= ~thisVal;
           Util.assertion(ARM_AM.getT2SOImmVal(thisVal) != -1, "bit extract didn't work?");
         }
-      }
-      else {
+      } else {
         opc = isSub ? ARMGenInstrNames.t2SUBri : ARMGenInstrNames.t2ADDri;
         if (ARM_AM.getT2SOImmVal(numBytes) != -1) {
           numBytes = 0;
-        }
-        else if (thisVal < 4096) {
+        } else if (thisVal < 4096) {
           opc = isSub ? ARMGenInstrNames.t2SUBri12 : ARMGenInstrNames.t2ADDri12;
           hasCCOut = false;
           numBytes = 0;
-        }
-        else {
+        } else {
           int rotAmt = Util.countLeadingZeros32(thisVal);
           thisVal = thisVal & ARM_AM.rotr32(0xff000000, rotAmt);
           numBytes &= ~thisVal;
@@ -812,19 +829,27 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     return mib.addReg(0);
   }
 
+  static MachineInstrBuilder addDefaultT1CC(MachineInstrBuilder mib) {
+    return addDefaultT1CC(mib, false);
+  }
+
+  static MachineInstrBuilder addDefaultT1CC(MachineInstrBuilder mib, boolean isDead) {
+    return mib.addReg(ARMGenRegisterNames.CPSR, getDefRegState(true) | getDeadRegState(isDead));
+  }
+
   static MachineInstrBuilder addDefaultPred(MachineInstrBuilder mib) {
     return mib.addImm(ARMCC.CondCodes.AL.ordinal()).addReg(0);
   }
 
   static int emitARMRegPlusImmediate(MachineBasicBlock mbb,
-                                             int mi,
-                                             DebugLoc dl,
-                                             int destReg,
-                                             int baseReg,
-                                             int numBytes,
-                                             ARMCC.CondCodes cc,
-                                             int predReg,
-                                             ARMInstrInfo tii) {
+                                     int mi,
+                                     DebugLoc dl,
+                                     int destReg,
+                                     int baseReg,
+                                     int numBytes,
+                                     ARMCC.CondCodes cc,
+                                     int predReg,
+                                     ARMInstrInfo tii) {
     return emitARMRegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, cc, predReg, tii, 0);
   }
 
@@ -862,6 +887,327 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     return mi;
   }
 
+  static int emitThumbRegPlusImmediate(MachineBasicBlock mbb,
+                                       int mi,
+                                       DebugLoc dl,
+                                       int destReg,
+                                       int baseReg,
+                                       int numBytes,
+                                       ARMInstrInfo tii,
+                                       ARMRegisterInfo tri) {
+    return emitThumbRegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, tii, tri, 0);
+  }
+
+  /**
+   * Emits a series of instructions to materialize a destreg = basereg + immediate in Thumb code.
+   *
+   * @param mbb
+   * @param mi
+   * @param dl
+   * @param destReg
+   * @param baseReg
+   * @param numBytes*
+   * @param tii
+   * @param tri
+   * @param miFlags
+   * @return
+   */
+  static int emitThumbRegPlusImmediate(MachineBasicBlock mbb,
+                                       int mi,
+                                       DebugLoc dl,
+                                       int destReg,
+                                       int baseReg,
+                                       int numBytes,
+                                       ARMInstrInfo tii,
+                                       ARMRegisterInfo tri,
+                                       int miFlags) {
+    boolean isSub = numBytes < 0;
+    if (isSub)
+      numBytes = -numBytes;
+    boolean isMul4 = (numBytes & 3) == 0;
+    boolean isTwoAddr = false;
+    boolean dstNotEqBase = false;
+    int numBits = 1;
+    int scale = 1;
+    int opc = 0;
+    int extraOpc = 0;
+    boolean needCC = false;
+
+    if (destReg == baseReg && baseReg == ARMGenRegisterNames.SP) {
+      Util.assertion(isMul4, "Thumb sp inc / dec size must be multiple of 4");
+      numBits = 7;
+      scale = 4;
+      opc = isSub ? ARMGenInstrNames.tSUBspi : ARMGenInstrNames.tADDspi;
+      isTwoAddr = true;
+    } else if (!isSub && baseReg == ARMGenRegisterNames.SP) {
+      // r1 = add sp, 403
+      // =>
+      // r1 = add sp, 100 * 4
+      // r1 = add r1, 3
+      if (!isMul4) {
+        numBits &= ~3;
+        extraOpc = ARMGenInstrNames.tADDi3;
+      }
+      numBits = 8;
+      scale = 4;
+      opc = ARMGenInstrNames.tADDrSPi;
+    } else {
+      // sp = sub sp, c
+      // r1 = sub sp, c
+      // r8 = sub sp, c
+      if (destReg != baseReg)
+        dstNotEqBase = true;
+      numBits = 8;
+      if (destReg == ARMGenRegisterNames.SP) {
+        opc = isSub ? ARMGenInstrNames.tSUBspi : ARMGenInstrNames.tADDspi;
+        Util.assertion(isMul4, "Thumb sp inc /dec size must be multiple of 4");
+        numBits = 7;
+        scale = 4;
+      } else {
+        opc = isSub ? ARMGenInstrNames.tSUBi8 : ARMGenInstrNames.tADDi8;
+        numBits = 8;
+        needCC = true;
+      }
+      isTwoAddr = true;
+    }
+
+    int numMIs = calcNumMI(opc, extraOpc, numBytes, numBits, scale);
+    int threshold = destReg == ARMGenRegisterNames.SP ? 3 : 2;
+    if (numMIs > threshold) {
+      // This will expand into too many instructions. Load the immediate from a
+      // constpool entry.
+      return emitThumbRegPlusImmInReg(mbb, mi++, dl, destReg, baseReg, numBits, true, tii, tri, miFlags);
+    }
+
+    if (dstNotEqBase) {
+      if (isARMLowRegister(destReg) && isARMLowRegister(baseReg)) {
+        // If both are low registers, emit DestReg = add BaseReg, max(Imm, 7)
+        int chunk = (1 << 3) - 1;
+        int thisVal = Math.min(chunk, numBytes);
+        numBytes -= thisVal;
+        MCInstrDesc mcid = tii.get(isSub ? ARMGenInstrNames.tSUBi3 : ARMGenInstrNames.tADDi3);
+        MachineInstrBuilder mib = addDefaultT1CC(buildMI(mbb, mi++, dl, mcid, destReg).setMIFlags(miFlags));
+        addDefaultPred(mib.addReg(baseReg, getKillRegState(true)).addImm(thisVal));
+      } else {
+        addDefaultPred(buildMI(mbb, mi++, dl, tii.get(ARMGenInstrNames.tMOVr), destReg)
+            .addReg(baseReg, getKillRegState(true)).setMIFlags(miFlags));
+      }
+      baseReg = destReg;
+    }
+
+    int chunk = ((1 << numBits) - 1) * scale;
+    if (numBytes != 0) {
+      int thisVal = Math.min(numBytes, chunk);
+      numBytes -= thisVal;
+      thisVal /= scale;
+      // build the new tADD / tSUB.
+      if (isTwoAddr) {
+        MachineInstrBuilder mib = buildMI(mbb, mi++, dl, tii.get(opc), destReg);
+        if (needCC)
+          mib = addDefaultT1CC(mib);
+
+        mib.addReg(destReg).addImm(thisVal);
+        mib = addDefaultPred(mib);
+        mib.setMIFlags(miFlags);
+      } else {
+        boolean isKill = baseReg != ARMGenRegisterNames.SP;
+        MachineInstrBuilder mib = buildMI(mbb, mi++, dl, tii.get(opc), destReg);
+        if (needCC)
+          mib = addDefaultT1CC(mib);
+        mib.addReg(baseReg, getKillRegState(isKill)).addImm(thisVal);
+        mib = addDefaultPred(mib);
+        mib.setMIFlags(miFlags);
+
+        baseReg = destReg;
+        if (opc == ARMGenInstrNames.tADDrSPi) {
+          // r4 = add sp, imm
+          // r4 = add r4, imm
+          // ...
+          numBits = 8;
+          scale = 1;
+          chunk = ((1 << numBits) - 1) * scale;
+          opc = isSub ? ARMGenInstrNames.tSUBi8 : ARMGenInstrNames.tADDi8;
+          needCC = isTwoAddr = true;
+        }
+      }
+    }
+
+    if (extraOpc != 0) {
+      MCInstrDesc mcid = tii.get(extraOpc);
+      addDefaultPred(addDefaultT1CC(buildMI(mbb, mi++, dl, mcid, destReg)
+          .addReg(destReg, getKillRegState(true))
+          .addImm(numBytes & 3)
+          .setMIFlags(miFlags)));
+    }
+    return mi;
+  }
+
+  static int emitThumbRegPlusImmInReg(MachineBasicBlock mbb,
+                                      int mi,
+                                      DebugLoc dl,
+                                      int destReg,
+                                      int baseReg,
+                                      int numBits,
+                                      boolean canChangeCC,
+                                      ARMInstrInfo tii,
+                                      ARMRegisterInfo tri) {
+    return emitThumbRegPlusImmInReg(mbb, mi, dl, destReg, baseReg, numBits, canChangeCC, tii, tri, 0);
+  }
+
+  /**
+   * This function is used for emitting a series of instructions to materialize a
+   * destreg = basereg + immediate in Thumb code. Materialize the immediate in a
+   * register useing mov/mvn sequences or load the immediate form a constantpool entry.
+   * @param mbb
+   * @param mi
+   * @param dl
+   * @param destReg
+   * @param baseReg
+   * @param numBits
+   * @param canChangeCC
+   * @param tii
+   * @param tri
+   * @param miFlags
+   * @return
+   */
+  static int emitThumbRegPlusImmInReg(MachineBasicBlock mbb,
+                                      int mi,
+                                      DebugLoc dl,
+                                      int destReg,
+                                      int baseReg,
+                                      int numBits,
+                                      boolean canChangeCC,
+                                      ARMInstrInfo tii,
+                                      ARMRegisterInfo tri,
+                                      int miFlags) {
+    MachineFunction mf = mbb.getParent();
+    boolean isHigh = !isARMLowRegister(destReg) || (baseReg != 0 && !isARMLowRegister(baseReg));
+    boolean isSub = false;
+    // Subtract doesn't have high register version. Load the negative value
+    // if either base or dest register is a high register. Also, if do not
+    // issue sub as part of the sequence if condition register is to be
+    // preserved.
+    if (numBits < 0 && !isHigh && canChangeCC) {
+      isSub = true;
+      numBits = -numBits;
+    }
+    int ldReg = destReg;
+    if (destReg == ARMGenRegisterNames.SP) {
+      Util.assertion(baseReg == ARMGenRegisterNames.SP, "unexpected");
+      ldReg = mf.getMachineRegisterInfo().createVirtualRegister(ARMGenRegisterInfo.tGPRRegisterClass);
+    }
+
+    if (numBits <= 255 && numBits >= 0)
+      addDefaultT1CC(buildMI(mbb, mi++, dl, tii.get(ARMGenInstrNames.tMOVi8), ldReg).
+          addImm(numBits).setMIFlags(miFlags));
+    else if (numBits < 0 && numBits >= -255) {
+      addDefaultT1CC(buildMI(mbb, mi++, dl, tii.get(ARMGenInstrNames.tMOVi8), ldReg).
+          addImm(numBits).setMIFlags(miFlags));
+      addDefaultT1CC(buildMI(mbb, mi++, dl, tii.get(ARMGenInstrNames.tRSB), ldReg)
+          .addReg(ldReg, getKillRegState(true)).setMIFlags(miFlags));
+    }
+    else
+      mi = tri.emitLoadConstantPool(mbb, mi, dl, ldReg, 0, numBits, ARMCC.CondCodes.AL, 0, miFlags);
+
+    // emit add / sub.
+    int opc = isSub ? ARMGenInstrNames.tSUBrr : (isHigh ? ARMGenInstrNames.tADDhirr : ARMGenInstrNames.tADDrr);
+    MachineInstrBuilder mib = buildMI(mbb, mi++, dl, tii.get(opc), destReg);
+    if (opc != ARMGenInstrNames.tADDhirr)
+      mib = addDefaultT1CC(mib);
+    if (destReg == ARMGenRegisterNames.SP || isSub)
+      mib.addReg(baseReg).addReg(ldReg, getKillRegState(true));
+    else
+      mib.addReg(ldReg).addReg(baseReg, getKillRegState(true));
+
+    addDefaultPred(mib);
+    return mi;
+  }
+
+  public int emitLoadConstantPool(MachineBasicBlock mbb,
+                                  int mbbi,
+                                  DebugLoc dl,
+                                  int destReg,
+                                  int subIdx,
+                                  int val,
+                                  ARMCC.CondCodes pred) {
+    return emitLoadConstantPool(mbb, mbbi, dl, destReg, subIdx, val, pred, 0);
+  }
+
+  public int emitLoadConstantPool(MachineBasicBlock mbb,
+                                  int mbbi,
+                                  DebugLoc dl,
+                                  int destReg,
+                                  int subIdx,
+                                  int val,
+                                  ARMCC.CondCodes pred,
+                                  int predReg) {
+    return emitLoadConstantPool(mbb, mbbi, dl, destReg, subIdx, val, pred, predReg, 0);
+  }
+
+  /**
+   * Emit a load from constpool to materialize the specified immediate.
+   * @param mbb
+   * @param mbbi
+   * @param dl
+   * @param destReg
+   * @param subIdx
+   * @param val
+   * @param pred
+   * @param predReg
+   * @param miFlags
+   */
+  public int emitLoadConstantPool(MachineBasicBlock mbb,
+                                    int mbbi,
+                                    DebugLoc dl,
+                                    int destReg,
+                                    int subIdx,
+                                    int val,
+                                    ARMCC.CondCodes pred,
+                                    int predReg,
+                                    int miFlags) {
+    MachineFunction mf = mbb.getParent();
+    MachineConstantPool constantPool = mf.getConstantPool();
+    LLVMContext ctx = mf.getFunction().getContext();
+    Constant c = ConstantInt.get(Type.getInt32Ty(ctx), val);
+    int idx = constantPool.getConstantPoolIndex(c, 4);
+    buildMI(mbb, mbbi++, dl, subtarget.getInstrInfo().get(ARMGenInstrNames.LDRcp))
+        .addReg(destReg, getDefRegState(true), subIdx)
+        .addConstantPoolIndex(idx, 0, 0)
+        .addImm(0).addImm(pred.ordinal()).addReg(predReg)
+        .setMIFlags(miFlags);
+    return mbbi;
+  }
+
+  /**
+   * Return the number of instructions requried to materialize the specific add/sub r, c instruction.
+   *
+   * @param opc
+   * @param extraOpc
+   * @param bytes
+   * @param numBits
+   * @param scale
+   * @return
+   */
+  private static int calcNumMI(int opc, int extraOpc, int bytes, int numBits, int scale) {
+    int numMIs = 0;
+    int chunk = ((1 << numBits) - 1) * scale;
+    if (opc == ARMGenInstrNames.tADDrSPi) {
+      int thisVal = Math.min(bytes, chunk);
+      bytes -= thisVal;
+      ++numBits;
+      numBits = 0;
+      scale = 1;
+      chunk = ((1 << numBits) - 1) * scale;
+    }
+
+    numMIs += bytes / chunk;
+    if ((bytes % chunk) != 0)
+      ++numMIs;
+    if (extraOpc != 0)
+      ++numMIs;
+    return numMIs;
+  }
+
   @Override
   public int getFrameRegister(MachineFunction mf) {
     TargetFrameLowering tfl = mf.getTarget().getFrameLowering();
@@ -893,7 +1239,8 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   @Override
   public boolean isMoveInstr(MachineInstr mi, int[] regs) {
     switch (mi.getOpcode()) {
-      default: return false;
+      default:
+        return false;
       case ARMGenInstrNames.MOVr:
         Util.assertion(mi.getNumOperands() >= 2 && mi.getOperand(0).isRegister() &&
                 mi.getOperand(1).isRegister(),
@@ -910,6 +1257,7 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
   /**
    * Given the enum value for some register, e.g.
    * ARMGenInstrNames.LR, return the number that it corresponds to (e.g. 14).
+   *
    * @param Reg
    * @return
    */
@@ -917,51 +1265,154 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
     switch (Reg) {
       default:
         Util.shouldNotReachHere("Unknown ARM register!");
-      case R0:  case S0:  case D0:  case Q0:  return 0;
-      case R1:  case S1:  case D1:  case Q1:  return 1;
-      case R2:  case S2:  case D2:  case Q2:  return 2;
-      case R3:  case S3:  case D3:  case Q3:  return 3;
-      case R4:  case S4:  case D4:  case Q4:  return 4;
-      case R5:  case S5:  case D5:  case Q5:  return 5;
-      case R6:  case S6:  case D6:  case Q6:  return 6;
-      case R7:  case S7:  case D7:  case Q7:  return 7;
-      case R8:  case S8:  case D8:  case Q8:  return 8;
-      case R9:  case S9:  case D9:  case Q9:  return 9;
-      case R10: case S10: case D10: case Q10: return 10;
-      case R11: case S11: case D11: case Q11: return 11;
-      case R12: case S12: case D12: case Q12: return 12;
-      case SP:  case S13: case D13: case Q13: return 13;
-      case LR:  case S14: case D14: case Q14: return 14;
-      case PC:  case S15: case D15: case Q15: return 15;
+      case R0:
+      case S0:
+      case D0:
+      case Q0:
+        return 0;
+      case R1:
+      case S1:
+      case D1:
+      case Q1:
+        return 1;
+      case R2:
+      case S2:
+      case D2:
+      case Q2:
+        return 2;
+      case R3:
+      case S3:
+      case D3:
+      case Q3:
+        return 3;
+      case R4:
+      case S4:
+      case D4:
+      case Q4:
+        return 4;
+      case R5:
+      case S5:
+      case D5:
+      case Q5:
+        return 5;
+      case R6:
+      case S6:
+      case D6:
+      case Q6:
+        return 6;
+      case R7:
+      case S7:
+      case D7:
+      case Q7:
+        return 7;
+      case R8:
+      case S8:
+      case D8:
+      case Q8:
+        return 8;
+      case R9:
+      case S9:
+      case D9:
+      case Q9:
+        return 9;
+      case R10:
+      case S10:
+      case D10:
+      case Q10:
+        return 10;
+      case R11:
+      case S11:
+      case D11:
+      case Q11:
+        return 11;
+      case R12:
+      case S12:
+      case D12:
+      case Q12:
+        return 12;
+      case SP:
+      case S13:
+      case D13:
+      case Q13:
+        return 13;
+      case LR:
+      case S14:
+      case D14:
+      case Q14:
+        return 14;
+      case PC:
+      case S15:
+      case D15:
+      case Q15:
+        return 15;
 
-      case S16: case D16: return 16;
-      case S17: case D17: return 17;
-      case S18: case D18: return 18;
-      case S19: case D19: return 19;
-      case S20: case D20: return 20;
-      case S21: case D21: return 21;
-      case S22: case D22: return 22;
-      case S23: case D23: return 23;
-      case S24: case D24: return 24;
-      case S25: case D25: return 25;
-      case S26: case D26: return 26;
-      case S27: case D27: return 27;
-      case S28: case D28: return 28;
-      case S29: case D29: return 29;
-      case S30: case D30: return 30;
-      case S31: case D31: return 31;
+      case S16:
+      case D16:
+        return 16;
+      case S17:
+      case D17:
+        return 17;
+      case S18:
+      case D18:
+        return 18;
+      case S19:
+      case D19:
+        return 19;
+      case S20:
+      case D20:
+        return 20;
+      case S21:
+      case D21:
+        return 21;
+      case S22:
+      case D22:
+        return 22;
+      case S23:
+      case D23:
+        return 23;
+      case S24:
+      case D24:
+        return 24;
+      case S25:
+      case D25:
+        return 25;
+      case S26:
+      case D26:
+        return 26;
+      case S27:
+      case D27:
+        return 27;
+      case S28:
+      case D28:
+        return 28;
+      case S29:
+      case D29:
+        return 29;
+      case S30:
+      case D30:
+        return 30;
+      case S31:
+      case D31:
+        return 31;
     }
   }
 
   /**
    * Returns true if the register is a low register (r0-r7).
+   *
    * @param Reg
    * @return
    */
   static boolean isARMLowRegister(int Reg) {
     switch (Reg) {
-      case R0:  case R1:  case R2:  case R3:
-      case R4:  case R5:  case R6:  case R7:
+      case R0:
+      case R1:
+      case R2:
+      case R3:
+      case R4:
+      case R5:
+      case R6:
+      case R7:
         return true;
       default:
         return false;
@@ -970,9 +1421,10 @@ public abstract class ARMRegisterInfo  extends TargetRegisterInfo {
 
   /**
    * We can't realign the stack if:
-   *  1. Dynamic stack realignment is explicitly disabled,
-   *  2. This is a Thumb1 function (it's not useful, so we don't bother), or
-   *  3. There are VLAs in the function and the base pointer is disabled.
+   * 1. Dynamic stack realignment is explicitly disabled,
+   * 2. This is a Thumb1 function (it's not useful, so we don't bother), or
+   * 3. There are VLAs in the function and the base pointer is disabled.
+   *
    * @param mf
    * @return
    */
