@@ -120,8 +120,8 @@ public final class WimmerLinearScanRegAllocator extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     this.mf = mf;
-    tri = mf.getTarget().getRegisterInfo();
-    tii = mf.getTarget().getInstrInfo();
+    tri = mf.getSubtarget().getRegisterInfo();
+    tii = mf.getSubtarget().getInstrInfo();
     mri = mf.getMachineRegisterInfo();
     ilk = new IntervalLocKeeper(mf);
     resolver = new MoveResolver(this);

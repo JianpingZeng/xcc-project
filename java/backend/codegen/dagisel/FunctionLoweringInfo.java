@@ -207,7 +207,7 @@ public class FunctionLoweringInfo {
     // create an initial MachineBasicBlock for each LLVM BasicBlock in F.  This
     // also creates the initial PHI MachineInstrs, though none of the input
     // operands are populated.
-    TargetInstrInfo tii = tli.getTargetMachine().getInstrInfo();
+    TargetInstrInfo tii = tli.getTargetMachine().getSubtarget().getInstrInfo();
     for (BasicBlock bb : fn.getBasicBlockList()) {
       MachineBasicBlock mbb = mf.createMachineBasicBlock(bb);
       mbbmap.put(bb, mbb);

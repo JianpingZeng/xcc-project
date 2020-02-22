@@ -19,8 +19,8 @@ package backend.codegen;
 
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
 import backend.transform.scalars.DCE;
 import gnu.trove.list.array.TIntArrayList;
 import tools.BitMap;
@@ -68,9 +68,9 @@ public class DeadMachineInstructionElim extends MachineFunctionPass {
 
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
-    TargetMachine tm = mf.getTarget();
-    TargetRegisterInfo tri = tm.getRegisterInfo();
-    tii = tm.getInstrInfo();
+    TargetSubtarget subtarget = mf.getSubtarget();
+    TargetRegisterInfo tri = subtarget.getRegisterInfo();
+    tii = subtarget.getInstrInfo();
     mri = mf.getMachineRegisterInfo();
 
     // First, view all non-allocatable registers as live

@@ -87,7 +87,7 @@ public final class LiveIntervalAnalysis extends MachineFunctionPass {
 
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
-    tri = mf.getTarget().getRegisterInfo();
+    tri = mf.getSubtarget().getRegisterInfo();
     allocatableRegs = tri.getAllocatableSet(mf);
 
     int size = mf.getNumBlocks();

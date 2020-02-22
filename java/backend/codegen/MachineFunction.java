@@ -59,13 +59,13 @@ public class MachineFunction {
     this.fn = fn;
     target = tm;
     mbbNumber = new ArrayList<>();
-    frameInfo = new MachineFrameInfo(tm.getFrameLowering(), tm.getRegisterInfo());
-    regInfo = new MachineRegisterInfo(tm.getRegisterInfo());
+    frameInfo = new MachineFrameInfo(tm.getSubtarget().getFrameLowering(), tm.getSubtarget().getRegisterInfo());
+    regInfo = new MachineRegisterInfo(tm.getSubtarget().getRegisterInfo());
     constantPool = new MachineConstantPool(tm.getTargetData());
-    phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
-    alignment = tm.getTargetLowering().getMinFunctionAlignment();
+    phyRegDefUseList = new MachineOperand[tm.getSubtarget().getRegisterInfo().getNumRegs()];
+    alignment = tm.getSubtarget().getTargetLowering().getMinFunctionAlignment();
     if (!fn.hasFnAttr(Attribute.OptimizeForSize))
-      alignment = Math.max(alignment, tm.getTargetLowering().getPrefFunctionAlignment());
+      alignment = Math.max(alignment, tm.getSubtarget().getTargetLowering().getPrefFunctionAlignment());
 
     functionNumber = fnNumber;
 
@@ -181,7 +181,7 @@ public class MachineFunction {
 
   public MachineFunctionInfo getInfo() {
     if (mfInfo == null)
-      mfInfo = target.getTargetLowering().createMachineFunctionInfo(this);
+      mfInfo = target.getSubtarget().getTargetLowering().createMachineFunctionInfo(this);
     return mfInfo;
   }
 
@@ -229,7 +229,7 @@ public class MachineFunction {
     // Print constant pool.
     constantPool.print(os);
 
-    TargetRegisterInfo tri = target.getRegisterInfo();
+    TargetRegisterInfo tri = target.getSubtarget().getRegisterInfo();
     if (regInfo != null && !regInfo.isLiveInEmpty()) {
       os.print("Live Ins:");
       for (Pair<Integer, Integer> entry : regInfo.getLiveIns()) {

@@ -103,7 +103,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass {
     this.mf = mf;
     tm = mf.getTarget();
     li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
-    tri = tm.getRegisterInfo();
+    tri = tm.getSubtarget().getRegisterInfo();
     mri = mf.getMachineRegisterInfo();
     lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 
@@ -114,7 +114,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass {
     // perform a final pass over the instructions and compute spill
     // weights, coalesce virtual registers and remove identity moves
     MachineLoopInfo loopInfo = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
-    TargetInstrInfo tii = tm.getInstrInfo();
+    TargetInstrInfo tii = tm.getSubtarget().getInstrInfo();
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       int loopDepth = loopInfo.getLoopDepth(mbb);
@@ -225,7 +225,7 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass {
   private void joinIntervalsInMachineBB(MachineBasicBlock mbb) {
     if (Util.DEBUG)
       System.err.printf("%s:\n", mbb.getBasicBlock().getName());
-    TargetInstrInfo tii = tm.getInstrInfo();
+    TargetInstrInfo tii = tm.getSubtarget().getInstrInfo();
 
     for (MachineInstr mi : mbb.getInsts()) {
       if (Util.DEBUG) {

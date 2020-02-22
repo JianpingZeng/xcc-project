@@ -253,7 +253,7 @@ public abstract class MipsRegisterInfo extends TargetRegisterInfo {
 
   @Override
   public int getFrameRegister(MachineFunction mf) {
-    return mf.getTarget().getFrameLowering().hasFP(mf) ? FP : SP;
+    return mf.getSubtarget().getFrameLowering().hasFP(mf) ? FP : SP;
   }
 
   public int getPICCallReg() {

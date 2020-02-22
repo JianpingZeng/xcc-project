@@ -2006,7 +2006,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     else if (intPtr.bitsGT(allocaSize.getValueType()))
       allocaSize = dag.getNode(ISD.ZERO_EXTEND, intPtr, allocaSize);
 
-    int stackAlign = tli.getTargetMachine().getFrameLowering().getStackAlignment();
+    int stackAlign = tli.getTargetMachine().getSubtarget().getFrameLowering().getStackAlignment();
     if (align <= stackAlign)
       align = 0;
 
@@ -2870,7 +2870,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     if (arg.hasByValAttr()) {
       // Byval arguments' frame index is recorded during argument lowering.
       // Use this info directly.
-      TargetRegisterInfo tri = dag.getTarget().getRegisterInfo();
+      TargetRegisterInfo tri = dag.getTarget().getSubtarget().getRegisterInfo();
       reg = tri.getFrameRegister(mf);
       offset = funcInfo.getByValArgumentFrameIndex(arg);
     }
@@ -2890,7 +2890,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       reg = funcInfo.valueMap.get(value);
     }
 
-    TargetInstrInfo tii = dag.getTarget().getInstrInfo();
+    TargetInstrInfo tii = dag.getTarget().getSubtarget().getInstrInfo();
     MachineInstrBuilder mib = MachineInstrBuilder.buildMI(tii.get(TargetOpcode.DBG_VALUE),
         getCurDebugLoc()).addReg(reg, MachineOperand.RegState.Debug)
         .addImm(offset).addMetadata(variable);

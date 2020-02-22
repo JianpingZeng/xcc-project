@@ -67,26 +67,6 @@ public class MipsTargetMachine extends LLVMTargetMachine {
     return subtarget;
   }
 
-  @Override
-  public TargetInstrInfo getInstrInfo() {
-    return instrInfo;
-  }
-
-  @Override
-  public MipsRegisterInfo getRegisterInfo() {
-    return registerInfo;
-  }
-
-  @Override
-  public MipsFrameLowering getFrameLowering() {
-    return frameLowering;
-  }
-
-  @Override
-  public MipsTargetLowering getTargetLowering() {
-    return tli;
-  }
-
   public TargetData getTargetData() {
     return dataLayout;
   }

@@ -136,8 +136,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass {
     this.mf = mf;
     lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
     tm = mf.getTarget();
-    tri = tm.getRegisterInfo();
-    tii = tm.getInstrInfo();
+    tri = tm.getSubtarget().getRegisterInfo();
+    tii = tm.getSubtarget().getInstrInfo();
     allocatableRegs = tri.getAllocatableSet(mf);
     mri = mf.getMachineRegisterInfo();
     mi2Idx = new HashMap<>();

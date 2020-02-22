@@ -24,9 +24,10 @@ import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetMachine;
 import backend.mc.MCRegisterClass;
+import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.OutRef;
 import tools.Pair;
@@ -57,6 +58,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
       new IntStatistic("liveIntervals", "Number of identity moves eliminated after coalescing");
 
   private MachineFunction mf;
+  private TargetSubtarget subtarget;
   private TargetMachine tm;
   private LiveIntervalAnalysis li;
   private TargetRegisterInfo tri;
@@ -91,11 +93,12 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     this.mf = mf;
-    tm = mf.getTarget();
+    subtarget = mf.getSubtarget();
     li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
-    tri = tm.getRegisterInfo();
+    tri = subtarget.getRegisterInfo();
     mri = mf.getMachineRegisterInfo();
     lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
+    tm = mf.getTarget();
 
     joinIntervals();
 
@@ -103,7 +106,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
 
     // perform a final pass over the instructions and compute spill
     // weights, coalesce virtual registers and remove identity moves
-    TargetInstrInfo tii = tm.getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       for (int i = 0; i < mbb.size(); i++) {
         MachineInstr mi = mbb.getInstAt(i);
@@ -210,7 +213,7 @@ public final class SimpleRegisterCoalescer extends MachineFunctionPass {
   private void joinIntervalsInMachineBB(MachineBasicBlock mbb) {
     if (Util.DEBUG)
       System.err.printf("%s:\n", mbb.getBasicBlock().getName());
-    TargetInstrInfo tii = tm.getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
 
     for (MachineInstr mi : mbb.getInsts()) {
       if (Util.DEBUG) {

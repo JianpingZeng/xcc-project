@@ -67,6 +67,10 @@ public abstract class TargetSubtarget extends MCSubtargetInfo {
     return instrInfo;
   }
 
+  public abstract TargetFrameLowering getFrameLowering();
+
+  public abstract TargetLowering getTargetLowering();
+
   /**
    * Parses the sub-features string specified by subtarget options.
    * This function should by overrided by any tablegen generated sub class.

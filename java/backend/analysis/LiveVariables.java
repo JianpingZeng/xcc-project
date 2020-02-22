@@ -181,7 +181,7 @@ public final class LiveVariables extends MachineFunctionPass {
    */
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
-    regInfo = mf.getTarget().getRegisterInfo();
+    regInfo = mf.getSubtarget().getRegisterInfo();
     machineRegInfo = mf.getMachineRegisterInfo();
     virRegInfo = new VarInfo[machineRegInfo.getLastVirReg() - FirstVirtualRegister + 1];
 

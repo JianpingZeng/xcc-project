@@ -44,8 +44,8 @@ public class ExpandISelPseudo extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     boolean changed = false;
-    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
-    TargetLowering tli = mf.getTarget().getTargetLowering();
+    TargetInstrInfo tii = mf.getSubtarget().getInstrInfo();
+    TargetLowering tli = mf.getSubtarget().getTargetLowering();
 
     for (int i = 0; i < mf.getNumBlocks(); i++) {
       MachineBasicBlock mbb = mf.getMBBAt(i);

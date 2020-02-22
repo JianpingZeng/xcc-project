@@ -89,8 +89,8 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
   private boolean lowerExtract(MachineInstr mi) {
     MachineBasicBlock mbb = mi.getParent();
     MachineFunction mf = mbb.getParent();
-    TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
-    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+    TargetRegisterInfo tri = mf.getSubtarget().getRegisterInfo();
+    TargetInstrInfo tii = mf.getSubtarget().getInstrInfo();
 
     MachineOperand mo0 = mi.getOperand(0), mo1 = mi.getOperand(1);
     Util.assertion(mo0.isRegister() && mo0.isDef() && mo1.isRegister() && mo1.isUse() &&
@@ -141,8 +141,8 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
   private boolean lowerInsert(MachineInstr mi) {
     MachineBasicBlock mbb = mi.getParent();
     MachineFunction mf = mbb.getParent();
-    TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
-    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+    TargetRegisterInfo tri = mf.getSubtarget().getRegisterInfo();
+    TargetInstrInfo tii = mf.getSubtarget().getInstrInfo();
 
     MachineOperand mo0 = mi.getOperand(0),
         mo1 = mi.getOperand(1),
@@ -222,8 +222,8 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
   private boolean lowerSubregToReg(MachineInstr mi) {
     MachineBasicBlock mbb = mi.getParent();
     MachineFunction mf = mbb.getParent();
-    TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
-    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+    TargetRegisterInfo tri = mf.getSubtarget().getRegisterInfo();
+    TargetInstrInfo tii = mf.getSubtarget().getInstrInfo();
 
     MachineOperand mo0 = mi.getOperand(0),
         mo1 = mi.getOperand(1),

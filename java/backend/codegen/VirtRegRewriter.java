@@ -107,18 +107,18 @@ public abstract class VirtRegRewriter {
               int physReg = vrm.getPhys(virtReg);
               if (mo.isUse() && vrm.hasStackSlot(virtReg)
                   && !loaded[virtReg - FirstVirtualRegister]) {
-                tm.getInstrInfo().loadRegFromStackSlot(mbb, i,
+                mf.getSubtarget().getInstrInfo().loadRegFromStackSlot(mbb, i,
                     physReg, vrm.getStackSlot(virtReg),
                     mri.getRegClass(virtReg));
                 loaded[virtReg - FirstVirtualRegister] = true;
                 if (Util.DEBUG) {
-                  System.err.printf("\t");
+                  System.err.print("\t");
                   mbb.getInstAt(i - 1).print(System.err, tm);
                 }
                 numLoads.inc();
               }
               if (mo.isDef() && vrm.hasStackSlot(virtReg)) {
-                tm.getInstrInfo().storeRegToStackSlot(
+                mf.getSubtarget().getInstrInfo().storeRegToStackSlot(
                     mbb, i + 1,
                     physReg,
                     false,
@@ -144,7 +144,7 @@ public abstract class VirtRegRewriter {
   public static class LocalVirtRegRewriter extends VirtRegRewriter {
     @Override
     public boolean runOnMachineFunction(MachineFunction mf, VirtRegMap vrm) {
-      Util.assertion(false, "Current local spiller is not supported!");
+      Util.assertion("Current local spiller is not supported!");
       return false;
     }
   }

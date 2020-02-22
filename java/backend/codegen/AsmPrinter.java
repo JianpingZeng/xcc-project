@@ -105,8 +105,8 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     this.os = new PrintStream(os);
     this.tm = tm;
     this.mai = mai;
-    this.tri = tm.getRegisterInfo();
     subtarget = tm.getSubtarget();
+    this.tri = subtarget.getRegisterInfo();
 
     outContext = ctx;
     outStreamer = streamer;
@@ -524,7 +524,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       if (jumpTableInfo.getEntryKind() == MachineJumpTableInfo.JTEntryKind.EK_LabelDifference32 &&
           mai.hasSetDirective()) {
         HashSet<MachineBasicBlock> emittedSets = new HashSet<>();
-        TargetLowering tli = tm.getTargetLowering();
+        TargetLowering tli = subtarget.getTargetLowering();
         MCExpr base = tli.getPICJumpTableRelocBaseExpr(mf, jti, outContext);
         for (MachineBasicBlock mbb : mbbs) {
           if (!emittedSets.add(mbb))
@@ -557,7 +557,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     MCExpr value = null;
     switch (jumpTable.getEntryKind()) {
       case EK_Custom32:
-        value = tm.getTargetLowering().lowerJumpTableEntry(jumpTable, mbb, jti, outContext);
+        value = subtarget.getTargetLowering().lowerJumpTableEntry(jumpTable, mbb, jti, outContext);
         break;
       case EK_BlockAddress:
         // EK_BlockAddress - Each entry is a plain address of block, e.g.:
@@ -855,7 +855,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   }
 
   protected TargetLoweringObjectFile getObjFileLowering() {
-    return tm.getTargetLowering().getObjFileLowering();
+    return subtarget.getTargetLowering().getObjFileLowering();
   }
 
   protected void emitMachineConstantPoolValue(MachineConstantPoolValue cpv) {

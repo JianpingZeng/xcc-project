@@ -62,7 +62,7 @@ public class CCState {
     callingConv = cc;
     this.isVarArg = isVarArg;
     this.tm = tm;
-    tri = tm.getRegisterInfo();
+    tri = tm.getSubtarget().getRegisterInfo();
     this.locs = locs;
     stackOffset = 0;
     usedRegs = new int[(tri.getNumRegs() + 31) / 32];

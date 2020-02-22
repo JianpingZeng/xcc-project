@@ -61,8 +61,8 @@ public class ARMExpandPseudoInsts extends MachineFunctionPass {
   public boolean runOnMachineFunction(MachineFunction mf) {
     boolean changed = false;
     afi = (ARMFunctionInfo) mf.getInfo();
-    tii = mf.getTarget().getInstrInfo();
-    tri = mf.getTarget().getRegisterInfo();
+    tii = mf.getSubtarget().getInstrInfo();
+    tri = mf.getSubtarget().getRegisterInfo();
     subtarget = (ARMSubtarget) mf.getTarget().getSubtarget();
 
     for (int i = 0, e = mf.getNumBlocks(); i < e; ++i) {
@@ -171,14 +171,14 @@ public class ARMExpandPseudoInsts extends MachineFunctionPass {
       case ARMGenInstrNames.Int_eh_sjlj_dispatchsetup: {
         MachineFunction mf = mi.getParent().getParent();
         ARMInstrInfo aii = (ARMInstrInfo) tii;
-        ARMRegisterInfo ri = ((ARMTargetMachine) mf.getTarget()).getRegisterInfo();
+        ARMRegisterInfo ri = (ARMRegisterInfo) mf.getSubtarget().getRegisterInfo();
         // For functions using a base pointer, we rematerialize it (via the frame
         // pointer) here since eh.sjlj.setjmp and eh.sjlj.longjmp don't do it
         // for us. Otherwise, expand to nothing.
         if (ri.hasBasePointer(mf)) {
           int numBytes = afi.getFramePtrSpillOffset();
           int framePtr = ri.getFrameRegister(mf);
-          Util.assertion(mf.getTarget().getFrameLowering().hasFP(mf), "base pointer without frame pointer?");
+          Util.assertion(mf.getSubtarget().getFrameLowering().hasFP(mf), "base pointer without frame pointer?");
 
           if (afi.isThumb2Function()) {
             mbbi = ARMRegisterInfo.emitT2RegPlusImmediate(mbb, mbbi, mi.getDebugLoc(),

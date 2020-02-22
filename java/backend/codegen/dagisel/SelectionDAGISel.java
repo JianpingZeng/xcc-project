@@ -102,7 +102,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
   public SelectionDAGISel(TargetMachine tm, CodeGenOpt optLevel) {
     this.tm = tm;
-    tli = tm.getTargetLowering();
+    tli = tm.getSubtarget().getTargetLowering();
     funcInfo = new FunctionLoweringInfo(tli);
     curDAG = new SelectionDAG(tli, funcInfo);
     sdl = new SelectionDAGLowering(curDAG, tli, funcInfo, optLevel);
@@ -134,7 +134,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     funcInfo.set(f, mf);
     sdl.init(aa);
 
-    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+    TargetInstrInfo tii = mf.getSubtarget().getInstrInfo();
     MachineRegisterInfo regInfo = mf.getMachineRegisterInfo();
 
     selectAllBasicBlocks(f);

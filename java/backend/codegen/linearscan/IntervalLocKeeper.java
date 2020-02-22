@@ -35,7 +35,7 @@ public class IntervalLocKeeper {
 
   public IntervalLocKeeper(MachineFunction mf) {
     mfi = mf.getFrameInfo();
-    tri = mf.getTarget().getRegisterInfo();
+    tri = mf.getSubtarget().getRegisterInfo();
     interval2PhyReg = new TObjectIntHashMap<>();
     interval2StackSlot = new TObjectIntHashMap<>();
   }

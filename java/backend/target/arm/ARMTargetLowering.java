@@ -82,7 +82,7 @@ public class ARMTargetLowering extends TargetLowering {
   private ARMRegisterInfo regInfo;
   private int ARMPCLabelIndex;
 
-  public ARMTargetLowering(backend.target.arm.ARMTargetMachine tm) {
+  public ARMTargetLowering(ARMTargetMachine tm) {
     super(tm, createTLOF(tm));
     subtarget = tm.getSubtarget();
     regInfo = subtarget.getRegisterInfo();
@@ -863,7 +863,7 @@ public class ARMTargetLowering extends TargetLowering {
       // When those unallocated registers are used to pass variable arguments, we have to save
       // it on the stack slot for further use by loading it back to the register in the callee.
       int numGPRs = ccInfo.getFirstUnallocated(GPRArgRegs);
-      int align = tm.getFrameLowering().getStackAlignment();
+      int align = subtarget.getFrameLowering().getStackAlignment();
       // stack space cost needed for variable arguments.
       int vaRegSize = (4 - numGPRs) * 4;
       int vaRegAligned = (vaRegSize + align - 1) & -align;
@@ -2094,9 +2094,7 @@ public class ARMTargetLowering extends TargetLowering {
         "expandBITCAST called for non-i64 type!");
 
     // turn i64->f64 into VMOVDRR.
-    TargetLowering tli = tm.getTargetLowering();
-
-    if (srcVT.equals(new EVT(MVT.i64)) && tli.isTypeLegal(dstVT)) {
+    if (srcVT.equals(new EVT(MVT.i64)) && isTypeLegal(dstVT)) {
       // first separate the i64 to double i32
       // then merge it to a f64
       // then bit cast.
@@ -2109,7 +2107,7 @@ public class ARMTargetLowering extends TargetLowering {
     }
 
     // turn f64->i64 into VMOVRRD.
-    if (dstVT.equals(new EVT(MVT.i64)) && tli.isTypeLegal(srcVT)) {
+    if (dstVT.equals(new EVT(MVT.i64)) && isTypeLegal(srcVT)) {
       SDValue split = dag.getNode(ARMISD.VMOVRRD, dag.getVTList(new EVT(MVT.i32), new EVT(MVT.i32)),
           op);
       // merge it

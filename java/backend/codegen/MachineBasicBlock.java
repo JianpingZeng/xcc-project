@@ -398,7 +398,7 @@ public class MachineBasicBlock {
       comma = ", ";
     }
 
-    TargetRegisterInfo tri = getParent().getTarget().getRegisterInfo();
+    TargetRegisterInfo tri = getParent().getSubtarget().getRegisterInfo();
     if (!liveIns.isEmpty()) {
       os.printf("    Live Ins:");
       for (int i = 0, e = liveIns.size(); i < e; i++)

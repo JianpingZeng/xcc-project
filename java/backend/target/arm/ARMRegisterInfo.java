@@ -80,16 +80,16 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
   private ARMSubtarget subtarget;
   private ARMFrameLowering tfl;
 
-  protected ARMRegisterInfo(ARMTargetMachine tm) {
-    this.subtarget = tm.getSubtarget();
+  protected ARMRegisterInfo(ARMSubtarget subtarget) {
+    this.subtarget = subtarget;
     framePtr = subtarget.isTargetDarwin() || subtarget.isThumb() ?
         ARMGenRegisterNames.R7 : ARMGenRegisterNames.R11;
     basePtr = ARMGenRegisterNames.R6;
-    tfl = tm.getFrameLowering();
+    tfl = subtarget.getFrameLowering();
   }
 
-  public static TargetRegisterInfo createARMRegisterInfo(ARMTargetMachine tm, int mode) {
-    return new ARMGenRegisterInfo(tm, mode);
+  public static TargetRegisterInfo createARMRegisterInfo(ARMSubtarget subtarget, int mode) {
+    return new ARMGenRegisterInfo(subtarget, mode);
   }
 
   private static final int[] CalleeSavedRegs = {
@@ -203,7 +203,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
   public void eliminateFrameIndex(MachineFunction mf, int spAdj, MachineInstr mi, RegScavenger rs) {
     MachineBasicBlock mbb = mi.getParent();
     MachineFrameInfo mfi = mf.getFrameInfo();
-    ARMFrameLowering tfi = (ARMFrameLowering) mf.getTarget().getFrameLowering();
+    ARMFrameLowering tfi = subtarget.getFrameLowering();
     ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
     Util.assertion(!afi.isThumb1OnlyFunction(), "This eliminateFrameIndex doesn't support Thumb1!");
 
@@ -1210,7 +1210,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
 
   @Override
   public int getFrameRegister(MachineFunction mf) {
-    TargetFrameLowering tfl = mf.getTarget().getFrameLowering();
+    TargetFrameLowering tfl = subtarget.getFrameLowering();
     return tfl.hasFP(mf) ? framePtr : ARMGenRegisterNames.SP;
   }
 

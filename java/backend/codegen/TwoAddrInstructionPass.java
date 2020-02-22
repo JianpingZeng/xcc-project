@@ -96,8 +96,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass {
   public boolean runOnMachineFunction(MachineFunction mf) {
     TargetMachine tm = mf.getTarget();
     mri = mf.getMachineRegisterInfo();
-    tii = tm.getInstrInfo();
-    tri = tm.getRegisterInfo();
+    tii = tm.getSubtarget().getInstrInfo();
+    tri = tm.getSubtarget().getRegisterInfo();
     lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 
     boolean madeChange = false;

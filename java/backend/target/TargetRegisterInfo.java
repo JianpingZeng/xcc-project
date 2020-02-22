@@ -170,7 +170,7 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
   public abstract int getFrameRegister(MachineFunction mf);
 
   public int getFrameIndexOffset(MachineFunction mf, int fi) {
-    TargetFrameLowering tfi = mf.getTarget().getFrameLowering();
+    TargetFrameLowering tfi = mf.getTarget().getSubtarget().getFrameLowering();
     MachineFrameInfo mfi = mf.getFrameInfo();
     return (int) (mfi.getObjectOffset(fi) + mfi.getStackSize() -
         tfi.getLocalAreaOffset() + mfi.getOffsetAdjustment());

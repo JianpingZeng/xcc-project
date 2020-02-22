@@ -447,7 +447,7 @@ public abstract class MachineOperand {
             }
           }
           if (tm != null)
-            os.printf("%%%s", tm.getRegisterInfo().getName(getReg()));
+            os.printf("%%%s", tm.getSubtarget().getRegisterInfo().getName(getReg()));
           else
             os.printf("%%reg%d", getReg());
         }

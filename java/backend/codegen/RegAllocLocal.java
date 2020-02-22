@@ -610,7 +610,7 @@ public class RegAllocLocal extends MachineFunctionPass {
       MachineInstr mi = worklist.removeFirst();
 
       int opcode = mi.getOpcode();
-      MCInstrDesc desc = tm.getInstrInfo().get(opcode);
+      MCInstrDesc desc = tm.getSubtarget().getInstrInfo().get(opcode);
 
       if (Util.DEBUG) {
         System.err.print("\nStarting RegAlloc of:");
@@ -895,8 +895,8 @@ public class RegAllocLocal extends MachineFunctionPass {
     mri = mf.getMachineRegisterInfo();
     int lastVirReg = mri.getLastVirReg();
 
-    regInfo = tm.getRegisterInfo();
-    instrInfo = tm.getInstrInfo();
+    regInfo = tm.getSubtarget().getRegisterInfo();
+    instrInfo = tm.getSubtarget().getInstrInfo();
     BitMap allocatable = regInfo.getAllocatableSet(mf);
     phyRegUsed = new int[allocatable.size()];
     Arrays.fill(phyRegUsed, -1);

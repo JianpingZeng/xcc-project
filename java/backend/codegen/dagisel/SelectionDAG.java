@@ -3733,7 +3733,7 @@ public class SelectionDAG {
     if (src.getOpcode() == ISD.UNDEF)
       return new SDValue();
 
-    TargetLowering tli = mf.getTarget().getTargetLowering();
+    TargetLowering tli = mf.getSubtarget().getTargetLowering();
     ArrayList<EVT> memOps = new ArrayList<>();
     long limit = -1;
     if (!alwaysInline)

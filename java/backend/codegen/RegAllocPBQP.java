@@ -111,9 +111,9 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     ml = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     virtIntervalToBeHandled = new ArrayList<>();
     emptyIntervalToBeHandled = new ArrayList<>();
-    tri = mf.getTarget().getRegisterInfo();
+    tri = mf.getSubtarget().getRegisterInfo();
     pst = new PhysRegTracker(tri);
-    tii = mf.getTarget().getInstrInfo();
+    tii = mf.getSubtarget().getInstrInfo();
     mri = mf.getMachineRegisterInfo();
     vrm = new VirtRegMap(mf);
 

@@ -32,6 +32,7 @@ import backend.mc.MCSection;
 import backend.mc.MCSectionELF;
 import backend.mc.MCSymbol;
 import backend.target.SectionKind;
+import backend.target.TargetMachine;
 
 /**
  * @author Jianping Zeng.
@@ -44,9 +45,11 @@ public class ARMELFTargetObjectFile extends TargetLoweringObjectFileELF {
     attributeSection = null;
   }
 
-  public void initialize(MCSymbol.MCContext ctx, ARMTargetMachine tm) {
+  @Override
+  public void initialize(MCSymbol.MCContext ctx, TargetMachine tm) {
     super.initialize(ctx, tm);
-    if (tm.getSubtarget().isAAPCS_ABI()) {
+    ARMSubtarget subtarget = (ARMSubtarget) tm.getSubtarget();
+    if (subtarget.isAAPCS_ABI()) {
       StaticCtorSection = getContext().getELFSection(".init_array",
           MCSectionELF.SHT_INIT_ARRAY,
           MCSectionELF.SHF_WRITE | MCSectionELF.SHF_ALLOC,

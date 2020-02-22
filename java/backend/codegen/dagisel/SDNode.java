@@ -315,7 +315,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       default:
         if (isMachineOpecode()) {
           if (dag != null) {
-            TargetInstrInfo tii = dag.getTarget().getInstrInfo();
+            TargetInstrInfo tii = dag.getTarget().getSubtarget().getInstrInfo();
             if (tii != null)
               if (getMachineOpcode() < tii.getNumOperands())
                 return tii.get(getMachineOpcode()).getName();
@@ -323,7 +323,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
           return "<<Unknown Machine Node>>";
         }
         if (dag != null) {
-          TargetLowering tli = dag.getTarget().getTargetLowering();
+          TargetLowering tli = dag.getTarget().getSubtarget().getTargetLowering();
           String name = tli.getTargetNodeName(getOpcode());
           if (name != null) return name;
           return "<<Unknown Target Node>>";
@@ -871,7 +871,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       RegisterSDNode rsn = (RegisterSDNode) this;
       if (dag != null && rsn.getReg() != 0 &&
           isPhysicalRegister(rsn.getReg())) {
-        os.printf(" %s", dag.getTarget().getRegisterInfo().getName(rsn.getReg()));
+        os.printf(" %s", dag.getTarget().getSubtarget().getRegisterInfo().getName(rsn.getReg()));
       } else {
         os.printf(" #%d", rsn.getReg());
       }

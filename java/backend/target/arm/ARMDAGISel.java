@@ -91,8 +91,8 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       e.printStackTrace();
     }
 
-    tli = tm.getTargetLowering();
     subtarget = tm.getSubtarget();
+    tli = subtarget.getTargetLowering();
   }
 
   @Override

@@ -38,10 +38,10 @@ public final class PhiElimination extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     boolean changed = false;
-    instInfo = mf.getTarget().getInstrInfo();
+    instInfo = mf.getSubtarget().getInstrInfo();
     this.mf = mf;
     mri = mf.getMachineRegisterInfo();
-    regInfo = mf.getTarget().getRegisterInfo();
+    regInfo = mf.getSubtarget().getRegisterInfo();
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       changed |= eliminatePHINodes(mbb);
@@ -120,7 +120,7 @@ public final class PhiElimination extends MachineFunctionPass {
     MCRegisterClass srcRC = mri.getRegClass(incomingReg);
     // creates a register to register copy instruction at the position where
     // indexed by firstInstAfter.
-    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+    TargetInstrInfo tii = mf.getSubtarget().getInstrInfo();
     MachineInstrBuilder mib = buildMI(mbb, firstInstAfterPhi, phiMI.getDebugLoc(), tii.get(TargetOpcode.COPY), destReg).addReg(incomingReg);
     MachineInstr copyInst = mib.getMInstr();
 

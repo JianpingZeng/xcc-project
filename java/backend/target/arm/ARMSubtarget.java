@@ -98,6 +98,8 @@ public class ARMSubtarget extends ARMGenSubtarget {
   private TargetABI targetABI;
   private String cpuString;
   protected InstrItineraryData instrItins;
+  private ARMFrameLowering frameInfo;
+  private ARMTargetLowering tli;
 
   public ARMSubtarget(ARMTargetMachine tm, String tt, String cpu, String fs, boolean isThumb) {
     super(tt, cpu, fs);
@@ -178,14 +180,26 @@ public class ARMSubtarget extends ARMGenSubtarget {
   @Override
   public ARMInstrInfo getInstrInfo() {
     if (instrInfo == null)
-      instrInfo = ARMInstrInfo.createARMInstrInfo(tm);
+      instrInfo = ARMInstrInfo.createARMInstrInfo(this);
     return (ARMInstrInfo) instrInfo;
+  }
+
+  public ARMFrameLowering getFrameLowering() {
+    if (frameInfo == null)
+      frameInfo = new ARMFrameLowering(tm);
+    return frameInfo;
+  }
+
+  public ARMTargetLowering getTargetLowering() {
+    if (tli == null)
+      tli = new ARMTargetLowering(tm);
+    return tli;
   }
 
   @Override
   public ARMRegisterInfo getRegisterInfo() {
     if (regInfo == null)
-      regInfo = ARMRegisterInfo.createARMRegisterInfo(tm, getHwMode());
+      regInfo = ARMRegisterInfo.createARMRegisterInfo(this, getHwMode());
     return (ARMRegisterInfo) regInfo;
   }
 

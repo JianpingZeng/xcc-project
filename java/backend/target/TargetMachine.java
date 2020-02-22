@@ -106,21 +106,6 @@ public abstract class TargetMachine {
     return asmVerbosityDefault;
   }
 
-  // Interface to the major aspects of target machine information:
-  // 1.Instruction opcode and operand information.
-  // 2.Pipeline and scheduling information.
-  // 3.Register information.
-  // 4.Stack frame information.
-  // 5.Cache hierarchy information.
-  // 6.Machine-level optimization information (peepole only).
-  public abstract TargetInstrInfo getInstrInfo();
-
-  public abstract TargetRegisterInfo getRegisterInfo();
-
-  public abstract TargetFrameLowering getFrameLowering();
-
-  public abstract TargetLowering getTargetLowering();
-
   public TargetSubtarget getSubtarget() {
     return null;
   }

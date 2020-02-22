@@ -52,7 +52,7 @@ import static backend.codegen.MachineInstrBuilder.*;
  * @author Jianping Zeng.
  * @version 0.4
  */
-public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
+public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
   /**
    * Record information about MLA / MLS instructions.
    */
@@ -95,13 +95,13 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
       new ARM_MLxEntry(ARMGenInstrNames.VMLSslfq,    ARMGenInstrNames.VMULslfq,    ARMGenInstrNames.VSUBfq,     false,  true ),
   };
 
-  private ARMTargetMachine tm;
+  private ARMSubtarget subtarget;
   private TreeMap<Integer, Integer> mlxEntryMap;
   private HashSet<Integer> mlxHazardOpcodes;
 
-  protected ARMInstrInfo(ARMTargetMachine tm) {
+  protected ARMInstrInfo(ARMSubtarget subtarget) {
     super(ARMGenInstrNames.ADJCALLSTACKDOWN, ARMGenInstrNames.ADJCALLSTACKUP);
-    this.tm = tm;
+    this.subtarget = subtarget;
     mlxEntryMap = new TreeMap<>();
     mlxHazardOpcodes = new HashSet<>();
     int i = 0;
@@ -114,8 +114,8 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     }
   }
 
-  public static TargetInstrInfo createARMInstrInfo(ARMTargetMachine tm) {
-    return new ARMGenInstrInfo(tm);
+  public static TargetInstrInfo createARMInstrInfo(ARMSubtarget subtarget) {
+    return new ARMGenInstrInfo(subtarget);
   }
 
   @Override
@@ -174,7 +174,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
         ARMGenRegisterInfo.QQPRRegisterClass.contains(srcReg)) ||
         (ARMGenRegisterInfo.QQQQPRRegisterClass.contains(dstReg) &&
             ARMGenRegisterInfo.QQQQPRRegisterClass.contains(srcReg))) {
-      TargetRegisterInfo tri = tm.getSubtarget().getRegisterInfo();
+      TargetRegisterInfo tri = subtarget.getRegisterInfo();
       int endSubReg = (ARMGenRegisterInfo.QQPRRegisterClass.contains(dstReg) &&
           ARMGenRegisterInfo.QQPRRegisterClass.contains(srcReg)) ?
           ARMGenRegisterInfo.qsub_1 : ARMGenRegisterInfo.qsub_3;
@@ -211,7 +211,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     MachineMemOperand mmo = new MachineMemOperand(PseudoSourceValue.getFixedStack(frameIndex),
         MachineMemOperand.MOStore, 0, mfi.getObjectSize(frameIndex), align);
 
-    ARMRegisterInfo tri = tm.getRegisterInfo();
+    ARMRegisterInfo tri = subtarget.getRegisterInfo();
     switch (tri.getRegSize(rc)) {
       case 4:
         if (ARMGenRegisterInfo.GPRRegisterClass.hasSubClassEq(rc))
@@ -318,7 +318,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     MachineMemOperand mmo = new MachineMemOperand(PseudoSourceValue.getFixedStack(frameIndex),
         MachineMemOperand.MOLoad, 0, mfi.getObjectSize(frameIndex), align);
 
-    ARMRegisterInfo tri = tm.getRegisterInfo();
+    ARMRegisterInfo tri = subtarget.getRegisterInfo();
     switch (tri.getRegSize(rc)) {
       case 4:
         if (ARMGenRegisterInfo.GPRRegisterClass.hasSubClassEq(rc))
@@ -405,8 +405,8 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
         old.getOpcode() == ARMGenInstrNames.ADJCALLSTACKUP ||
         old.getOpcode() == ARMGenInstrNames.tADJCALLSTACKDOWN ||
         old.getOpcode() == ARMGenInstrNames.tADJCALLSTACKUP);
-
-    if (!tm.getFrameLowering().hasReservedCallFrame(mf)) {
+    
+    if (!subtarget.getFrameLowering().hasReservedCallFrame(mf)) {
       // If we have alloca, convert as follows:
       // ADJCALLSTACKDOWN -> sub, sp, sp, amount
       // ADJCALLSTACKUP   -> add, sp, sp, amount
@@ -426,13 +426,13 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
           // PredReg is the 2'nd operand.
           int predReg = old.getOperand(2).getReg();
           ARMFrameLowering.emitSPUpdate(isARM, old.getParent(),
-              old.getIndexInMBB(), dl, tm.getInstrInfo(), -imm, cc, predReg);
+              old.getIndexInMBB(), dl, subtarget.getInstrInfo(), -imm, cc, predReg);
         }
         else {
           // PredReg is the 3'rd operand.
           int predReg = old.getOperand(3).getReg();
           ARMFrameLowering.emitSPUpdate(isARM, old.getParent(),
-              old.getIndexInMBB(), dl, tm.getInstrInfo(), imm, cc, predReg);
+              old.getIndexInMBB(), dl, subtarget.getInstrInfo(), imm, cc, predReg);
         }
       }
     }
@@ -458,7 +458,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
       boolean deleteReg = false;
       for (; i != 0; --i) {
         int reg = csi.get(i - 1).getReg();
-        if (reg == ARMGenRegisterNames.LR && !isTailCall && !isVarArg && tm.getSubtarget().hasV5TOps()) {
+        if (reg == ARMGenRegisterNames.LR && !isTailCall && !isVarArg && subtarget.hasV5TOps()) {
           reg = ARMGenRegisterNames.PC;
           ldmOpc = afi.isThumbFunction() ? ARMGenInstrNames.t2LDMIA_RET : ARMGenInstrNames.LDMIA_RET;
           deleteReg = true;
@@ -517,17 +517,17 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
 
     // load float callee saved register.
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(),
-        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+        subtarget.isTargetDarwin())).collect(Collectors.toList());
     pos = emitPopInst(mbb, pos, tmp, fltOpc, 0, isVarArg, true);
 
     // load integer callee saved register area 2.
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea2Register(calleeSavedInfo.getReg(),
-        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+        subtarget.isTargetDarwin())).collect(Collectors.toList());
     pos = emitPopInst(mbb, pos, tmp, ldmOpc, ldrOpc, isVarArg, false);
 
     // load integer callee saved register area 1.
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea1Register(calleeSavedInfo.getReg(),
-        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+        subtarget.isTargetDarwin())).collect(Collectors.toList());
     pos = emitPopInst(mbb, pos, tmp, ldmOpc, ldrOpc, isVarArg, false);
     return true;
   }
@@ -587,8 +587,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
   private int emitPushInst(MachineBasicBlock mbb, int mbbi, List<CalleeSavedInfo> csi,
                            int strmOpc, int strOpc, boolean noCap, int miFlag) {
     DebugLoc dl = mbbi != mbb.size() ? mbb.getInstAt(mbbi).getDebugLoc() : new DebugLoc();
-    MachineFunction mf = mbb.getParent();
-    TargetInstrInfo tii = tm.getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
 
     ArrayList<Pair<Integer, Boolean>> regs = new ArrayList<>();
     int i = csi.size();
@@ -644,17 +643,17 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
 
     // push integer callee saved register area 1.
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea1Register(calleeSavedInfo.getReg(),
-        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+        subtarget.isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, pushOpc, pushOneOpc, false, 0);
 
     // push integer callee saved register area 2.
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea2Register(calleeSavedInfo.getReg(),
-        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+        subtarget.isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, pushOpc, pushOneOpc, false, 0);
 
     // push float callee saved register.
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(),
-        tm.getSubtarget().isTargetDarwin())).collect(Collectors.toList());
+        subtarget.isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, fltOpc, 0, true, 0);
     return true;
   }
@@ -982,7 +981,7 @@ public abstract class ARMInstrInfo  extends TargetInstrInfoImpl {
     switch (opcode) {
       default: {
         MachineInstr mi = origin.clone();
-        mi.substituteRegister(origin.getOperand(0).getReg(), destReg, subIdx, tm.getRegisterInfo());
+        mi.substituteRegister(origin.getOperand(0).getReg(), destReg, subIdx, subtarget.getRegisterInfo());
         mbb.insert(insertPos, mi);
         break;
       }

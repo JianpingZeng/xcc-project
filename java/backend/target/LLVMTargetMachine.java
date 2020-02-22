@@ -109,7 +109,7 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (addPreEmitPass(pm, optLevel))
       return true;
 
-    MCContext ctx = new MCContext(getMCAsmInfo(), getRegisterInfo());
+    MCContext ctx = new MCContext(getMCAsmInfo(), getSubtarget().getRegisterInfo());
     MCStreamer streamer = null;
     PrintStream legacyOutput = null;
 

@@ -145,7 +145,7 @@ public class MipsFrameLowering extends TargetFrameLowering {
     }
 
     MachineFunction mf = mbb.getParent();
-    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+    TargetInstrInfo tii = mf.getSubtarget().getInstrInfo();
     DebugLoc dl = mbb.getInstAt(itr).getDebugLoc();
     int immLo = (short)(origImm & 0xffff);
     int immHi = (short)(origImm >>> 16) + (origImm & 0x8000) != 0 ? 1 : 0;

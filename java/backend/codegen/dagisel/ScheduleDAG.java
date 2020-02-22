@@ -47,9 +47,9 @@ public abstract class ScheduleDAG {
 
   public ScheduleDAG(MachineFunction mf) {
     tm = mf.getTarget();
-    tii = tm.getInstrInfo();
-    tri = tm.getRegisterInfo();
-    tli = tm.getTargetLowering();
+    tii = tm.getSubtarget().getInstrInfo();
+    tri = tm.getSubtarget().getRegisterInfo();
+    tli = tm.getSubtarget().getTargetLowering();
     this.mf = mf;
     mri = mf.getMachineRegisterInfo();
     mcpl = mf.getConstantPool();

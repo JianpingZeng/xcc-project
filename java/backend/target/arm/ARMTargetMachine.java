@@ -41,9 +41,7 @@ import static backend.target.arm.ARMDAGISel.createARMISelDAG;
  * @version 0.4
  */
 public class ARMTargetMachine extends LLVMTargetMachine {
-  private ARMFrameLowering frameInfo;
   private ARMSubtarget subtarget;
-  private ARMTargetLowering tli;
 
   /**
    * Can only called by subclass.
@@ -57,33 +55,11 @@ public class ARMTargetMachine extends LLVMTargetMachine {
                              String features, RelocModel rm, CodeModel cm) {
     super(t, triple);
     subtarget = new ARMSubtarget(this, triple, cpu, features, false);
-    frameInfo = new ARMFrameLowering(this);
-    tli = new ARMTargetLowering(this);
   }
 
   @Override
   public TargetData getTargetData() {
     return subtarget.getDataLayout();
-  }
-
-  @Override
-  public ARMInstrInfo getInstrInfo() {
-    return subtarget.getInstrInfo();
-  }
-
-  @Override
-  public ARMRegisterInfo getRegisterInfo() {
-    return subtarget.getRegisterInfo();
-  }
-
-  @Override
-  public ARMFrameLowering getFrameLowering() {
-    return frameInfo;
-  }
-
-  @Override
-  public ARMTargetLowering getTargetLowering() {
-    return tli;
   }
 
   @Override

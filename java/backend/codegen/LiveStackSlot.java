@@ -49,7 +49,7 @@ public final class LiveStackSlot extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     // This method should not called from FunctionPassManager.
-    tri = mf.getTarget().getRegisterInfo();
+    tri = mf.getSubtarget().getRegisterInfo();
     return false;
   }
 

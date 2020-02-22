@@ -49,7 +49,7 @@ public class ARMAsmPrinter extends AsmPrinter {
   private ARMMCInstLower instLowering;
 
   public ARMAsmPrinter(PrintStream os,
-                       ARMTargetMachine tm,
+                       TargetMachine tm,
                        MCSymbol.MCContext ctx,
                        MCStreamer streamer,
                        MCAsmInfo mai) {
