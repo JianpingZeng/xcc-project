@@ -148,8 +148,8 @@ public final class InstrInfoEmitter extends TableGenBackend {
         os.printf("\t\tinit%sInsts%d();\n", targetName, i);
       os.println("\t}");
 
-      os.printf("  public %sGenInstrInfo(%sTargetMachine tm) {%n", targetName, targetName);
-      os.println("    super(tm);");
+      os.printf("  public %sGenInstrInfo(%sSubtarget subtarget) {%n", targetName, targetName);
+      os.println("    super(subtarget);");
       os.printf("    initMCInstrInfo(%sInsts);\n", targetName);
       os.println("  }\n");
       os.println("}");

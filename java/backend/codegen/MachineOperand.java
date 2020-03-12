@@ -900,11 +900,11 @@ public abstract class MachineOperand {
    * @param isUndef
    */
   public void changeToRegister(int reg,
-                                         boolean isDef,
-                                         boolean isImp,
-                                         boolean isKill,
-                                         boolean isDead,
-                                         boolean isUndef) {
+                               boolean isDef,
+                               boolean isImp,
+                               boolean isKill,
+                               boolean isDead,
+                               boolean isUndef) {
     if (isRegister()) {
       Util.assertion(!isEarlyClobber());
       setReg(reg);

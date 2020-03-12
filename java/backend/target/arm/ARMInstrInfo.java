@@ -392,7 +392,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     }
   }
 
-  private MachineInstrBuilder addDefaultPred(MachineInstrBuilder mib) {
+  MachineInstrBuilder addDefaultPred(MachineInstrBuilder mib) {
     return mib.addImm(ARMCC.CondCodes.AL.ordinal()).addReg(0);
   }
   private MachineInstrBuilder addDefaultCC(MachineInstrBuilder mib) {

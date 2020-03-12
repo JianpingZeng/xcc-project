@@ -106,11 +106,6 @@ public class ARMSubtarget extends ARMGenSubtarget {
     subtarget = this;
     this.tm = tm;
     stackAlignment = 4;
-    datalayout = new TargetData(subtarget.isAPCS_ABI() ?
-        "e-p:32:32-f64:32:64-i64:32:64-v128:32:128-v64:32:64-n32-S32" :
-        subtarget.isAAPCS_ABI() ?
-            "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S64" :
-            "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S32");
     targetType = TargetType.isELF;
     cpuString = cpu;
     // the abi default to ARM_ABI_APCS
@@ -167,6 +162,21 @@ public class ARMSubtarget extends ARMGenSubtarget {
 
     if (hasV6Ops() && isTargetDarwin())
       allowsUnalignedMem = true;
+
+    if (isThumb()) {
+      datalayout = new TargetData(subtarget.isAPCS_ABI() ?
+          "e-p:32:32-f64:32:64-i64:32:64-i16:16:32-i8:8:32-i1:8:32-v128:32:128-v64:32:64-a:0:32-n32-S32":
+          subtarget.isAAPCS_ABI() ?
+              "e-p:32:32-f64:64:64-i64:64:64-i16:16:32-i8:8:32-i1:8:32-v128:64:128-v64:64:64-a:0:32-n32-S64" :
+              "e-p:32:32-f64:64:64-i64:64:64-i16:16:32-i8:8:32-i1:8:32-v128:64:128-v64:64:64-a:0:32-n32-S32");
+    }
+    else {
+      datalayout = new TargetData(subtarget.isAPCS_ABI() ?
+          "e-p:32:32-f64:32:64-i64:32:64-v128:32:128-v64:32:64-n32-S32" :
+          subtarget.isAAPCS_ABI() ?
+              "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S64" :
+              "e-p:32:32-f64:64:64-i64:64:64-v128:64:128-v64:64:64-n32-S32");
+    }
   }
 
   public int getStackAlignment() {
@@ -179,14 +189,20 @@ public class ARMSubtarget extends ARMGenSubtarget {
 
   @Override
   public ARMInstrInfo getInstrInfo() {
-    if (instrInfo == null)
-      instrInfo = ARMInstrInfo.createARMInstrInfo(this);
+    if (instrInfo == null) {
+      instrInfo = isThumb() ? hasThumb2() ?
+          new Thumb2InstrInfo(this) : new Thumb1InstrInfo(this) :
+          ARMInstrInfo.createARMInstrInfo(this);
+    }
     return (ARMInstrInfo) instrInfo;
   }
 
   public ARMFrameLowering getFrameLowering() {
-    if (frameInfo == null)
-      frameInfo = new ARMFrameLowering(tm);
+    if (frameInfo == null) {
+      frameInfo = isThumb() && !hasThumb2() ?
+          new Thumb1FrameLowering(this) :
+          new ARMFrameLowering(this);
+    }
     return frameInfo;
   }
 
@@ -198,8 +214,11 @@ public class ARMSubtarget extends ARMGenSubtarget {
 
   @Override
   public ARMRegisterInfo getRegisterInfo() {
-    if (regInfo == null)
-      regInfo = ARMRegisterInfo.createARMRegisterInfo(this, getHwMode());
+    if (regInfo == null) {
+      regInfo = isThumb() ? hasThumb2() ? new Thumb2RegisterInfo(this, getHwMode()) :
+          new Thumb1RegisterInfo(subtarget, getHwMode()) :
+          ARMRegisterInfo.createARMRegisterInfo(this, getHwMode());
+    }
     return (ARMRegisterInfo) regInfo;
   }
 

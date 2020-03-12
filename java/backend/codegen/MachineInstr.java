@@ -47,6 +47,16 @@ import static backend.target.TargetRegisterInfo.isPhysicalRegister;
  * @version 0.4
  */
 public class MachineInstr implements Cloneable {
+  // Specify different kind of comment would be output in the
+  // assembly code. There flags carry semantic information which
+  // is not easily derived from the IR text.
+  public static final int ReloadReuse = 0x1;
+
+  // For MIFlags.
+  public static final int NoFlags = 0;
+  // Instruction is used as a part of function frame setup code.
+  public static final int FrameSetup = 1;
+
   private MCInstrDesc tid;
 
   private int opCode;              // the opcode

@@ -41,10 +41,13 @@ import java.io.PrintStream;
  */
 public class ARMTargetInfo {
   private static Target theARMTarget = new Target();
+  private static Target theThumbTarget = new Target();
 
   public static void InitializeARMTargetInfo() {
     TargetRegistry.registerTarget(theARMTarget, "arm",
         "ARM", Triple.ArchType.arm, false);
+    TargetRegistry.registerTarget(theThumbTarget, "thumb",
+        "Thumb", Triple.ArchType.thumb, false);
   }
 
   /**
@@ -74,9 +77,16 @@ public class ARMTargetInfo {
   };
 
   public static void InitializeARMTarget() {
+    // ARM
     TargetRegistry.registerTargetMachine(theARMTarget, ARMTargetMachineMaker);
     TargetRegistry.registerAsmInfo(theARMTarget, createTargetAsmInfo);
     TargetRegistry.registerAsmPrinter( theARMTarget, createARMAsmPrinter);
     TargetRegistry.registerMCInstPrinter(theARMTarget, createARMMCInstPrinter);
+
+    // Thumb
+    TargetRegistry.registerTargetMachine(theThumbTarget, ARMTargetMachineMaker);
+    TargetRegistry.registerAsmInfo(theThumbTarget, createTargetAsmInfo);
+    TargetRegistry.registerAsmPrinter(theThumbTarget, createARMAsmPrinter);
+    TargetRegistry.registerMCInstPrinter(theThumbTarget, createARMMCInstPrinter);
   }
 }

@@ -47,12 +47,12 @@ import static backend.target.arm.ARMRegisterInfo.*;
  * @version 0.4
  */
 public class ARMFrameLowering extends TargetFrameLowering {
-  private ARMSubtarget subtarget;
-  private int framePtr;
+  protected ARMSubtarget subtarget;
+  protected int framePtr;
 
-  public ARMFrameLowering(ARMTargetMachine tm) {
-    super(StackDirection.StackGrowDown, tm.getSubtarget().getStackAlignment(), 0);
-    this.subtarget = tm.getSubtarget();
+  public ARMFrameLowering(ARMSubtarget subtarget) {
+    super(StackDirection.StackGrowDown, subtarget.getStackAlignment(), 0);
+    this.subtarget = subtarget;
     framePtr = (subtarget.isThumb() || subtarget.isTargetDarwin()) ?
         ARMGenRegisterNames.R7 : ARMGenRegisterNames.R11;
   }

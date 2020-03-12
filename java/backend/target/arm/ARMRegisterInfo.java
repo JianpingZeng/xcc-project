@@ -77,7 +77,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
 
   private int framePtr;
   private int basePtr;
-  private ARMSubtarget subtarget;
+  protected ARMSubtarget subtarget;
   private ARMFrameLowering tfl;
 
   protected ARMRegisterInfo(ARMSubtarget subtarget) {
@@ -1188,7 +1188,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
    * @param scale
    * @return
    */
-  private static int calcNumMI(int opc, int extraOpc, int bytes, int numBits, int scale) {
+  static int calcNumMI(int opc, int extraOpc, int bytes, int numBits, int scale) {
     int numMIs = 0;
     int chunk = ((1 << numBits) - 1) * scale;
     if (opc == ARMGenInstrNames.tADDrSPi) {

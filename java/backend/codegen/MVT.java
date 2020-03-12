@@ -320,6 +320,8 @@ public final class MVT implements Comparable<MVT>, Cloneable {
       case v8f32:
       case v4f64:
         return 256;
+      case v8f64:
+      case v8i64:
       case v16f32:
         return 512;
     }
@@ -352,7 +354,7 @@ public final class MVT implements Comparable<MVT>, Cloneable {
       case isVoid:
         return "void";
       default:
-        Util.assertion(false, "Illegal value type!");
+        Util.assertion("Illegal value type!");
         return "";
     }
   }
@@ -427,13 +429,22 @@ public final class MVT implements Comparable<MVT>, Cloneable {
       case v1i64:
       case v2i64:
       case v4i64:
+      case v8i64:
         return new MVT(i64);
+      case v2f16:
+      case v4f16:
+      case v8f16:
+        return new MVT(f16);
+      case v1f32:
       case v2f32:
       case v4f32:
       case v8f32:
+      case v16f32:
         return new MVT(f32);
+      case v1f64:
       case v2f64:
       case v4f64:
+      case v8f64:
         return new MVT(f64);
     }
   }
@@ -450,7 +461,10 @@ public final class MVT implements Comparable<MVT>, Cloneable {
       case v8i8:
       case v8i16:
       case v8i32:
+      case v8i64:
+      case v8f16:
       case v8f32:
+      case v8f64:
         return 8;
       case v4i8:
       case v4i16:
@@ -463,18 +477,21 @@ public final class MVT implements Comparable<MVT>, Cloneable {
       case v2i16:
       case v2i32:
       case v2i64:
+      case v2f16:
       case v2f32:
       case v2f64:
         return 2;
       case v1i64:
+      case v1f32:
+      case v1f64:
         return 1;
     }
   }
 
-  public static MVT getFloatingPointVT(int bitWidth) {
+  static MVT getFloatingPointVT(int bitWidth) {
     switch (bitWidth) {
       default:
-        Util.assertion(false, "Bad bit width!");
+        Util.assertion("Bad bit width!");
       case 32:
         return new MVT(f32);
       case 64:

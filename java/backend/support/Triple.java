@@ -63,6 +63,7 @@ public class Triple {
     mipsel,
     mips64,
     mips64el,
+    thumb,
 
     InvalidArch,
   }

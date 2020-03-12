@@ -789,8 +789,8 @@ public final class RegisterInfoEmitter extends TableGenBackend {
 
     String className = targetName + "GenRegisterInfo";
     // emit the fields and constructors for *Target* GenRegisterInfo.
-    os.printf("\tpublic %s(%sTargetMachine tm, int mode) {\n" +
-        "    super(tm);\n", className, targetName);
+    os.printf("\tpublic %s(%sSubtarget subtarget, int mode) {\n" +
+        "    super(subtarget);\n", className, targetName);
     if (!generatedInitMtds.isEmpty()) {
       generatedInitMtds.forEach(mtd-> {
         os.printf("\t\t%s();\n", mtd);
