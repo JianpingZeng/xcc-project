@@ -36,6 +36,12 @@ public class MCInstrDesc {
    * enum identifying instr sched class.
    */
   public int schedClass;
+
+  /**
+   * How many bytes of this instruction encoding.
+   */
+  public int size;
+
   /**
    * flags identifying machine instr class
    */
@@ -80,6 +86,7 @@ public class MCInstrDesc {
                      int numOperands,
                      int numDefs,
                      int schedClass,
+                     int size,
                      String name,
                      int flags,
                      int tSFlags,
@@ -91,6 +98,7 @@ public class MCInstrDesc {
     this.numOperands = numOperands;
     this.numDefs = numDefs;
     this.schedClass = schedClass;
+    this.size = size;
     this.name = name;
     this.flags = flags;
     this.tSFlags = tSFlags;
@@ -119,6 +127,10 @@ public class MCInstrDesc {
 
   public int getOpcode() {
     return opCode;
+  }
+
+  public int getSize() {
+    return size;
   }
 
   public String getName() {

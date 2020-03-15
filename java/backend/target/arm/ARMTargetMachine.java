@@ -30,10 +30,13 @@ package backend.target.arm;
 import backend.codegen.MachineCodeEmitter;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManagerBase;
-import backend.target.*;
+import backend.target.LLVMTargetMachine;
+import backend.target.Target;
+import backend.target.TargetData;
 
 import java.io.PrintStream;
 
+import static backend.target.arm.ARMConstantPoolIslandPass.createARMConstantIslandPass;
 import static backend.target.arm.ARMDAGISel.createARMISelDAG;
 
 /**
@@ -81,6 +84,12 @@ public class ARMTargetMachine extends LLVMTargetMachine {
   @Override
   public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level) {
     pm.add(ARMExpandPseudoInsts.createARMExpandPseudoPass());
+    return false;
+  }
+
+  @Override
+  public boolean addPreEmitPass(PassManagerBase pm, CodeGenOpt level) {
+    pm.add(createARMConstantIslandPass());
     return false;
   }
 

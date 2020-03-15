@@ -175,11 +175,12 @@ public final class InstrInfoEmitter extends TableGenBackend {
           + (int) inst.operandList.get(sz - 1).miNumOperands;
     }
 
-    os.printf("\t\t%sInsts[%d] = new MCInstrDesc(%d, %d, %d, %d, \"%s\", 0",
+    os.printf("\t\t%sInsts[%d] = new MCInstrDesc(%d, %d, %d, %d, %d, \"%s\", 0",
         targetName,
         num,
         num, minOperands, inst.numDefs,
         getItinClassNumber(inst.theDef),
+        inst.theDef.getValueAsInt("Size"),
         inst.theDef.getName());
 
     // Emit all of the target independent flags.

@@ -560,7 +560,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
     return 0;
   }
 
-  public ARMCC.CondCodes getInstrPredicate(MachineInstr mi, OutRef<Integer> predReg) {
+  public static ARMCC.CondCodes getInstrPredicate(MachineInstr mi, OutRef<Integer> predReg) {
     int idx = mi.findFirstPredOperandIdx();
     if (idx == -1) {
       predReg.set(0);

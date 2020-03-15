@@ -1,8 +1,8 @@
 package backend.codegen;
 
 import backend.mc.MCAsmInfo;
-import backend.mc.MCSymbol;
 import backend.mc.MCRegisterClass;
+import backend.mc.MCSymbol;
 import backend.support.Attribute;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
@@ -197,8 +197,17 @@ public class MachineFunction {
     alignment = align;
   }
 
+  public void ensureAlignment(int align) {
+    if (align > alignment)
+      alignment = align;
+  }
+
   public int size() {
     return getBasicBlocks().size();
+  }
+
+  public MachineBasicBlock createMachineBasicBlock() {
+    return createMachineBasicBlock(null);
   }
 
   public MachineBasicBlock createMachineBasicBlock(BasicBlock bb) {

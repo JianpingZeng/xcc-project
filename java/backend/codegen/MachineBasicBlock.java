@@ -50,7 +50,7 @@ public class MachineBasicBlock {
     predecessors = new ArrayList<>();
     successors = new ArrayList<>();
     liveIns = new TIntArrayList();
-    addressTaken = bb.isHasAddrTaken();
+    addressTaken = bb != null && bb.isHasAddrTaken();
   }
 
   public boolean hasAddressTaken() {

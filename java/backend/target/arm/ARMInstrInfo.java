@@ -665,6 +665,9 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     MCAsmInfo mai = mf.getTarget().getMCAsmInfo();
 
     MCInstrDesc mcid = mi.getDesc();
+    if (mcid.getSize() != 0)
+      return mcid.getSize();
+
     if (mi.getOpcode() == TargetOpcode.INLINEASM)
       return getInlineAsmLength(mi.getOperand(0).getSymbolName(), mai);
     if (mi.isLabel())

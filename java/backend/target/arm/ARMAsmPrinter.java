@@ -65,6 +65,12 @@ public class ARMAsmPrinter extends AsmPrinter {
     inst.addOperand(MCOperand.createReg(ccreg));
   }
 
+  /**
+   * Use target custom.
+   */
+  @Override
+  protected void emitConstantPool() { }
+
   @Override
   protected void emitInstruction(MachineInstr mi) {
     if (instLowering == null)

@@ -133,6 +133,7 @@ public class ARMFunctionInfo implements MachineFunctionInfo {
     PICLabelUId = 0;
     VarArgsFrameIndex = 0;
     HasITBlocks = false;
+    CPEClones = new TreeMap<>();
   }
 
   public boolean isThumbFunction() { return isThumb; }
