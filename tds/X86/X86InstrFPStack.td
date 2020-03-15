@@ -318,7 +318,7 @@ multiclass FPCMov<PatLeaf cc> {
                      [(set RFP80:$dst, (X86cmov RFP80:$src1, RFP80:$src2,
                                         cc, EFLAGS))]>;
 }
-let Uses = [EFLAGS], isTwoAddress = 1 in {
+let Uses = [EFLAGS], Constraints = "$src1 = $dst" in {
 defm CMOVB  : FPCMov<X86_COND_B>;
 defm CMOVBE : FPCMov<X86_COND_BE>;
 defm CMOVE  : FPCMov<X86_COND_E>;
@@ -351,7 +351,7 @@ def CMOVNP_F : FPI<0xD8, AddRegFrm, (outs RST:$op), (ins),
 let canFoldAsLoad = 1 in {
 def LD_Fp32m   : FpIf32<(outs RFP32:$dst), (ins f32mem:$src), ZeroArgFP,
                   [(set RFP32:$dst, (loadf32 addr:$src))]>;
-let isReMaterializable = 1, mayHaveSideEffects = 1 in
+let isReMaterializable = 1 in
   def LD_Fp64m : FpIf64<(outs RFP64:$dst), (ins f64mem:$src), ZeroArgFP,
                   [(set RFP64:$dst, (loadf64 addr:$src))]>;
 def LD_Fp80m   : FpI_<(outs RFP80:$dst), (ins f80mem:$src), ZeroArgFP,

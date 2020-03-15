@@ -960,8 +960,9 @@ public final class TreePatternNode implements Cloneable {
     return false;
   }
 
-  public boolean setDefaultMode(Integer mode) {
+  boolean setDefaultMode(Integer mode) {
     for (TypeSetByHwMode vt : types) {
+      if (vt.isEmpty()) return false;
       vt.makeSimple(mode);
       if (vt.get(DefaultMode).isEmpty())
         return false;
@@ -973,7 +974,7 @@ public final class TreePatternNode implements Cloneable {
     return true;
   }
 
-  public boolean hasProperty(int prop, CodeGenDAGPatterns cdp) {
+  boolean hasProperty(int prop, CodeGenDAGPatterns cdp) {
     if (isLeaf()) {
       ComplexPattern cp = getComplexPatternInfo(cdp);
       if (cp != null)

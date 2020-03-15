@@ -128,7 +128,7 @@ public final class CodeGenDAGPatterns {
         System.err.println();
         tp.dump();
         System.err.println();
-        Util.assertion("There must is only one type remained");
+        Util.assertion("There must be one and only one type remained");
       }
     }
   }

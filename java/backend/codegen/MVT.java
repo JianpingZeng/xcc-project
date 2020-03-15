@@ -25,6 +25,53 @@ import tools.Util;
  * @version 0.4
  */
 public final class MVT implements Comparable<MVT>, Cloneable {
+  /**
+   * def OtherVT: ValueType<0  ,  0>;   // "Other" value
+   * def i1     : ValueType<1  ,  1>;   // One bit boolean value
+   * def i8     : ValueType<8  ,  2>;   // 8-bit integer value
+   * def i16    : ValueType<16 ,  3>;   // 16-bit integer value
+   * def i32    : ValueType<32 ,  4>;   // 32-bit integer value
+   * def i64    : ValueType<64 ,  5>;   // 64-bit integer value
+   * def i128   : ValueType<128,  6>;   // 128-bit integer value
+   * def f16    : ValueType<16,   7>;
+   * def f32    : ValueType<32 ,  8>;   // 32-bit floating point value
+   * def f64    : ValueType<64 ,  9>;   // 64-bit floating point value
+   * def f80    : ValueType<80 , 10>;   // 80-bit floating point value
+   * def f128   : ValueType<128, 11>;   // 128-bit floating point value
+   * def ppcf128: ValueType<128, 12>;   // PPC 128-bit floating point value
+   * def FlagVT : ValueType<0  , 13>;   // Condition code or machine flag
+   * def isVoid : ValueType<0  , 14>;   // Produces no value
+   *
+   * def v2i8   : ValueType<16 , 15>;   //  2 x i8  vector value
+   * def v4i8   : ValueType<32 , 16>;   //  4 x i8  vector value
+   * def v8i8   : ValueType<64 , 17>;   //  8 x i8  vector value
+   * def v16i8  : ValueType<128, 18>;   // 16 x i8  vector value
+   * def v32i8  : ValueType<256, 19>;   // 32 x i8 vector value
+   * def v2i16  : ValueType<32 , 20>;   //  2 x i16 vector value
+   * def v4i16  : ValueType<64 , 21>;   //  4 x i16 vector value
+   * def v8i16  : ValueType<128, 22>;   //  8 x i16 vector value
+   * def v16i16 : ValueType<256, 23>;   // 16 x i16 vector value
+   * def v2i32  : ValueType<64 , 24>;   //  2 x i32 vector value
+   * def v4i32  : ValueType<128, 25>;   //  4 x i32 vector value
+   * def v8i32  : ValueType<256, 26>;   //  8 x i32 vector value
+   * def v1i64  : ValueType<64 , 27>;   //  1 x i64 vector value
+   * def v2i64  : ValueType<128, 28>;   //  2 x i64 vector value
+   * def v4i64  : ValueType<256, 29>;   //  4 x f64 vector value
+   * def v8i64  : ValueType<512, 30>;   //  8 x i64 vector value
+   *
+   * def v2f16  : ValueType<32,  31>;   // 2 x f16 vector type.
+   * def v4f16  : ValueType<64,  32>;   // 4 x f16 vector type
+   * def v8f16  : ValueType<128, 33>;   // 8 x f16 vector type
+   * def v1f32  : ValueType<32,  34>;   // 1 x f32 vector type
+   * def v2f32  : ValueType<64,  35>;   // 2 x f32 vector value
+   * def v4f32  : ValueType<128, 36>;   // 4 x f32 vector value
+   * def v8f32  : ValueType<256, 37>;   // 8 x f32 vector value
+   * def v16f32 : ValueType<512, 38>;   // 16 x f32 vector type
+   * def v1f64  : ValueType<64,  39>;   // 1 x 64 vector type
+   * def v2f64  : ValueType<128, 40>;   // 2 x f64 vector value
+   * def v4f64  : ValueType<256, 41>;   // 4 x f64 vector value
+   * def v8f64  : ValueType<512, 42>;   // 8 x f64 vector type
+   */
   // If you change this numbering, you must change the values in
   // ValueTypes.td as well!
   public static final int Other = 0;                 // This is a non-standard value
@@ -76,7 +123,7 @@ public final class MVT implements Comparable<MVT>, Cloneable {
   public static final int v4f64 = 41;   //  4 x f64
   public static final int v8f64 = 42;   //  8 x f64
 
-  public static final int x86mmx = 43;  // 64
+  public static final int x86mmx = 109;  // 64
 
   public static final int LAST_VALUETYPE = x86mmx + 1;   // This always remains at the end of the list.
 

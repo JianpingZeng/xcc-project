@@ -484,6 +484,8 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       for (Record reg : li) {
         if (!registerAlias.containsKey(r))
           registerAlias.put(r, new TreeSet<>(Record.LessRecord));
+        if (!registerAlias.containsKey(reg))
+          registerAlias.put(reg, new TreeSet<>(Record.LessRecord));
 
         if (registerAlias.get(r).contains(reg)) {
           System.err.println("Warning: register alias between "
@@ -491,6 +493,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
               + " specified multiple times!\n");
         }
         registerAlias.get(r).add(reg);
+
         if (registerAlias.get(reg).contains(r)) {
           System.err.println("Warning: register alias between "
               + r.getName() + " and " + reg.getName()
