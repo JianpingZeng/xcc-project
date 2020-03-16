@@ -47,16 +47,15 @@ class Thumb2InstrInfo extends ARMGenInstrInfo {
   public boolean copyPhysReg(MachineBasicBlock mbb,
                              int insertPos,
                              int dstReg, int srcReg,
-                             MCRegisterClass dstRC,
-                             MCRegisterClass srcRC) {
+                             boolean isKill) {
     // Handle SPR, DPR, and QPR copies.
     if (!ARMGenRegisterInfo.GPRRegisterClass.contains(dstReg) ||
         !ARMGenRegisterInfo.GPRRegisterClass.contains(srcReg)) {
-      return super.copyPhysReg(mbb, insertPos, dstReg, srcReg, dstRC, srcRC);
+      return super.copyPhysReg(mbb, insertPos, dstReg, srcReg, isKill);
     }
 
     addDefaultPred(buildMI(mbb, insertPos, new DebugLoc(),
-        get(ARMGenInstrNames.tMOVr), dstReg).addReg(srcReg, getKillRegState(false)));
+        get(ARMGenInstrNames.tMOVr), dstReg).addReg(srcReg, getKillRegState(isKill)));
     return true;
   }
 

@@ -24,10 +24,7 @@ import backend.type.Type;
 import backend.value.ConstantInt;
 import backend.value.Value;
 import gnu.trove.list.array.TIntArrayList;
-import tools.APFloat;
-import tools.APInt;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -3429,9 +3426,11 @@ public class DAGTypeLegalizer {
   private SDValue softenFloatOp_BR_CC(SDNode n) {
     SDValue newLHS = n.getOperand(2), newRHS = n.getOperand(3);
     CondCode cc = ((CondCodeSDNode) (n.getOperand(1).getNode())).getCondition();
-    SDValue[] res = softenSetCCOperands(newLHS, newRHS, cc);
+    OutRef<CondCode> ccRef = new OutRef<>(cc);
+    SDValue[] res = softenSetCCOperands(newLHS, newRHS, ccRef);
     newLHS = res[0];
     newRHS = res[1];
+    cc = ccRef.get();
 
     if (newRHS.getNode() == null) {
       newRHS = dag.getConstant(0, newLHS.getValueType(), false);
@@ -3471,9 +3470,11 @@ public class DAGTypeLegalizer {
   private SDValue softenFloatOp_SELECT_CC(SDNode n) {
     SDValue newLHS = n.getOperand(0), newRHS = n.getOperand(1);
     CondCode cc = ((CondCodeSDNode) (n.getOperand(4).getNode())).getCondition();
-    SDValue[] res = softenSetCCOperands(newLHS, newRHS, cc);
+    OutRef<CondCode> ccRef = new OutRef<>(cc);
+    SDValue[] res = softenSetCCOperands(newLHS, newRHS, ccRef);
     newLHS = res[0];
     newRHS = res[1];
+    cc = ccRef.get();
 
     if (newRHS.getNode() == null) {
       newRHS = dag.getConstant(0, newLHS.getValueType(), false);
@@ -3488,13 +3489,14 @@ public class DAGTypeLegalizer {
   private SDValue softenFloatOp_SETCC(SDNode n) {
     SDValue newLHS = n.getOperand(0), newRHS = n.getOperand(1);
     CondCode cc = ((CondCodeSDNode) (n.getOperand(2).getNode())).getCondition();
-    SDValue[] res = softenSetCCOperands(newLHS, newRHS, cc);
+    OutRef<CondCode> ccRef = new OutRef<>(cc);
+    SDValue[] res = softenSetCCOperands(newLHS, newRHS, ccRef);
     newLHS = res[0];
     newRHS = res[1];
+    cc = ccRef.get();
 
     if (newRHS.getNode() == null) {
       Util.assertion(newLHS.getValueType().equals(n.getValueType(0)), "Unexpeted setcc expansion!");
-
       return newLHS;
     }
 
@@ -3520,7 +3522,7 @@ public class DAGTypeLegalizer {
         st.isVolatile(), st.getAlignment());
   }
 
-  private SDValue[] softenSetCCOperands(SDValue newLHS, SDValue newRHS, CondCode cc) {
+  private SDValue[] softenSetCCOperands(SDValue newLHS, SDValue newRHS, OutRef<CondCode> cc) {
     SDValue lhsInt = getSoftenedFloat(newLHS);
     SDValue rhsInt = getSoftenedFloat(newRHS);
     EVT vt = newLHS.getValueType();
@@ -3530,7 +3532,7 @@ public class DAGTypeLegalizer {
     Util.assertion(isF32 || isF64, "Unsupported setcc type!");
 
     RTLIB libCall = RTLIB.UNKNOWN_LIBCALL, libCall2 = RTLIB.UNKNOWN_LIBCALL;
-    switch (cc) {
+    switch (cc.get()) {
       case SETEQ:
       case SETOEQ:
         libCall = isF32 ? RTLIB.OEQ_F32 : RTLIB.OEQ_F64;
@@ -3563,7 +3565,7 @@ public class DAGTypeLegalizer {
         break;
       default:
         libCall = isF32 ? RTLIB.UO_F32 : RTLIB.UO_F64;
-        switch (cc) {
+        switch (cc.get()) {
           case SETONE:
             libCall = isF32 ? RTLIB.OLT_F32 : RTLIB.OLT_F64;
           case SETUGT:
@@ -3582,7 +3584,7 @@ public class DAGTypeLegalizer {
             libCall2 = isF32 ? RTLIB.OEQ_F32 : RTLIB.OEQ_F64;
             break;
           default:
-            Util.assertion(false, "Don't know how to soften this setcc!");
+            Util.assertion("Don't know how to soften this setcc!");
             break;
         }
         break;
@@ -3592,11 +3594,11 @@ public class DAGTypeLegalizer {
     SDValue[] ops = {lhsInt, rhsInt};
     newLHS = makeLibCall(libCall, retVT, ops, false);
     newRHS = dag.getConstant(0, retVT, false);
-    cc = tli.getCmpLibCallCC(libCall);
+    cc.set(tli.getCmpLibCallCC(libCall));
     if (libCall2 != RTLIB.UNKNOWN_LIBCALL) {
       SDValue temp = dag.getNode(ISD.SETCC,
           new EVT(tli.getSetCCResultType(retVT)),
-          newLHS, newRHS, dag.getCondCode(cc));
+          newLHS, newRHS, dag.getCondCode(cc.get()));
       newLHS = makeLibCall(libCall2, retVT, ops, false);
       newLHS = dag.getNode(ISD.SETCC, new EVT(tli.getSetCCResultType(retVT)),
           newLHS, newRHS, dag.getCondCode(tli.getCmpLibCallCC(libCall2)));

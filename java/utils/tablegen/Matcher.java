@@ -564,32 +564,32 @@ public abstract class Matcher {
    * is applicable.
    */
   public static class CheckPredicateMatcher extends Matcher {
-    private String predName;
+    private TreePattern pred;
 
-    public CheckPredicateMatcher(String pred) {
+    public CheckPredicateMatcher(TreePredicateFn pred) {
       super(MatcherKind.CheckPredicate);
-      predName = pred;
+      this.pred = pred.getOrigPatFragRecord();
     }
 
-    public String getPredicateName() {
-      return predName;
+    public TreePredicateFn getPredicate() {
+      return new TreePredicateFn(pred);
     }
 
     @Override
     protected void printImpl(PrintStream os, int indent) {
       os.printf("%sCheckPredicate: %s%n", Util.fixedLengthString(indent, ' '),
-          predName);
+          getPredicate().getFnName());
     }
 
     @Override
     protected boolean isEqualImpl(Matcher m) {
       return m instanceof CheckPredicateMatcher &&
-          ((CheckPredicateMatcher) m).predName.equals(predName);
+          ((CheckPredicateMatcher) m).pred.equals(pred);
     }
 
     @Override
     protected int getHashImpl() {
-      return predName.hashCode();
+      return pred.hashCode();
     }
   }
 

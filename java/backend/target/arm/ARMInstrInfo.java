@@ -123,8 +123,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
                              int insertPos,
                              int dstReg,
                              int srcReg,
-                             MCRegisterClass dstRC,
-                             MCRegisterClass srcRC) {
+                             boolean isKill) {
     Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg) &&
         TargetRegisterInfo.isPhysicalRegister(dstReg),
         "copy virtual register should be coped with COPY!");
@@ -137,7 +136,8 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
 
     if (gprDest && gprSrc) {
       int opc = ARMGenInstrNames.MOVr;
-      MachineInstrBuilder mib = buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+      MachineInstrBuilder mib = buildMI(mbb, insertPos, dl, get(opc), dstReg)
+          .addReg(srcReg, getKillRegState(isKill));
       addDefaultPred(mib);
       addDefaultCC(mib);
       return true;
@@ -163,7 +163,8 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     }
 
     if (opc != 0) {
-      MachineInstrBuilder mib = buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+      MachineInstrBuilder mib = buildMI(mbb, insertPos, dl, get(opc), dstReg)
+          .addReg(srcReg, getKillRegState(isKill));
       if (opc == ARMGenInstrNames.VORRq)
         mib.addReg(srcReg);
       return true;
@@ -183,8 +184,8 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
         int src = tri.getSubReg(dstReg, i);
         MachineInstrBuilder mib = buildMI(mbb, insertPos, dl, get(ARMGenInstrNames.VORRq))
             .addReg(dest, MachineOperand.RegState.Define)
-            .addReg(src)
-            .addReg(src);
+            .addReg(src, getKillRegState(isKill))
+            .addReg(src, getKillRegState(isKill));
         if (i == endSubReg) {
           mib.addReg(dstReg, MachineOperand.RegState.ImplicitDefine);
         }

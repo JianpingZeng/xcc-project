@@ -413,9 +413,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
     MCRegisterClass destRC = tri.getRegClass(destRCIdx);
 
     int newVReg = mri.createVirtualRegister(destRC);
-    boolean emitted = tii.copyPhysReg(mbb, insertPos++, newVReg, vreg,
-        destRC, srcRC);
-    Util.assertion(emitted, "Unable to issue a copy instruction!");
+    buildMI(mbb, insertPos++, new DebugLoc(), tii.get(TargetOpcode.COPY), newVReg).addReg(vreg);
     SDValue op = new SDValue(node, 0);
     Util.assertion(!vrBaseMap.containsKey(op));
     vrBaseMap.put(op, newVReg);
@@ -548,8 +546,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       // virtual register with the GPRnopc RC.
       if (destRC != null && mri.constraintRegClass(vreg, destRC, MinRCSize) == null) {
         int newVReg = mri.createVirtualRegister(destRC);
-        boolean emitted = tii.copyPhysReg(mbb, insertPos++, newVReg, vreg, destRC, destRC);
-        Util.assertion(emitted, "Unable to issue a copy instruction!");
+        buildMI(mbb, insertPos++, new DebugLoc(), tii.get(TargetOpcode.COPY), newVReg).addReg(vreg);
         vreg = newVReg;
       }
     }

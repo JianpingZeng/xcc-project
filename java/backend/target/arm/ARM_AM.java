@@ -45,22 +45,24 @@ public class ARM_AM {
    * @param arg
    * @return
    */
-  public static int getSOImmVal(int arg) {
-    if ((arg & ~255) == 0) return arg;
+  public static int getSOImmVal(long arg) {
+    int argI = (int) arg;
+    if ((arg & ~255) == 0) return argI;
 
-    int rotAmt = getSOImmValRotate(arg);
+    int rotAmt = getSOImmValRotate(argI);
     if ((rotr32(~255, rotAmt) & arg) != 0)
       return -1;
 
-    return rotl32(arg, rotAmt) | ((rotAmt >>> 1) << 8);
+    return rotl32(argI, rotAmt) | ((rotAmt >>> 1) << 8);
   }
 
-  public static int getT2SOImmVal(int arg) {
-    int splat = getT2SOImmValSplatVal(arg);
+  public static int getT2SOImmVal(long arg) {
+    int argI = (int) arg;
+    int splat = getT2SOImmValSplatVal(argI);
     if (splat != -1)
       return splat;
 
-    return getT2SOImmValRotateVal(arg);
+    return getT2SOImmValRotateVal(argI);
   }
 
   private static int getT2SOImmValRotateVal(int val) {

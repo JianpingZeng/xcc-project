@@ -37,6 +37,7 @@ import tools.Util;
 
 import java.util.ArrayList;
 
+import static backend.codegen.MachineInstrBuilder.getKillRegState;
 import static backend.target.arm.ARMRegisterInfo.isARMLowRegister;
 
 /**
@@ -65,7 +66,7 @@ class Thumb1InstrInfo extends ARMGenInstrInfo {
     for (int i = csi.size(); i != 0; --i) {
       int reg = csi.get(i-1).getReg();
       mbb.addLiveIn(reg);
-      mib.addReg(reg, MachineInstrBuilder.getKillRegState(true));
+      mib.addReg(reg, getKillRegState(true));
     }
 
     mib.setMIFlags(MachineInstr.FrameSetup);
@@ -111,13 +112,12 @@ class Thumb1InstrInfo extends ARMGenInstrInfo {
                              int insertPos,
                              int dstReg,
                              int srcReg,
-                             MCRegisterClass dstRC,
-                             MCRegisterClass srcRC) {
+                             boolean isKill) {
     Util.assertion(ARMGenRegisterInfo.GPRRegisterClass.contains(dstReg) &&
         ARMGenRegisterInfo.GPRRegisterClass.contains(srcReg), "Thumb1 can only copy GPR registers");
 
     addDefaultPred(MachineInstrBuilder.buildMI(mbb, insertPos, new DebugLoc(),
-        get(ARMGenInstrNames.tMOVr), dstReg).addReg(srcReg, MachineInstrBuilder.getKillRegState(true)));
+        get(ARMGenInstrNames.tMOVr), dstReg).addReg(srcReg, getKillRegState(isKill)));
     return true;
   }
 
@@ -145,7 +145,7 @@ class Thumb1InstrInfo extends ARMGenInstrInfo {
           mfi.getObjectSize(frameIndex),
           mfi.getObjectAlignment(frameIndex));
       addDefaultPred(MachineInstrBuilder.buildMI(mbb, pos, dl, get(ARMGenInstrNames.tSTRspi))
-          .addReg(srcReg, MachineInstrBuilder.getKillRegState(isKill))
+          .addReg(srcReg, getKillRegState(isKill))
           .addFrameIndex(frameIndex).addImm(0).addMemOperand(mmo));
     }
   }

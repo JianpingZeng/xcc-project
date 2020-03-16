@@ -474,7 +474,7 @@ class PatFrag<dag ops, dag frag, code pred = [{}],
               SDNodeXForm xform = NOOP_SDNodeXForm> : SDPatternOperator {
   dag Operands = ops;
   dag Fragment = frag;
-  code Predicate = pred;
+  code PredicateCode = pred;
   code ImmediateCode = [{}];
   SDNodeXForm OperandTransform = xform;
 

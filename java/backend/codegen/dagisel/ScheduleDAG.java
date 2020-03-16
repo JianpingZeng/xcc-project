@@ -18,16 +18,16 @@
 package backend.codegen.dagisel;
 
 import backend.codegen.*;
+import backend.debug.DebugLoc;
 import backend.support.DefaultDotGraphTrait;
 import backend.support.GraphWriter;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetLowering;
-import backend.target.TargetMachine;
-import backend.target.TargetRegisterInfo;
+import backend.target.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 
 import java.util.ArrayList;
+
+import static backend.codegen.MachineInstrBuilder.buildMI;
 
 public abstract class ScheduleDAG {
   public MachineBasicBlock mbb;
@@ -129,15 +129,15 @@ public abstract class ScheduleDAG {
             break;
           }
         }
-        tii.copyPhysReg(mbb, insertPos++, reg, vrBaseMap.get(d.getSUnit()),
-            su.copyDstRC, su.copySrcRC);
+        buildMI(mbb, insertPos++, new DebugLoc(), tii.get(TargetOpcode.COPY), reg)
+            .addReg(vrBaseMap.get(d.getSUnit()));
       } else {
         Util.assertion(d.getReg() != 0, "Unknown physical register!");
         int vrBase = mri.createVirtualRegister(su.copyDstRC);
         Util.assertion(!vrBaseMap.containsKey(su));
         vrBaseMap.put(su, vrBase);
-        tii.copyPhysReg(mbb, insertPos++, vrBase, d.getReg(),
-            su.copyDstRC, su.copySrcRC);
+        buildMI(mbb, insertPos++, new DebugLoc(), tii.get(TargetOpcode.COPY), vrBase)
+            .addReg(d.getReg());
       }
       break;
     }

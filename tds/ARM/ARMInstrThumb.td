@@ -48,7 +48,7 @@ def imm0_255_comp : PatLeaf<(i32 imm), [{
 }]>;
 
 def imm8_255 : ImmLeaf<i32, [{
-  return int >= 8 && int < 256;
+  return imm >= 8 && imm < 256;
 }]>;
 def imm8_255_neg : PatLeaf<(i32 imm), [{
   long Val = -n.getZExtValue();

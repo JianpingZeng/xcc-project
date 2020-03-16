@@ -56,12 +56,12 @@ public class DAGISelMatcherEmitter {
 
   private ArrayList<String> initializedMtds;
   private ArrayList<String> patternPredicates;
-  private ArrayList<String> nodePredicates;
+  private ArrayList<TreePredicateFn> nodePredicates;
   private ArrayList<ComplexPattern> complexPatterns;
   private ArrayList<Record> nodeXForms;
 
   private TObjectIntHashMap<String> patternPredicateMap;
-  private TObjectIntHashMap<String> nodePredicateMap;
+  private TObjectIntHashMap<TreePattern> nodePredicateMap;
   private TObjectIntHashMap<ComplexPattern> complexPatternMap;
   private TObjectIntHashMap<Record> nodeXFormMap;
 
@@ -107,12 +107,12 @@ public class DAGISelMatcherEmitter {
     return res;
   }
 
-  private int getNodePredicate(String pred) {
-    if (nodePredicateMap.containsKey(pred))
-      return nodePredicateMap.get(pred);
+  private int getNodePredicate(TreePredicateFn pred) {
+    if (nodePredicateMap.containsKey(pred.getOrigPatFragRecord()))
+      return nodePredicateMap.get(pred.getOrigPatFragRecord());
 
     int res = nodePredicates.size();
-    nodePredicateMap.put(pred, res);
+    nodePredicateMap.put(pred.getOrigPatFragRecord(), res);
     nodePredicates.add(pred);
     return res;
   }
@@ -248,7 +248,7 @@ public class DAGISelMatcherEmitter {
         return 2;
       }
       case CheckPredicate: {
-        String pred = ((CheckPredicateMatcher) m).getPredicateName();
+        TreePredicateFn pred = ((CheckPredicateMatcher) m).getPredicate();
         os.printf("OPC_CheckPredicate, %d,", getNodePredicate(pred));
         if (!OmitComments.value) {
           os.padToColumn(CommentIndent);
@@ -758,31 +758,10 @@ public class DAGISelMatcherEmitter {
       os.println("    switch(predNo) {");
       os.println("      default: Util.assertion(\"Invalid predicate in table\");");
       for (int i = 0, e = nodePredicates.size(); i < e; i++) {
-        TreePattern tp = patByName.get(nodePredicates.get(i).substring("Predicate_".length()));
-        Util.assertion(tp != null);
-        String code = tp.getRecord().getValueAsCode("Predicate");
-        String immCode = tp.getRecord().getValueAsCode("ImmediateCode");
-
-        Util.assertion(!code.isEmpty(), "No code in this predicate");
-        os.printf("      case %d: { // %s%n", i, nodePredicates.get(i));
-        String className;
-        // If this is immLeaf patFrag, we generate a type auto cast code.
-        if (!immCode.isEmpty()) {
-          // "    int64_t Imm = cast<ConstantSDNode>(Node)->getSExtValue();\n";
-          os.println("\t\t\t\tlong imm = ((ConstantSDNode)node).getSExtValue();");
-          os.printf("\t\t\t\t%s", immCode);
-        } else {
-          if (tp.getOnlyTree().isLeaf())
-            className = "SDNode";
-          else
-            className = cgp.getSDNodeInfo(tp.getOnlyTree().getOperator()).getSDClassName();
-
-          if (className.equals("SDNode"))
-            os.println("        SDNode n = node;");
-          else
-            os.printf("        %s n = (%s)node;\n", className, className);
-        }
-        os.printf("        %s\n", code);
+        TreePredicateFn predFn = nodePredicates.get(i);
+        Util.assertion(!predFn.isAlwaysTrue(), "No code in this predicate");
+        os.printf("      case %d: { // %s%n", i, predFn.getFnName());
+        os.print(predFn.getCodeToRunOnSDNode());
         os.println("      }");
       }
       os.println("    }");

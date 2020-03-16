@@ -1335,9 +1335,9 @@ public final class CodeGenDAGPatterns {
 
       // If there is a code init for this fragment, keep track of the fact that
       // this fragment uses it.
-      String code = patFrag.getValueAsCode("Predicate");
-      if (!code.isEmpty()) {
-        tp.getOnlyTree().addPredicateFn("predicate_" + patFrag.getName());
+      TreePredicateFn predFn = new TreePredicateFn(tp);
+      if (!predFn.isAlwaysTrue()) {
+        tp.getOnlyTree().addPredicateFn(predFn);
       }
 
       Record transform = patFrag.getValueAsDef("OperandTransform");

@@ -246,12 +246,12 @@ def so_imm_not_XFORM : SDNodeXForm<imm, [{
 
 /// imm1_15 predicate - True if the 32-bit immediate is in the range [1,15].
 def imm1_15 : ImmLeaf<i32, [{
-  return (int32_t)int >= 1 && (int32_t)int < 16;
+  return (int)imm >= 1 && (int)imm < 16;
 }]>;
 
 /// imm16_31 predicate - True if the 32-bit immediate is in the range [16,31].
 def imm16_31 : ImmLeaf<i32, [{
-  return (int32_t)int >= 16 && (int32_t)int < 32;
+  return (int)imm >= 16 && (int)imm < 32;
 }]>;
 
 def so_imm_neg :
@@ -282,7 +282,7 @@ def lo16AllZero : PatLeaf<(i32 imm), [{
 /// imm0_65535 - An immediate is in the range [0.65535].
 def Imm0_65535AsmOperand: AsmOperandClass { let Name = "Imm0_65535"; }
 def imm0_65535 : Operand<i32>, ImmLeaf<i32, [{
-  return int >= 0 && int < 65536;
+  return imm >= 0 && imm < 65536;
 }]> {
   let ParserMatchClass = Imm0_65535AsmOperand;
 }
@@ -493,7 +493,7 @@ def shift_so_reg_imm : Operand<i32>,    // reg reg imm
 // 8-bit immediate rotated by an arbitrary number of bits.
 def SOImmAsmOperand: AsmOperandClass { let Name = "ARMSOImm"; }
 def so_imm : Operand<i32>, ImmLeaf<i32, [{
-    return ARM_AM.getSOImmVal(int) != -1;
+    return ARM_AM.getSOImmVal(imm) != -1;
   }]> {
   let EncoderMethod = "getSOImmOpValue";
   let ParserMatchClass = SOImmAsmOperand;
@@ -518,7 +518,7 @@ def arm_i32imm : PatLeaf<(imm), [{
 /// imm0_7 predicate - Immediate in the range [0,7].
 def Imm0_7AsmOperand: AsmOperandClass { let Name = "Imm0_7"; }
 def imm0_7 : Operand<i32>, ImmLeaf<i32, [{
-  return int >= 0 && int < 8;
+  return imm >= 0 && imm < 8;
 }]> {
   let ParserMatchClass = Imm0_7AsmOperand;
 }
@@ -526,7 +526,7 @@ def imm0_7 : Operand<i32>, ImmLeaf<i32, [{
 /// imm0_15 predicate - Immediate in the range [0,15].
 def Imm0_15AsmOperand: AsmOperandClass { let Name = "Imm0_15"; }
 def imm0_15 : Operand<i32>, ImmLeaf<i32, [{
-  return int >= 0 && int < 16;
+  return imm >= 0 && imm < 16;
 }]> {
   let ParserMatchClass = Imm0_15AsmOperand;
 }
@@ -534,14 +534,14 @@ def imm0_15 : Operand<i32>, ImmLeaf<i32, [{
 /// imm0_31 predicate - True if the 32-bit immediate is in the range [0,31].
 def Imm0_31AsmOperand: AsmOperandClass { let Name = "Imm0_31"; }
 def imm0_31 : Operand<i32>, ImmLeaf<i32, [{
-  return int >= 0 && int < 32;
+  return imm >= 0 && imm < 32;
 }]> {
   let ParserMatchClass = Imm0_31AsmOperand;
 }
 
 /// imm0_255 predicate - Immediate in the range [0,255].
 def Imm0_255AsmOperand : AsmOperandClass { let Name = "Imm0_255"; }
-def imm0_255 : Operand<i32>, ImmLeaf<i32, [{ return int >= 0 && int < 256; }]> {
+def imm0_255 : Operand<i32>, ImmLeaf<i32, [{ return imm >= 0 && imm < 256; }]> {
   let ParserMatchClass = Imm0_255AsmOperand;
 }
 
@@ -560,7 +560,7 @@ def imm0_65535_expr : Operand<i32> {
 /// imm24b - True if the 32-bit immediate is encodable in 24 bits.
 def Imm24bitAsmOperand: AsmOperandClass { let Name = "Imm24bit"; }
 def imm24b : Operand<i32>, ImmLeaf<i32, [{
-  return int >= 0 && int <= 0xffffff;
+  return imm >= 0 && imm <= 0xffffff;
 }]> {
   let ParserMatchClass = Imm24bitAsmOperand;
 }
@@ -599,7 +599,7 @@ def imm1_16_XFORM: SDNodeXForm<imm, [{
   return curDAG.getTargetConstant((int)n.getZExtValue() - 1, new EVT(MVT.i32));
 }]>;
 def Imm1_16AsmOperand: AsmOperandClass { let Name = "Imm1_16"; }
-def imm1_16 : Operand<i32>, PatLeaf<(imm), [{ return int > 0 && int <= 16; }],
+def imm1_16 : Operand<i32>, PatLeaf<(imm), [{ return imm > 0 && imm <= 16; }],
     imm1_16_XFORM> {
   let PrintMethod = "printImmPlusOneOperand";
   let ParserMatchClass = Imm1_16AsmOperand;

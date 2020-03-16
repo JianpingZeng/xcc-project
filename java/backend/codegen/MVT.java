@@ -263,6 +263,8 @@ public final class MVT implements Comparable<MVT>, Cloneable {
         return "MVT.v2i64";
       case v4i64:
         return "MVT.v4i64";
+      case v8i64:
+        return "MVT.v8i64";
       case v2f16:
         return "MVT.v2f16";
       case v4f16:
@@ -296,7 +298,7 @@ public final class MVT implements Comparable<MVT>, Cloneable {
       case iPTRAny:
         return "MVT.iPTRAny";
       default:
-        Util.assertion(false, "ILLEGAL VALUE TYPE!");
+        Util.assertion("ILLEGAL VALUE TYPE!");
         return "";
     }
   }

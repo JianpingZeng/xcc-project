@@ -21,7 +21,6 @@ import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineOperand.RegState;
 import backend.debug.DebugLoc;
-import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.MachineFunctionPass;
@@ -48,6 +47,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
 
   private int curPos;
   private TargetRegisterInfo tri;
+  private TargetInstrInfo tii;
 
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
@@ -55,7 +55,9 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
       System.err.println("********** Expanding pseudo instructions **********");
       System.err.printf("********** Function: %s%n", mf.getFunction().getName());
     }
-    tri = mf.getTarget().getSubtarget().getRegisterInfo();
+    tri = mf.getSubtarget().getRegisterInfo();
+    tii = mf.getSubtarget().getInstrInfo();
+
     boolean madeChange = false;
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       for (int i = 0; i < mbb.size(); i++) {
@@ -102,10 +104,10 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     int subIdx = (int) mi.getOperand(2).getImm();
     int srcReg = tri.getSubReg(superReg, subIdx);
 
-    Util.assertion(TargetRegisterInfo.isPhysicalRegister(destReg), "Extract superreg source must be a physical register");
-
-    Util.assertion(TargetRegisterInfo.isPhysicalRegister(destReg), "Extract superreg dest must be a physical register");
-
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(destReg),
+        "Extract superreg source must be a physical register");
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(destReg),
+        "Extract superreg dest must be a physical register");
 
     if (srcReg == destReg) {
       if (mo1.isKill()) {
@@ -122,10 +124,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
         System.err.print("subreg: eliminated!");
     } else {
       // insert a copy.
-      MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(srcReg);
-      MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destReg);
-      boolean emitted = tii.copyPhysReg(mbb, mi.getIndexInMBB(), destReg, srcReg,
-          destRC, srcRC);
+      boolean emitted = tii.copyPhysReg(mbb, mi.getIndexInMBB(), destReg, srcReg, false);
       Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
       if (mo0.isDead())
         transferDeadFlag(mi, destReg, tri);
@@ -188,13 +187,10 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
       }
     } else {
       // Insert sub-register copy
-      MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
-      MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
       if (mo2.isUndef())
         buildMI(mbb, mi.getIndexInMBB(), new DebugLoc(), tii.get(TargetOpcode.IMPLICIT_DEF), destSubReg);
       else {
-        boolean emitted = tii.copyPhysReg(mbb, mi.getIndexInMBB(), destSubReg,
-            insReg, destRC, srcRC);
+        boolean emitted = tii.copyPhysReg(mbb, mi.getIndexInMBB(), destSubReg, insReg, mo2.isKill());
         Util.assertion(emitted, "Subreg and dest must be of compatible register class!");
       }
       MachineInstr copyMI = mi.getParent().getInstAt(mi.getIndexInMBB() - 1);
@@ -251,9 +247,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
       if (Util.DEBUG)
         System.err.print("subreg: eliminated!");
     } else {
-      MCRegisterClass destRC = tri.getPhysicalRegisterRegClass(destSubReg);
-      MCRegisterClass srcRC = tri.getPhysicalRegisterRegClass(insReg);
-      tii.copyPhysReg(mbb, mi.getIndexInMBB(), destSubReg, insReg, destRC, srcRC);
+      tii.copyPhysReg(mbb, mi.getIndexInMBB(), destSubReg, insReg, mo2.isKill());
       if (mo0.isDead())
         transferDeadFlag(mi, destSubReg, tri);
       if (mo2.isKill())
@@ -318,6 +312,10 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
       --curPos;
       return true;
     }
+
+    // insert a copy from src register to destination copy.
+    tii.copyPhysReg(mi.getParent(), mi.getIndexInMBB(),
+        destMO.getReg(), srcMO.getReg(), srcMO.isKill());
 
     if (destMO.isDead())
       transferDeadFlag(mi, destMO.getReg(), tri);

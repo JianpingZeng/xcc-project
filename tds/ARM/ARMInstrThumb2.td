@@ -67,7 +67,7 @@ def t2_so_imm_neg_XFORM : SDNodeXForm<imm, [{
 // immediate splatted into multiple bytes of the word.
 def t2_so_imm_asmoperand : AsmOperandClass { let Name = "T2SOImm"; }
 def t2_so_imm : Operand<i32>, ImmLeaf<i32, [{
-    return ARM_AM.getT2SOImmVal(int) != -1;
+    return ARM_AM.getT2SOImmVal(imm) != -1;
   }]> {
   let ParserMatchClass = t2_so_imm_asmoperand;
   let EncoderMethod = "getT2SOImmOpValue";
@@ -90,7 +90,7 @@ def t2_so_imm_neg : Operand<i32>,
 /// imm0_4095 predicate - True if the 32-bit immediate is in the range [0.4095].
 def imm0_4095 : Operand<i32>,
                 ImmLeaf<i32, [{
-  return int >= 0 && int < 4096;
+  return imm >= 0 && imm < 4096;
 }]>;
 
 def imm0_4095_neg : PatLeaf<(i32 imm), [{

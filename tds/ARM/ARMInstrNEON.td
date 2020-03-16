@@ -19,21 +19,21 @@ def VectorIndex8Operand  : AsmOperandClass { let Name = "VectorIndex8"; }
 def VectorIndex16Operand : AsmOperandClass { let Name = "VectorIndex16"; }
 def VectorIndex32Operand : AsmOperandClass { let Name = "VectorIndex32"; }
 def VectorIndex8 : Operand<i32>, ImmLeaf<i32, [{
-  return ((long)int) < 8;
+  return ((long)imm) < 8;
 }]> {
   let ParserMatchClass = VectorIndex8Operand;
   let PrintMethod = "printVectorIndex";
   let MIOperandInfo = (ops i32imm);
 }
 def VectorIndex16 : Operand<i32>, ImmLeaf<i32, [{
-  return ((long)int) < 4;
+  return ((long)imm) < 4;
 }]> {
   let ParserMatchClass = VectorIndex16Operand;
   let PrintMethod = "printVectorIndex";
   let MIOperandInfo = (ops i32imm);
 }
 def VectorIndex32 : Operand<i32>, ImmLeaf<i32, [{
-  return ((long)int) < 2;
+  return ((long)imm) < 2;
 }]> {
   let ParserMatchClass = VectorIndex32Operand;
   let PrintMethod = "printVectorIndex";

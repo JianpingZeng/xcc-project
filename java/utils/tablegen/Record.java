@@ -391,7 +391,7 @@ public final class Record implements Cloneable {
   String getValueAsCode(String fieldName) {
     RecordVal rv = getValue(fieldName);
     Util.assertion(rv != null && rv.getValue() != null,
-        "Reord '" + getName() + "' does not have a field"
+        "Record '" + getName() + "' does not have a field"
             + " named '" + fieldName + "'!\n");
     Util.assertion(rv.getValue() instanceof CodeInit,
         "Record `" + getName() + "', field `" + fieldName +

@@ -59,7 +59,7 @@ public final class TreePatternNode implements Cloneable {
    * The predicate functions to execute on this node to check
    * for a match.  If this list is empty, no predicate is involved.
    */
-  private ArrayList<String> predicateFns;
+  private ArrayList<TreePredicateFn> predicateFns;
   /**
    * The tranformation functions applied to this record before
    * it can be substituted into the resulting instruction on a
@@ -168,7 +168,7 @@ public final class TreePatternNode implements Cloneable {
     children.set(idx, node);
   }
 
-  public ArrayList<String> getPredicateFns() {
+  public ArrayList<TreePredicateFn> getPredicateFns() {
     return predicateFns;
   }
 
@@ -176,7 +176,7 @@ public final class TreePatternNode implements Cloneable {
     predicateFns.clear();
   }
 
-  public void setPredicateFns(ArrayList<String> p) {
+  public void setPredicateFns(ArrayList<TreePredicateFn> p) {
     if (p == null || p.isEmpty()) {
       predicateFns = new ArrayList<>();
       return;
@@ -188,8 +188,8 @@ public final class TreePatternNode implements Cloneable {
     predicateFns.addAll(p);
   }
 
-  public void addPredicateFn(String fn) {
-    Util.assertion(fn != null && !fn.isEmpty(), "Empty predicate string!");
+  public void addPredicateFn(TreePredicateFn fn) {
+    Util.assertion(!fn.isAlwaysTrue(), "Empty predicate string!");
     if (!predicateFns.contains(fn))
       predicateFns.add(fn);
   }
@@ -866,9 +866,9 @@ public final class TreePatternNode implements Cloneable {
     TreePatternNode fragTree = frag.getOnlyTree().clone();
 
     // children tree node inherits predicate function from it's parent node.
-    String code = op.getValueAsCode("Predicate");
-    if (code != null && !code.isEmpty())
-      fragTree.addPredicateFn("predicate_" + op.getName());
+    TreePredicateFn predFn = new TreePredicateFn(frag);
+    if (!predFn.isAlwaysTrue())
+      fragTree.addPredicateFn(predFn);
 
     // Resolve formal arguments to their actual value.
     if (frag.getNumArgs() != 0) {
