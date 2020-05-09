@@ -139,6 +139,16 @@ public abstract class MCRegisterClass {
     return regSet.contains(reg);
   }
 
+  /**
+   * Check if this RegisterClass contains both reg1 and reg2.
+   * @param reg1
+   * @param reg2
+   * @return
+   */
+  public boolean contains(int reg1, int reg2) {
+    return regSet.contains(reg1) && regSet.contains(reg2);
+  }
+
   public boolean hasSuperClass(MCRegisterClass rc) {
     if (superClasses == null) return false;
 

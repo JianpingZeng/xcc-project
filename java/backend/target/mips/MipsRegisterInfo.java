@@ -45,13 +45,13 @@ import static backend.target.mips.MipsGenRegisterInfo.*;
 public abstract class MipsRegisterInfo extends TargetRegisterInfo {
   private MipsSubtarget subtarget;
 
-  MipsRegisterInfo(MipsTargetMachine tm) {
-    subtarget = tm.getSubtarget();
+  MipsRegisterInfo(MipsSubtarget subtarget) {
+    this.subtarget = subtarget;
     this.ra = MipsGenRegisterNames.RA;
   }
 
-  static TargetRegisterInfo createMipsRegisterInfo(MipsTargetMachine tm) {
-    return new MipsGenRegisterInfo(tm, 0);
+  static TargetRegisterInfo createMipsRegisterInfo(MipsSubtarget subtarget) {
+    return new MipsGenRegisterInfo(subtarget, 0);
   }
 
   static int getRegisterNumbering(int reg) {

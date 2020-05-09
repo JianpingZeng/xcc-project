@@ -174,7 +174,7 @@ public class MipsAsmPrinter extends AsmPrinter {
   }
 
   private void emitFrameDirective() {
-    TargetRegisterInfo tri = tm.getRegisterInfo();
+    TargetRegisterInfo tri = tm.getSubtarget().getRegisterInfo();
     int stackReg = tri.getFrameRegister(mf);
     int returnReg = tri.getRARegister();
     int stackSize = mf.getFrameInfo().getStackSize();

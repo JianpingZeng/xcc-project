@@ -57,7 +57,7 @@ public class MipsEmitGPRestorePass extends MachineFunctionPass {
     if (tm.getRelocationModel() != TargetMachine.RelocModel.PIC_)
       return false;
 
-    TargetInstrInfo tii = tm.getInstrInfo();
+    TargetInstrInfo tii = tm.getSubtarget().getInstrInfo();
     boolean changed = false;
 
     int fi = ((MipsFunctionInfo)mf.getInfo()).getGPFI();

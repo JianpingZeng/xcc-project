@@ -29,6 +29,8 @@ package backend.target.mips;
 
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineInstr;
+import backend.codegen.MachineInstrBuilder;
+import backend.codegen.MachineOperand;
 import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetInstrInfoImpl;
@@ -45,10 +47,10 @@ import static backend.codegen.MachineInstrBuilder.getKillRegState;
  */
 public class MipsInstrInfo extends TargetInstrInfoImpl {
   private MipsSubtarget subtarget;
-  public MipsInstrInfo(MipsTargetMachine tm) {
+  public MipsInstrInfo(MipsSubtarget subtarget) {
     super(MipsGenInstrNames.ADJCALLSTACKDOWN,
           MipsGenInstrNames.ADJCALLSTACKUP);
-    subtarget = tm.getSubtarget();
+    this.subtarget = subtarget;
   }
 
   @Override
@@ -61,8 +63,7 @@ public class MipsInstrInfo extends TargetInstrInfoImpl {
                              int insertPos,
                              int dstReg,
                              int srcReg,
-                             MCRegisterClass dstRC,
-                             MCRegisterClass srcRC) {
+                             boolean isKill) {
     Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg) &&
         TargetRegisterInfo.isPhysicalRegister(dstReg), "copy virtual register should be coped with COPY!");
 
@@ -70,51 +71,48 @@ public class MipsInstrInfo extends TargetInstrInfoImpl {
     DebugLoc dl = new DebugLoc();
     if (insertPos != mbb.size()) dl = mbb.getInstAt(insertPos).getDebugLoc();
 
-    if (!dstRC.equals(srcRC)) {
-      // copy to/from FCR31 condition register.
-      if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass) &&
-          srcRC.equals(MipsGenRegisterInfo.CCRRegisterClass)) {
-        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.CFC1), dstReg).addReg(srcReg);
+    int opc = 0, zeroReg = 0;
+    if (MipsGenRegisterInfo.CPURegsRegisterClass.contains(dstReg)) {
+      // copy to CPU register.
+      if (MipsGenRegisterInfo.CPURegsRegisterClass.contains(srcReg)) {
+        // copy value from CPU register to CPU register.
+        opc = MipsGenInstrNames.ADDu;
+        zeroReg = MipsGenRegisterNames.ZERO;
       }
-      else if (dstRC.equals(MipsGenRegisterInfo.CCRRegisterClass))
-        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.CFC1), dstReg).addReg(srcReg);
-
-      // Moves between coprocessor and cpu.
-      else if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass) &&
-               srcRC.equals(MipsGenRegisterInfo.FGR32RegisterClass))
-        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.MFC1), dstReg).addReg(srcReg);
-      else if (dstRC.equals(MipsGenRegisterInfo.FGR32RegisterClass) &&
-          srcRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass))
-        buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.MTC1), dstReg).addReg(srcReg);
-
-      // Move from/to Hi/lo registers.
-      else if (dstRC.equals(MipsGenRegisterInfo.HILORegisterClass) &&
-                srcRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass)) {
-        int opc = dstReg == MipsGenRegisterNames.HI ? MipsGenInstrNames.MTHI : MipsGenInstrNames.MTLO;
-        buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+      else if (MipsGenRegisterInfo.CCRRegisterClass.contains(srcReg))
+        opc = MipsGenInstrNames.CFC1;
+      else if (MipsGenRegisterInfo.FGR32RegisterClass.contains(srcReg))
+        opc = MipsGenInstrNames.MFC1;
+      else if (MipsGenRegisterInfo.HILORegisterClass.contains(srcReg)) {
+        opc = srcReg == MipsGenRegisterNames.HI ? MipsGenInstrNames.MFHI : MipsGenInstrNames.MFLO;
       }
-      else if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass) &&
-          srcRC.equals(MipsGenRegisterInfo.HILORegisterClass)) {
-        int opc = srcReg == MipsGenRegisterNames.HI ? MipsGenInstrNames.MFHI : MipsGenInstrNames.MFLO;
-        buildMI(mbb, insertPos, dl, get(opc), dstReg).addReg(srcReg);
+    } else if (MipsGenRegisterInfo.CPURegsRegisterClass.contains(srcReg)) {
+      // copy from CPU register.
+      if (MipsGenRegisterInfo.CCRRegisterClass.contains(dstReg))
+        opc = MipsGenInstrNames.CTC1;
+      else if (MipsGenRegisterInfo.FGR32RegisterClass.contains(dstReg))
+        opc = MipsGenInstrNames.MTC1;
+      else if (MipsGenRegisterInfo.HILORegisterClass.contains(dstReg)) {
+        opc = dstReg == MipsGenRegisterNames.HI ? MipsGenInstrNames.MTHI : MipsGenInstrNames.MTLO;
       }
-      else
-        // can't copy others.
-        return false;
-      return true;
-    }
+    } else if (MipsGenRegisterInfo.FGR32RegisterClass.contains(dstReg, srcReg))
+      opc = MipsGenInstrNames.FMOV_S;
+    else if (MipsGenRegisterInfo.AFGR64RegisterClass.contains(dstReg, srcReg))
+      opc = MipsGenInstrNames.FMOV_D32;
+    else if (MipsGenRegisterInfo.FGR64RegisterClass.contains(dstReg, srcReg))
+      opc = MipsGenInstrNames.FMOV_D64;
 
-    if (dstRC.equals(MipsGenRegisterInfo.CPURegsRegisterClass))
-      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.ADDu), dstReg).addReg(MipsGenRegisterNames.ZERO).addReg(srcReg);
-    else if (dstRC.equals(MipsGenRegisterInfo.FGR32RegisterClass))
-      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.FMOV_S), dstReg).addReg(srcReg);
-    else if (dstRC.equals(MipsGenRegisterInfo.AFGR64RegisterClass))
-      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.FMOV_D32), dstReg).addReg(srcReg);
-    else if (dstRC.equals(MipsGenRegisterInfo.FGR64RegisterClass))
-      buildMI(mbb, insertPos, dl, get(MipsGenInstrNames.FMOV_D64), dstReg).addReg(srcReg);
-    else
+    if (opc == 0)
+      // can't copy.
       return false;
 
+    MachineInstrBuilder mib = buildMI(mbb, insertPos, dl, get(opc));
+    if (dstReg != 0)
+      mib.addReg(dstReg, MachineOperand.RegState.Define);
+    if (srcReg != 0)
+      mib.addReg(srcReg, getKillRegState(isKill));
+    if (zeroReg != 0)
+      mib.addReg(zeroReg);
     return true;
   }
 

@@ -28,6 +28,8 @@ package backend.target.mips;
  */
 
 import backend.mc.InstrItineraryData;
+import backend.target.TargetFrameLowering;
+import backend.target.TargetLowering;
 import tools.Util;
 
 /**
@@ -195,14 +197,26 @@ public class MipsSubtarget extends MipsGenSubtarget {
   @Override
   public MipsInstrInfo getInstrInfo() {
     if (instrInfo == null)
-      instrInfo = new MipsGenInstrInfo(tm);
+      instrInfo = new MipsGenInstrInfo(this);
     return (MipsInstrInfo) instrInfo;
+  }
+
+  @Override
+  public TargetFrameLowering getFrameLowering() {
+    Util.shouldNotReachHere("MipsSubtarget::getFrameLowering is not implemented yet!");
+    return null;
+  }
+
+  @Override
+  public TargetLowering getTargetLowering() {
+    Util.shouldNotReachHere("MipsSubtarget::getFrameLowering is not implemented yet!");
+    return null;
   }
 
   @Override
   public MipsRegisterInfo getRegisterInfo() {
     if (regInfo == null)
-      regInfo = MipsRegisterInfo.createMipsRegisterInfo(tm);
+      regInfo = MipsRegisterInfo.createMipsRegisterInfo(this);
     return (MipsRegisterInfo) regInfo;
   }
 }
