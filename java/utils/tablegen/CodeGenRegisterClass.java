@@ -94,6 +94,7 @@ public final class CodeGenRegisterClass {
     altOrderSelect = r.getValueAsCode("AltOrderSelect");
     Init.ListInit altOrders = r.getValueAsListInit("AltOrders");
     orders = new ArrayList[altOrders.getSize() + 1];
+    orders[0] = new ArrayList<>();
 
     // default allocation order always contains all def2RegMap.
     SetTheory st = new SetTheory();
@@ -104,7 +105,7 @@ public final class CodeGenRegisterClass {
         Error.printFatalError("Register Class member '" + reg.getName() +
             "' does not derive from the Register class!");
       members.add(CodeGenRegBank.getReg(reg));
-      orders[0] = new ArrayList<>();
+      // default order contains all registers.
       orders[0].add(reg);
     }
 

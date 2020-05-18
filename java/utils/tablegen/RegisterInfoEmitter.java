@@ -331,7 +331,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         os.printf("\t\t\t%s\t\n\t\t}\n", rc.altOrderSelect);
 
         int e = rc.getNumOrders();
-        for (int i = 0; i < e; ++i) {
+        for (int i = 1; i < e; ++i) {
           ArrayList<Record> order = rc.getOrder(i);
           os.printf("\t\tprivate static final int[] altOrder%d = {", i);
           for (int elt = 0, sz = order.size(); elt < sz; ++elt) {
@@ -347,7 +347,7 @@ public final class RegisterInfoEmitter extends TableGenBackend {
         os.printf("\t\t\tMCRegisterClass mcr = %sMCRegisterClasses[%sRegClassID];\n", targetName, rc.getName());
         os.println("\t\t\tArrayList<int[]> order = new ArrayList<>();");
         os.println("\t\t\torder.add(mcr.getRegs());");
-        for (int i = 0; i < e; ++i) {
+        for (int i = 1; i < e; ++i) {
           os.printf("\t\t\torder.add(altOrder%d);\n", i);
         }
         os.println("\t\t\tint select = altOrderSelect(mf);");

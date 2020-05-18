@@ -36,24 +36,6 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
     return bestRC;
   }
 
-  public abstract int[] getCalleeSavedRegs(MachineFunction mf);
-
-  public abstract MCRegisterClass[] getCalleeSavedRegClasses(
-      MachineFunction mf);
-
-  public abstract BitMap getReservedRegs(MachineFunction mf);
-
-  /**
-   * Returns the physical register number of sub-register "Index"
-   * for physical register RegNo. Return zero if the sub-register does not
-   * exist.
-   *
-   * @param regNo
-   * @param index
-   * @return
-   */
-  public abstract int getSubReg(int regNo, int index);
-
   public int getMatchingSuperReg(int reg, int subIdx, MCRegisterClass rc) {
     int[] srs = getSuperRegisters(reg);
     for (int sr : srs) {

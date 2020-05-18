@@ -112,8 +112,9 @@ public abstract class MCRegisterClass {
    *
    * @return An array of allocatable registers for specified sub-target.
    */
+  @Deprecated
   public int[] getAllocableRegs(MachineFunction mf) {
-    return regs;
+    return getRawAllocationOrder(mf);
   }
 
   /**

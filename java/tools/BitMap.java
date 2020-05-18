@@ -39,8 +39,6 @@ public final class BitMap extends BitSet implements Cloneable {
   }
 
   public void setFrom(BitMap other) {
-    //Util.assertion(length() == other.length(), 		//		"must have same size");
-
     for (int i = 0; i < other.length(); i++)
       set(i, other.get(i));
   }
@@ -51,7 +49,7 @@ public final class BitMap extends BitSet implements Cloneable {
    * @param other
    */
   public void diff(BitMap other) {
-    for (int i = findFirst(); i >= 0; i = findNext(i)) {
+    for (int i = findFirst(); i >= 0; i = findNext(i+1)) {
       if (other.get(i))
         set(i, false);
     }
@@ -74,10 +72,7 @@ public final class BitMap extends BitSet implements Cloneable {
    * @return
    */
   public int findFirst() {
-    for (int i = 0, e = length(); i != e; i++)
-      if (get(i))
-        return i;
-    return -1;
+    return nextSetBit(0);
   }
 
   /**
@@ -88,10 +83,7 @@ public final class BitMap extends BitSet implements Cloneable {
    * @return
    */
   public int findNext(int prev) {
-    for (int i = prev, e = length(); i != e; i++)
-      if (get(i))
-        return i;
-    return -1;
+    return nextSetBit(prev);
   }
 
   /**

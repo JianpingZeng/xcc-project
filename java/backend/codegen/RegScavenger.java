@@ -289,7 +289,7 @@ public class RegScavenger {
    */
   public int scavengeRegister(MCRegisterClass rc, int itr, int spAdj) {
     BitSet candidates = tri.getAllocatableSet(mbb.getParent(), rc);
-    candidates.and(reservedRegs);
+    clearRegWithAliases(candidates, reservedRegs);
 
     // exclude all the registers being used by the instruction.
     MachineInstr mi = mbb.getInstAt(itr);
@@ -306,11 +306,12 @@ public class RegScavenger {
     // RegsAvailable, as RegsAvailable does not take aliases into account.
     // That's what getRegsAvailable() is for.
     BitSet available = getRegsAvailable(rc);
-    available.and(candidates);
+    BitSet temp = (BitSet) available.clone();
+    temp.and(candidates);
+    if (temp.size() == temp.length())
+      candidates.and(available);
 
-    if (available.size() == available.length())
-      candidates = available;
-
+    // Find the register whose use is furthest away.
     OutRef<MachineInstr> useMI = new OutRef<>(null);
     int sreg = findSurvivorReg(itr, candidates, 25, useMI);
 
@@ -423,7 +424,7 @@ public class RegScavenger {
   private void addRegWithSubRegs(BitSet res, int reg) {
     res.set(reg);
     int[] subregs = tri.getSubRegisters(reg);
-    if (subregs == null);
+    if (subregs == null) return;
     for (int subreg : subregs)
       res.set(subreg);
   }
@@ -436,7 +437,7 @@ public class RegScavenger {
   private void addRegWithAliases(BitSet res, int reg) {
     res.set(reg);
     int[] aliasRegs = tri.getAliasSet(reg);
-    if (aliasRegs == null);
+    if (aliasRegs == null) return;
     for (int ar : aliasRegs)
       res.set(ar);
   }
@@ -444,9 +445,19 @@ public class RegScavenger {
   private void clearRegWithAliases(BitSet res, int reg) {
     res.clear(reg);
     int[] aliasRegs = tri.getAliasSet(reg);
-    if (aliasRegs == null);
+    if (aliasRegs == null) return;
     for (int ar : aliasRegs)
       res.clear(ar);
+  }
+
+  private void clearRegWithAliases(BitSet res, BitSet mask) {
+    for (int reg = mask.nextSetBit(1); reg > 0; reg = mask.nextSetBit(reg+1)) {
+      res.clear(reg);
+      int[] aliasRegs = tri.getAliasSet(reg);
+      if (aliasRegs == null) return;
+      for (int ar : aliasRegs)
+        res.clear(ar);
+    }
   }
 
   /**
