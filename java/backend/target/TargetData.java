@@ -656,10 +656,13 @@ public class TargetData implements ImmutablePass {
   public int getPreferredAlignment(GlobalVariable gv) {
     Type eleType = gv.getType().getElementType();
     int alignment = getPrefTypeAlignment(eleType);
-    if (gv.getAlignment() > alignment)
-      alignment = gv.getAlignment();
+    int gvAlignment = gv.getAlignment();
+    if (gvAlignment >= alignment)
+      alignment = gvAlignment;
+    else if (gvAlignment != 0)
+      alignment = Math.max(gvAlignment, getABITypeAlignment(eleType));
 
-    if (gv.hasInitializer()) {
+    if (gv.hasInitializer() && gvAlignment == 0) {
       if (alignment < 16) {
         // If the global is not external, see if it is large.  If so, give it a
         // larger alignment.
@@ -668,6 +671,10 @@ public class TargetData implements ImmutablePass {
       }
     }
     return alignment;
+  }
+
+  public int getPreferredAlignmentLog(GlobalVariable gv) {
+    return Util.log2(getPreferredAlignment(gv));
   }
 
   public long getTypePaddedSize(Type ty) {

@@ -216,8 +216,8 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       outStreamer.emitSymbolAttribute(gsym, MCSymbolAttr.MCSA_ELF_TypeObject);
 
     SectionKind kind = TargetLoweringObjectFile.getKindForGlobal(gv, tm);
-    long size = td.getTypeAllocSize(gv.getType());
-    int alignLog = Util.log2(td.getPrefTypeAlignment(gv.getType()));
+    long size = td.getTypeAllocSize(gv.getType().getElementType());
+    int alignLog = getGVAlignmentLog2(gv, td, 0);
 
     // Handle common and BSS local symbols (.lcomm).
     if (kind.isCommon() || kind.isBSSLocal()) {
@@ -889,7 +889,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
                                         int inBits) {
     int numBits = 0;
     if (gv instanceof GlobalVariable)
-      numBits = td.getPreferredAlignment((GlobalVariable) gv);
+      numBits = td.getPreferredAlignmentLog((GlobalVariable) gv);
 
     // If InBits is specified, round it to it.
     if (inBits > numBits)
