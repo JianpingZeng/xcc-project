@@ -24,7 +24,10 @@ import backend.mc.MCRegisterClass;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.*;
-import backend.target.*;
+import backend.target.TargetFrameLowering;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
 import backend.value.Function;
 import tools.BitMap;
 import tools.OutRef;
@@ -84,6 +87,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
   private boolean hasFastExitPath;
   private MachineFunction mf;
   private TargetRegisterInfo tri;
+  private boolean frameIndexVirtualScavenging;
 
   public PrologEpilogInserter() {
     minCSFrameIndex = 0;
@@ -128,7 +132,8 @@ public class PrologEpilogInserter extends MachineFunctionPass {
 
     Function f = mf.getFunction();
     TargetFrameLowering tfl = mf.getSubtarget().getFrameLowering();
-    rs = tri.requireRegisterScavenging(mf) ? new RegScavenger() : null;
+    rs = tri.requiresRegisterScavenging(mf) ? new RegScavenger() : null;
+    frameIndexVirtualScavenging = tri.requiresFrameIndexScavenging(mf);
 
     // Calculate the MaxCallFrameSize and HasCalls variables for the
     // function's frame information. Also elimination call frame psedo
@@ -167,6 +172,12 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     // Replace all MO_FrameIndex operands with physical register
     // references and actual offsets.
     replaceFrameIndices(mf);
+
+    // If register scavenging is needed, scavenge the virtual register that
+    // frame index elimination inserted.
+    if (tri.requiresRegisterScavenging(mf) && frameIndexVirtualScavenging)
+      scavengeFrameVirtualRegisters(mf);
+
     return true;
   }
 
@@ -1454,7 +1465,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
 
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       int spAdj = 0;
-      if (rs != null)
+      if (rs != null && frameIndexVirtualScavenging)
         rs.enterBasicBlock(mbb);
 
       for (int i = 0; i < mbb.size(); ) {
@@ -1476,7 +1487,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
             if (!atBeginning) --i;
             // if this instruction has a frame index operand, we have to use that
             // target machine register info object to eliminate it.
-            regInfo.eliminateFrameIndex(mf, spAdj, mi);
+            regInfo.eliminateFrameIndex(mf, spAdj, mi, frameIndexVirtualScavenging ? null : rs);
             // reset the iterator if we are at the beginning of the machine basic block.
             if (atBeginning) {
               i = 0;
@@ -1486,7 +1497,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
           }
         }
         if (doIncr && i != mbb.size()) ++i;
-        if (rs != null)
+        if (rs != null && !frameIndexVirtualScavenging && mi != null)
           rs.forward(i);
       }
     }
@@ -1588,5 +1599,53 @@ public class PrologEpilogInserter extends MachineFunctionPass {
             stringifyCSRegSet(csrRestore.get(mbb)));
       }
     });
+  }
+
+  /**
+   * Replace all virtual registers which are inserted by frame index elimination
+   * with a concrete physical register.
+   * @param mf
+   */
+  private void scavengeFrameVirtualRegisters(MachineFunction mf) {
+    ArrayList<MachineInstr> worklist = new ArrayList<>();
+
+    // Loop through the machine basic block to find a virtual register.
+    for (int i = 0, e = mf.getNumBlocks(); i < e; ++i) {
+      MachineBasicBlock mbb = mf.getMBBAt(i);
+      rs.enterBasicBlock(mbb);
+
+      // Try to re-use a allocated physical register for the same virtual
+      // register in the same mbb.
+      int virtReg = 0;
+      int scratchReg = 0;
+      int spAdj = 0;
+
+      worklist.clear();
+      worklist.addAll(mbb.getInsts());
+      for (MachineInstr mi : worklist) {
+        int j = mi.getIndexInMBB();
+        for (int k = 0, ops = mi.getNumOperands(); k < ops; ++k) {
+          MachineOperand mo = mi.getOperand(k);
+          if (mo.isRegister() &&
+                  mo.getReg() != 0 &&
+                  TargetRegisterInfo.isVirtualRegister(mo.getReg())) {
+            int reg = mo.getReg();
+            if (reg != virtReg) {
+              // when it is first time for encountering the virtual register,
+              // it must be a definition.
+              Util.assertion(mo.isDef(), "frame index virtual missing def!");
+              virtReg = reg;
+              MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(reg);
+              scratchReg = rs.scavengeRegister(rc, j, spAdj);
+            }
+            // replace the reference to virtual register with physical one.
+            Util.assertion(scratchReg != 0, "missing scratch register!");
+            mo.setReg(scratchReg);
+          }
+        }
+        rs.forward(j);
+        ++j;
+      }
+    }
   }
 }

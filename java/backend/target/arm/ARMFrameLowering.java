@@ -28,10 +28,12 @@ package backend.target.arm;
  */
 
 import backend.codegen.*;
+import backend.codegen.dagisel.SelectionDAGISel;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetFrameLowering;
+import backend.target.TargetRegisterInfo;
 import tools.OutRef;
 import tools.Util;
 
@@ -410,8 +412,18 @@ public class ARMFrameLowering extends TargetFrameLowering {
       offset += mfi.getObjectSize(i);
       int align = mfi.getObjectAlignment(i);
       offset = (offset + align - 1)/align * align;
+      maxAlign = Math.max(maxAlign, align);
     }
-    offset = (offset + maxAlign - 1)/ maxAlign * maxAlign;
+    int stackAlign;
+    TargetRegisterInfo tri = mf.getSubtarget().getRegisterInfo();
+    TargetFrameLowering tli = mf.getSubtarget().getFrameLowering();
+    if (mfi.hasVarSizedObjects() || tri.needsStackRealignment(mf) && mfi.getObjectIndexEnd() != 0)
+      stackAlign = tli.getStackAlignment();
+    else
+      stackAlign = tli.getTransientAlignment();
+    stackAlign = Math.max(stackAlign, maxAlign);
+    int alignMask = stackAlign - 1;
+    offset = (offset + alignMask) & ~alignMask;
     return offset;
   }
 
@@ -590,20 +602,20 @@ public class ARMFrameLowering extends TargetFrameLowering {
       // to materialize a stack offset. If so, either spill one additional
       // callee-saved register or reserve a special spill slot to facilitate
       // register scavenging.
-      if (scavenger != null && !extraCSSpill && !afi.isThumb1OnlyFunction()) {
-        if (estimateStackSize(mf) >= estimateRSStackSizeLimit(mf)) {
-          // If any non-reserved CS register isn't spilled, just spill one or two
-          // extra. That should take care of it!
-          int numExtras = targetAlign / 4;
-          ArrayList<Integer> extras = new ArrayList<>();
-          while (numExtras != 0 && !unspilledCS1GPRs.isEmpty()) {
-            int reg = unspilledCS1GPRs.removeLast();
-            if (!regInfo.isReservedReg(mf, reg)) {
-              extras.add(reg);
-              --numExtras;
-            }
+      if (scavenger != null && !extraCSSpill) {
+        // If any non-reserved CS register isn't spilled, just spill one or two
+        // extra. That should take care of it!
+        int numExtras = targetAlign / 4;
+        ArrayList<Integer> extras = new ArrayList<>();
+        while (numExtras != 0 && !unspilledCS1GPRs.isEmpty()) {
+          int reg = unspilledCS1GPRs.removeLast();
+          if (!regInfo.isReservedReg(mf, reg)) {
+            extras.add(reg);
+            --numExtras;
           }
-
+        }
+        // For non-Thumb1 functions, also check for hi-reg CS registers
+        if (!afi.isThumb1OnlyFunction()) {
           while (numExtras != 0 && !unspilledCS2GPRs.isEmpty()) {
             int reg = unspilledCS2GPRs.removeLast();
             if (!regInfo.isReservedReg(mf, reg)) {
@@ -611,17 +623,19 @@ public class ARMFrameLowering extends TargetFrameLowering {
               --numExtras;
             }
           }
-          if (!extras.isEmpty() && numExtras == 0) {
-            extras.forEach(reg -> {
-              mf.getMachineRegisterInfo().setPhysRegUsed(reg);
-            });
-          }
-          else {
-            // Reserve a slot closest to SP or frame pointer.
-            MCRegisterClass rc = ARMGenRegisterInfo.GPRRegisterClass;
-            scavenger.setScavengingFrameIndex(mfi.createStackObject(regInfo.getRegSize(rc),
-                regInfo.getSpillAlignment(rc)));
-          }
+        }
+        if (!extras.isEmpty() && numExtras == 0) {
+          extras.forEach(reg -> {
+            mf.getMachineRegisterInfo().setPhysRegUsed(reg);
+          });
+        }
+        else if (!afi.isThumb1OnlyFunction()) {
+          // Reserve a slot closest to SP or frame pointer.
+          // thumb1 can use R12 as a scratch register, so that it
+          // doesn't need a stack slot.
+          MCRegisterClass rc = ARMGenRegisterInfo.GPRRegisterClass;
+          scavenger.setScavengingFrameIndex(mfi.createStackObject(regInfo.getRegSize(rc),
+              regInfo.getSpillAlignment(rc)));
         }
       }
     }
@@ -636,7 +650,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
     for (int i = 0, e = mf.getNumBlocks(); i != e; ++i) {
       MachineBasicBlock mbb = mf.getMBBAt(i);
       for (int j = 0, sz = mbb.size(); j != sz; ++j) {
-        MachineInstr mi = mbb.getInstAt(i);
+        MachineInstr mi = mbb.getInstAt(j);
         for (int opNum = 0, ops = mi.getNumOperands(); opNum != ops; ++opNum) {
           if (!mi.getOperand(opNum).isFrameIndex())continue;
 

@@ -92,6 +92,16 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
     return new ARMGenRegisterInfo(subtarget, mode);
   }
 
+  @Override
+  public boolean requiresRegisterScavenging(MachineFunction mf) {
+    return true;
+  }
+
+  @Override
+  public boolean requiresFrameIndexScavenging(MachineFunction mf) {
+    return true;
+  }
+
   private static final int[] CalleeSavedRegs = {
       ARMGenRegisterNames.LR,
       ARMGenRegisterNames.R11, ARMGenRegisterNames.R10, ARMGenRegisterNames.R9, ARMGenRegisterNames.R8,

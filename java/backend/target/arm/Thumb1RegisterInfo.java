@@ -31,14 +31,15 @@ import backend.codegen.*;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
+import backend.target.TargetInstrInfo;
+import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import backend.value.Constant;
 import backend.value.ConstantInt;
 import tools.OutRef;
 import tools.Util;
 
-import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.codegen.MachineInstrBuilder.getDefRegState;
+import static backend.codegen.MachineInstrBuilder.*;
 
 /**
  * @author Jianping Zeng.
@@ -369,5 +370,52 @@ class Thumb1RegisterInfo extends ARMGenRegisterInfo {
         return ARMGenInstrNames.tSTRi;
     }
     return opcode;
+  }
+
+  /**
+   * Spill the register so it can be used by the register scavenger. Return true.
+   * @param mbb
+   * @param itr
+   * @param useMI
+   * @param rc
+   * @param reg
+   * @return
+   */
+  @Override
+  public boolean saveScavengerRegister(MachineBasicBlock mbb,
+                                       int itr,
+                                       OutRef<MachineInstr> useMI,
+                                       MCRegisterClass rc,
+                                       int reg) {
+    TargetInstrInfo tii = mbb.getParent().getSubtarget().getInstrInfo();
+    DebugLoc dl = new DebugLoc();
+    addDefaultPred(buildMI(mbb, itr, dl, tii.get(ARMGenInstrNames.tMOVr))
+            .addReg(ARMGenRegisterNames.R12, getDefRegState(true))
+            .addReg(reg, getKillRegState(true)));
+    // after insertion, increment the itr by 1.
+    ++itr;
+    boolean done = false;
+    for (int i = itr; !done && i != useMI.get().getIndexInMBB(); ++i) {
+      // if this instruction affects R12, adjust our restore point.
+      MachineInstr mi = mbb.getInstAt(i);
+      for (int j = 0, e = mi.getNumOperands(); j < e; ++j) {
+        MachineOperand mo = mi.getOperand(j);
+        if (!mo.isRegister() || mo.isUndef() || mo.getReg() == 0 ||
+                TargetRegisterInfo.isVirtualRegister(mo.getReg()))
+          continue;
+        if (mo.getReg() == ARMGenRegisterNames.R12) {
+          useMI.set(mi);
+          done = true;
+          break;
+        }
+      }
+    }
+
+    // restore the register from r12
+    addDefaultPred(buildMI(mbb, useMI.get().getIndexInMBB(), dl,
+            tii.get(ARMGenInstrNames.tMOVr))
+            .addReg(reg, getKillRegState(true))
+            .addReg(ARMGenRegisterNames.R12, getDefRegState(true)));
+    return true;
   }
 }

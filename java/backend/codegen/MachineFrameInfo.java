@@ -4,7 +4,9 @@ import backend.mc.MCRegisterClass;
 import backend.target.TargetData;
 import backend.target.TargetFrameLowering;
 import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
 import backend.type.Type;
+import tools.BitMap;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -15,7 +17,7 @@ import java.util.ArrayList;
  * @version 0.4
  */
 public class MachineFrameInfo {
-  /**
+    /**
    * Represents a single object allocated on the stack when a function is running.
    */
   public static class StackObject {
@@ -110,7 +112,12 @@ public class MachineFrameInfo {
   private ArrayList<CalleeSavedInfo> csInfo;
   private long localFrameSize;
 
-  private boolean csIValid;
+  /**
+   * Has the callee saved info been calculated yet?
+   * This variable would be setted once {@linkplain PrologEpilogInserter}
+   * calculates the spill code for callee saved registers.
+   */
+  private boolean csiValid;
 
   private TargetFrameLowering tfi;
   private TargetRegisterInfo tri;
@@ -308,9 +315,10 @@ public class MachineFrameInfo {
    * createStackObject - create a new statically sized stack object, returning
    * a positive integer to represent it.
    */
-  public int createStackObject(long size, int Alignment) {
+  public int createStackObject(long size, int alignment) {
     Util.assertion(size != 0, "Cannot allocate zero getNumOfSubLoop stack objects!");
-    objects.add(new StackObject(size, Alignment, -1));
+    objects.add(new StackObject(size, alignment, -1));
+    maxAlignment = Math.max(maxAlignment, alignment);
     return objects.size() - numFixedObjects - 1;
   }
 
@@ -333,9 +341,10 @@ public class MachineFrameInfo {
    * variable sized object is created, whether or not the index returned is
    * actually used.
    */
-  public int createVariableSizedObject() {
+  public int createVariableSizedObject(int alignment) {
     hasVarSizedObjects = true;
-    objects.add(new StackObject(0, 1, -1));
+    objects.add(new StackObject(0, alignment, -1));
+    maxAlignment = Math.max(maxAlignment, alignment);
     return objects.size() - numFixedObjects - 1;
   }
 
@@ -352,8 +361,10 @@ public class MachineFrameInfo {
   }
 
   public void setCalleeSavedInfoValid(boolean b) {
-    csIValid = b;
+    csiValid = b;
   }
+
+  private boolean isCalleeSavedInfoValid() { return csiValid; }
 
   public void print(MachineFunction mf, PrintStream os) {
     TargetFrameLowering tfi = mf.getTarget().getSubtarget().getFrameLowering();
@@ -401,5 +412,46 @@ public class MachineFrameInfo {
 
   public void setLocalFrameSize(long size) {
     localFrameSize = size;
+  }
+
+  /**
+   * Return a set of physical registers that are pristine on entry to the
+   * give mbb.
+   *
+   * Pristine registers hold a value that is useless to the current function,
+   * but its value must be preserved. It means those registers are callee
+   * saved registers but have not been saved yet.
+   *
+   * Before the {@linkplain PrologEpilogInserter} has placed the CSR spill
+   * code, this method always returns an empty set because {@linkplain #csiValid}
+   * is false.
+   * @param mbb
+   * @return
+   */
+  public BitMap getPristineRegs(MachineBasicBlock mbb) {
+    Util.assertion(mbb != null, "mbb must be valid!");
+    MachineFunction mf = mbb.getParent();
+    Util.assertion(mf != null, "mbb must be in the MachineFunction!");
+    TargetSubtarget subtarget = mf.getSubtarget();
+    TargetRegisterInfo tri = subtarget.getRegisterInfo();
+    BitMap res = new BitMap(tri.getNumRegs());
+    if (!isCalleeSavedInfoValid())
+      return res;
+
+    int[] csr = tri.getCalleeSavedRegs(mf);
+    if (csr != null) {
+      for (int reg : csr)
+        res.set(reg);
+    }
+
+    // the entry mbb always has all csr pristine.
+    if (mbb == mf.getEntryBlock())
+      return res;
+    // for other mbb, the saved csrs are not pristine.
+    ArrayList<CalleeSavedInfo> csis = getCalleeSavedInfo();
+    for (CalleeSavedInfo csi : csis)
+      res.clear(csi.getReg());
+
+    return res;
   }
 }

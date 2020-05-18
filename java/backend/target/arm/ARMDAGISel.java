@@ -257,10 +257,10 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
             SDValue shImmOp = curDAG.getTargetConstant(shImm, new EVT(MVT.i32));
             SDValue reg0 = curDAG.getRegister(0, MVT.i32);
             if (subtarget.isThumb()) {
-              SDValue ops[] = {v, v, shImmOp, getAL(curDAG), reg0, reg0};
+              SDValue[] ops = {v, v, shImmOp, getAL(curDAG), reg0, reg0};
               return curDAG.selectNodeTo(node, ARMGenInstrNames.t2ADDrs, new EVT(MVT.i32), ops);
             } else {
-              SDValue ops[] = {v, v, reg0, shImmOp, getAL(curDAG), reg0, reg0};
+              SDValue[] ops = {v, v, shImmOp, getAL(curDAG), reg0, reg0};
               return curDAG.selectNodeTo(node, ARMGenInstrNames.ADDrsi, new EVT(MVT.i32), ops);
             }
           }

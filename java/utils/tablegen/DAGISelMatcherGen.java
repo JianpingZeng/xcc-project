@@ -347,6 +347,8 @@ public class DAGISelMatcherGen {
 
     addMatcher(new CheckOpcodeMatcher(cInfo));
 
+    // Tell the interpreter to capture the memory reference if the node
+    // is a load or store.
     if (n.hasProperty(SDNPMemOperand, cgp))
       addMatcher(new RecordMemRefMatcher());
 

@@ -128,7 +128,24 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
     return false;
   }
 
-  public boolean requireRegisterScavenging(MachineFunction mf) {
+  /**
+   * Return true if the target needs register scavenging for some application
+   * scenario, such as cope with virtual register for virtual register after
+   * frame index elimination of PrologEpilogInserter
+   * after
+   * @param mf
+   * @return
+   */
+  public boolean requiresRegisterScavenging(MachineFunction mf) {
+    return false;
+  }
+
+  /**
+   * returns true if the target requires post scavenging of registers
+   * for materializing frame index constants, e.g. PrologEpilogInserter.
+   * @return
+   */
+  public boolean requiresFrameIndexScavenging(MachineFunction mf) {
     return false;
   }
 
@@ -166,6 +183,26 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
                                            int spAdj,
                                            MachineInstr mi,
                                            RegScavenger rs);
+
+  /**
+   * Spill the register so it can be used by the register scavenger.
+   * Return true if the register was spilled, false otherwise.
+   * If this function does not spill the register, the scavenger
+   * will instead spill it to the emergency spill slot.
+   * @param mbb
+   * @param itr
+   * @param useMI
+   * @param rc
+   * @param reg
+   * @return
+   */
+  public boolean saveScavengerRegister(MachineBasicBlock mbb,
+                                       int itr,
+                                       OutRef<MachineInstr> useMI,
+                                       MCRegisterClass rc,
+                                       int reg) {
+    return false;
+  }
 
   public abstract int getFrameRegister(MachineFunction mf);
 

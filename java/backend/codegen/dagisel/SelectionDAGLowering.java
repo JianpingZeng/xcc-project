@@ -2022,7 +2022,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
     // Inform the Frame Information that we have just allocated a variable-sized
     // object.
-    funcInfo.mf.getFrameInfo().createVariableSizedObject();
+    funcInfo.mf.getFrameInfo().createVariableSizedObject(align != 0 ? align : 1);
     return null;
   }
 

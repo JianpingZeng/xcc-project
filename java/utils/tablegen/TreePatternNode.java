@@ -984,15 +984,7 @@ public final class TreePatternNode implements Cloneable {
 
     Record operator = getOperator();
     if (!operator.isSubClassOf("SDNode")) return false;
-    if (cdp.getSDNodeInfo(operator).hasProperty(prop))
-      return true;
-
-    for (int i = 0, e = getNumChildren(); i < e; ++i) {
-      TreePatternNode child = getChild(i);
-      if (child.hasProperty(prop, cdp))
-        return true;
-    }
-    return false;
+    return cdp.getSDNodeInfo(operator).hasProperty(prop);
   }
 
   public ComplexPattern getComplexPatternInfo(CodeGenDAGPatterns cdp) {

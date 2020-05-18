@@ -58,9 +58,11 @@ public abstract class ARMInstPrinter extends MCInstPrinter {
         MCOperand mo3 = inst.getOperand(3);
 
         os.print('\t');
-        os.print(getRegisterName(dst.getReg()));
-        os.print(", ");
-        os.print(getRegisterName(mo1.getReg()));
+        os.print(ARM_AM.getShiftOpcStr(ARM_AM.getSORegShOp(mo3.getImm())));
+        printSBitModifierOperand(inst, 6);
+        printPredicateOperand(inst, 4);
+        os.printf("\t%s, %s", getRegisterName(dst.getReg()),
+                              getRegisterName(mo1.getReg()));
         os.print(", ");
         os.print(getRegisterName(mo2.getReg()));
         Util.assertion(ARM_AM.getSORegOffset(mo3.getImm()) == 0);

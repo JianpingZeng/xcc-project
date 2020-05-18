@@ -104,7 +104,7 @@ public final class GraphWriter {
 
   public static void viewGraph(String title, String filename, DefaultDotGraphTrait dotTrait) {
     PrintStream out = null;
-    File temp = null;
+    File temp;
     try {
       Path path = Files.createTempFile(null, filename);
       temp = path.toFile();
@@ -116,7 +116,6 @@ public final class GraphWriter {
       e.printStackTrace();
     } finally {
       if (out != null) out.close();
-      if (temp != null) temp.delete();
     }
   }
 
@@ -128,8 +127,6 @@ public final class GraphWriter {
       int res = p.waitFor();
       if (res != 0) {
         System.err.printf("Error viewing graph %s.\n", filename.getName());
-      } else {
-        filename.delete();
       }
     } else if (!Config.DOT_PATH.isEmpty()) {
       StringBuilder cmd = new StringBuilder();
@@ -152,8 +149,6 @@ public final class GraphWriter {
         res = p.waitFor();
         if (res != 0)
           System.err.printf("Error viewing graph %s.\n", pdfFilename);
-        else
-          filename.delete();
       }
     }
   }

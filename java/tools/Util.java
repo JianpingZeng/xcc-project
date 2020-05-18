@@ -312,7 +312,7 @@ public class Util {
       };
 
   public static int countTrailingZeros(int value) {
-    return mod37BitPosition[(-value & value) % 37];
+    return mod37BitPosition[Integer.remainderUnsigned(-value & value, 37)];
   }
 
   public static int countTrailingOnes(int value) {

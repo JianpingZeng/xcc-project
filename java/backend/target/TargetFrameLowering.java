@@ -46,10 +46,13 @@ public abstract class TargetFrameLowering {
    */
   private int localAreaOffset;
 
+  private int transientAlignment;
+
   public TargetFrameLowering(StackDirection dir, int stackAlign, int lao) {
     direction = dir;
     stackAlignment = stackAlign;
     localAreaOffset = lao;
+    transientAlignment = 1;
   }
 
   public StackDirection getStackGrowDirection() {
@@ -58,6 +61,10 @@ public abstract class TargetFrameLowering {
 
   public int getStackAlignment() {
     return stackAlignment;
+  }
+
+  public int getTransientAlignment() {
+    return transientAlignment;
   }
 
   public int getLocalAreaOffset() {

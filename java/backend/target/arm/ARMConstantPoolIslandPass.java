@@ -682,7 +682,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     int waterIter = -1;
     boolean foundWaterThatWouldPad = false;
     int ipThatWouldPad = -1;
-    for (int i = waterLists.size(); ; --i) {
+    for (int i = waterLists.size() - 1; ; --i) {
       MachineBasicBlock waterMbb = waterLists.get(i);
       if (waterIsInRange(userOffset, waterMbb, user) &&
           (waterMbb.getNumber() < user.highWaterMark.getNumber() ||

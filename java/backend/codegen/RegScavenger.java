@@ -16,9 +16,13 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetInstrInfo;
 import backend.mc.MCRegisterClass;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
+import tools.BitMap;
+import tools.OutRef;
+import tools.Util;
 
 import java.util.BitSet;
 
@@ -27,164 +31,478 @@ import java.util.BitSet;
  * @version 0.4
  */
 public class RegScavenger {
-  TargetRegisterInfo TRI;
-  TargetInstrInfo TII;
-  MachineRegisterInfo MRI;
-  MachineBasicBlock MBB;
-  int MBBI;
-  int NumPhysRegs;
+  private TargetRegisterInfo tri;
+  private TargetInstrInfo tii;
+  private MachineBasicBlock mbb;
+  private int mbbi;
+  private int numPhysRegs;
 
-  /// Tracking - True if RegScavenger is currently tracking the liveness of
-  /// registers.
-  boolean Tracking;
+  /**
+   * True if RegScavenger is currently tracking the liveness of registers.
+   */
+  private boolean tracking;
+  /**
+   * Special spill slot used for scavenging a register post register allocation.
+   */
+  private int scavengingFrameIndex;
 
-  /// ScavengingFrameIndex - Special spill slot used for scavenging a register
-  /// post register allocation.
-  int ScavengingFrameIndex;
+  /**
+   * If none zero, the specific register is currently being
+   * scavenged. That is, it is spilled to the special scavenging stack slot.
+   */
+  private int scavengedReg;
 
-  /// ScavengedReg - If none zero, the specific register is currently being
-  /// scavenged. That is, it is spilled to the special scavenging stack slot.
-  int ScavengedReg;
+  /**
+   * Register class of the scavenged register.
+   */
+  private MCRegisterClass scavengedRC;
 
-  /// ScavengedRC - Register class of the scavenged register.
-  ///
-  MCRegisterClass ScavengedRC;
+  /**
+   * Instruction that restores the scavenged register from stack.
+   */
+  private MachineInstr scavengeRestore;
 
-  /// ScavengeRestore - Instruction that restores the scavenged register from
-  /// stack.
-  MachineInstr ScavengeRestore;
+  /**
+   * A bitset of callee saved registers for the target.
+   */
+  private BitSet calleeSavedRegs;
 
-  /// CalleeSavedrRegs - A bitvector of callee saved registers for the target.
-  ///
-  BitSet CalleeSavedRegs;
+  /**
+   * A bitset of reserved registers.
+   */
+  private BitSet reservedRegs;
 
-  /// ReservedRegs - A bitvector of reserved registers.
-  ///
-  BitSet ReservedRegs;
+  /**
+   * The current state of all the physical registers immediately
+   * before {@linkplain #mbbi}. One bit per physical register.
+   * If bit is set that means it's available, unset means the
+   * register is currently being used.
+   */
+  private BitSet regsAvailable;
 
-  /// RegsAvailable - The current state of all the physical registers immediately
-  /// before MBBI. One bit per physical register. If bit is set that means it's
-  /// available, unset means the register is currently being used.
-  BitSet RegsAvailable;
+  /**
+   * Those bit set are only used for {@linkplain #forward()}. They are
+   * members to avoid frequent reallocation.
+   */
+  private BitSet killRegs, defRegs;
 
   public RegScavenger() {
-    MBB = null;
-    NumPhysRegs = 0;
-    Tracking = false;
-    ScavengingFrameIndex = -1;
-    ScavengedReg = (0);
-    ScavengedRC = null;
+    mbb = null;
+    numPhysRegs = 0;
+    tracking = false;
+    scavengingFrameIndex = -1;
+    scavengedReg = (0);
+    scavengedRC = null;
+    killRegs = new BitMap();
+    defRegs = new BitMap();
   }
 
-  /// enterBasicBlock - Start tracking liveness from the start of the specific
-  /// basic block.
+  /**
+   * Start tracking liveness from the start of the specific basic block.
+   * @param mbb
+   */
   public void enterBasicBlock(MachineBasicBlock mbb) {
+    MachineFunction mf = mbb.getParent();
+    TargetSubtarget subtarget = mf.getSubtarget();
+    tii = subtarget.getInstrInfo();
+    tri = subtarget.getRegisterInfo();
+    Util.assertion(numPhysRegs == 0 || numPhysRegs == tri.getNumRegs(),
+            "target changed?");
+
+    this.mbb = mbb;
+    if (mbb == null) {
+      numPhysRegs = tri.getNumRegs();
+      reservedRegs = tri.getReservedRegs(mf);
+      int[] csregs = tri.getCalleeSavedRegs(mf);
+      if (csregs != null) {
+        for (int reg : csregs)
+          calleeSavedRegs.set(reg);
+      }
+    }
+    initRegState();
+    tracking = false;
   }
 
-  /// initRegState - allow resetting register state info for multiple
-  /// passes over/within the same function.
+  /**
+   * Allow resetting register state info for multiple passes over/within the same function.
+   */
   public void initRegState() {
+    scavengedReg = 0;
+    scavengedRC = null;
+    scavengeRestore = null;
+    regsAvailable = new BitSet();
+    reservedRegs = new BitSet();
+    calleeSavedRegs = new BitSet();
+
+    // all physical registers are free at the beginning.
+    for (int i = 0; i < numPhysRegs; ++i)
+      regsAvailable.set(i);
+
+    // set reserved registers as used.
+    regsAvailable.xor(reservedRegs);
+    if (mbb == null)
+      return;
+
+    // live-in registers are in use
+    for (int i = 0, e = mbb.getLiveIns().size(); i < e; ++i)
+      setUsed(mbb.getLiveIns().get(i));
+
+    // set callee saved registers as used.
+    BitMap regs = mbb.getParent().getFrameInfo().getPristineRegs(mbb);
+    for (int reg = regs.findFirst(); reg > 0; reg = regs.findNext(reg+1))
+      setUsed(reg);
   }
 
-  /// forward - Move the internal MBB iterator and update register states.
+  /**
+   * Move the internal MBB iterator and update register states.
+   */
   public void forward() {
-    // TODO: 17-8-3
+    if (!tracking) {
+      mbbi = 0;
+      tracking = true;
+    }
+    else {
+      Util.assertion(mbbi != mbb.size(), "already past the end of mbb");
+      ++mbbi;
+    }
+    Util.assertion(mbbi != mbb.size(), "already past the end of mbb");
+
+    MachineInstr mi = mbb.getInstAt(mbbi);
+    if (mi == scavengeRestore) {
+      scavengedReg = 0;
+      scavengedRC = null;
+      scavengeRestore = null;
+    }
+
+    // Find out which registers are early clobbered, killed, defined, and marked
+    // def-dead in this instruction.
+    boolean isPred = tii.isPredicated(mi);
+    killRegs.clear();
+    defRegs.clear();
+    for (int i = 0, e = mi.getNumOperands(); i < e; ++i) {
+      MachineOperand mo = mi.getOperand(i);
+      if (!mo.isRegister()) continue;
+      int reg = mo.getReg();
+      if (reg == 0 || isReserved(reg))
+        continue;
+
+      if (mo.isUse()) {
+        // ignore undef uses.
+        if (mo.isUndef())
+          continue;
+        if (!isPred && mo.isKill())
+          addRegWithSubRegs(killRegs, reg);
+      }
+      else {
+        Util.assertion(mo.isDef());
+        if (!isPred && mo.isDead())
+          addRegWithSubRegs(killRegs, reg);
+        else
+          addRegWithSubRegs(defRegs, reg);
+      }
+    }
+
+    setUnused(killRegs);
+    setUsed(defRegs);
   }
 
-  /// forward - Move the internal MBB iterator and update register states until
-  /// it has processed the specific iterator.
-  public void forward(int I) {
-    if (!Tracking && I != 0)
+  /**
+   * Move the internal MBB iterator and update register states until
+   * it has processed the specific iterator.
+   * @param itr
+   */
+  public void forward(int itr) {
+    if (!tracking && itr != 0)
       forward();
-    while (MBBI != I)
+    while (mbbi != itr)
       forward();
   }
 
-  /// skipTo - Move the internal MBB iterator but do not update register states.
-  ///
-  public void skipTo(int I) {
-    MBBI = I;
+  /**
+   * Move the internal MBB iterator but do not update register states.
+   * @param itr
+   */
+  public void skipTo(int itr) {
+    mbbi = itr;
   }
 
   /// getRegsUsed - return all registers currently in use in used.
   public void getRegsUsed(BitSet used, boolean includeReserved) {
+    used.clear();
+    used.xor(regsAvailable);
+    if (!includeReserved)
+      used.or(reservedRegs);
+
+    used.flip(0, used.size());
   }
 
-  /// FindUnusedReg - Find a unused register of the specified register class.
-  /// Return 0 if none is found.
-  public int FindUnusedReg(MCRegisterClass RegClass) {
-    // TODO: 17-8-3
+  /**
+   * Find a unused register of the specified register class. Return 0 if none is found.
+   * @param regClass
+   * @return
+   */
+  public int findUnusedReg(MCRegisterClass regClass) {
+    int[] regs = regClass.getRegs();
+    if (regs != null) {
+      for (int reg : regs) {
+        if (!isAliasUsed(reg))
+          return reg;
+      }
+    }
     return 0;
   }
 
-  /// setScavengingFrameIndex / getScavengingFrameIndex - accessor and setter of
-  /// ScavengingFrameIndex.
+  private BitSet getRegsAvailable(MCRegisterClass rc) {
+    BitSet res = new BitMap(tri.getNumRegs());
+    int[] regs = rc.getRegs();
+    if (regs != null) {
+      for (int reg : regs)
+        if (!isAliasUsed(reg))
+          res.set(reg);
+    }
+    return res;
+  }
+
   public void setScavengingFrameIndex(int FI) {
-    ScavengingFrameIndex = FI;
+    scavengingFrameIndex = FI;
   }
 
   public int getScavengingFrameIndex() {
-    return ScavengingFrameIndex;
+    return scavengingFrameIndex;
   }
 
-  /// scavengeRegister - Make a register of the specific register class
-  /// available and do the appropriate bookkeeping. SPAdj is the stack
-  /// adjustment due to call frame, it's passed along to eliminateFrameIndex().
-  /// Returns the scavenged register.
-  public int scavengeRegister(MCRegisterClass RegClass, int I, int SPAdj) {
-    // TODO: 17-8-3
-    return 0;
+  /**
+   * Make a register of the specific register class available and do the
+   * appropriate bookkeeping. spAdj is the stack adjustment due to call
+   * frame, it's passed along to eliminateFrameIndex(). Returns the
+   * scavenged register.
+   * @param rc
+   * @param itr
+   * @param spAdj
+   * @return
+   */
+  public int scavengeRegister(MCRegisterClass rc, int itr, int spAdj) {
+    BitSet candidates = tri.getAllocatableSet(mbb.getParent(), rc);
+    // exclude all the registers being used by the instruction.
+    MachineInstr mi = mbb.getInstAt(itr);
+    for (int i = 0, e = mi.getNumOperands(); i < e; ++i) {
+      MachineOperand mo = mi.getOperand(i);
+      if (mo.isRegister() && mo.getReg() != 0 &&
+              TargetRegisterInfo.isPhysicalRegister(mo.getReg())) {
+        candidates.clear(mo.getReg());
+      }
+    }
+
+    // Try to find a register that's unused if there is one, as then we won't
+    // have to spill. Search explicitly rather than masking out based on
+    // RegsAvailable, as RegsAvailable does not take aliases into account.
+    // That's what getRegsAvailable() is for.
+    BitSet available = getRegsAvailable(rc);
+    available.and(candidates);
+
+    if (available.size() == available.length())
+      candidates = available;
+
+    OutRef<MachineInstr> useMI = new OutRef<>(null);
+    int sreg = findSurvivorReg(itr, candidates, 25, useMI);
+
+    // if we found an unused register there is no reason to spill it.
+    if (!isAliasUsed(sreg)) {
+      return sreg;
+    }
+
+    Util.assertion(scavengedReg == 0,
+            "scavenger slot is live, unable to scavenge another register!");
+    scavengedReg = sreg;
+    // If the target knows how to save/restore the register, let it do so;
+    // otherwise, use the emergency stack spill slot.
+    if (!tri.saveScavengerRegister(mbb, itr, useMI, rc, sreg)) {
+      Util.assertion(scavengingFrameIndex >= 0,
+              "can't scavenge register without an emergency spill slot!");
+      tii.storeRegToStackSlot(mbb, itr, sreg, true, scavengingFrameIndex, rc);
+      int ii = itr;
+      tri.eliminateFrameIndex(mbb.getParent(), spAdj, mbb.getInstAt(ii), this);
+      if (useMI.get() == null)
+        ii = mbb.size();
+      else
+        ii = useMI.get().getIndexInMBB();
+      tii.loadRegFromStackSlot(mbb, ii, sreg, scavengingFrameIndex, rc);
+      if (useMI.get() == null)
+        ii = mbb.size();
+      else
+        ii = useMI.get().getIndexInMBB();
+      ii -= 1;
+      tri.eliminateFrameIndex(mbb.getParent(), spAdj, mbb.getInstAt(ii), this);
+    }
+    int ii = useMI.get() == null ? mbb.size() : useMI.get().getIndexInMBB();
+    scavengeRestore = mbb.getInstAt(ii - 1);
+    scavengedRC = rc;
+    return sreg;
   }
 
-  public int scavengeRegister(MCRegisterClass RegClass, int SPAdj) {
-    return scavengeRegister(RegClass, MBBI, SPAdj);
+  public int scavengeRegister(MCRegisterClass regClass, int spAdj) {
+    return scavengeRegister(regClass, mbbi, spAdj);
   }
 
-  /// isReserved - Returns true if a register is reserved. It is never "unused".
+  /**
+   * Returns true if a register is reserved. It is never "unused".
+   * @param Reg
+   * @return
+   */
   private boolean isReserved(int Reg) {
-    return ReservedRegs.get(Reg);
+    return reservedRegs.get(Reg);
   }
 
-  /// isUsed / isUsed - Test if a register is currently being used.
-  ///
+  /**
+   * Test if a register is currently being used.
+   * @param Reg
+   * @return
+   */
   private boolean isUsed(int Reg) {
-    return !RegsAvailable.get(Reg);
+    return !regsAvailable.get(Reg);
   }
 
   private boolean isUnused(int Reg) {
-    return RegsAvailable.get(Reg);
+    return regsAvailable.get(Reg);
   }
 
-  /// isAliasUsed - Is Reg or an alias currently in use?
-  private boolean isAliasUsed(int Reg) {
-    // TODO: 17-8-3
+  /**
+   * Is reg or an alias currently in use?
+   * @param reg
+   * @return
+   */
+  private boolean isAliasUsed(int reg) {
+    if (isUsed(reg))
+      return true;
+
+    int[] subregs = tri.getAliasSet(reg);
+    if (subregs == null) return false;
+    for (int subreg : subregs)
+      if (isUsed(subreg))
+        return true;
+
     return false;
   }
 
-  /// setUsed / setUnused - Mark the state of one or a number of registers.
-  ///
-  private void setUsed(int Reg) {
+  /**
+   * Mark the state of one or a number of registers.
+   * @param reg
+   */
+  private void setUsed(int reg) {
+    regsAvailable.clear(reg);
+
+    int[] subregs = tri.getSubRegisters(reg);
+    if (subregs == null) return;
+    for (int subreg : subregs)
+      regsAvailable.clear(subreg);
   }
 
   private void setUsed(BitSet Regs) {
-    RegsAvailable.andNot(Regs);
+    regsAvailable.andNot(Regs);
   }
 
   private void setUnused(BitSet Regs) {
-    RegsAvailable.or(Regs);
+    regsAvailable.or(Regs);
   }
 
-  /// Add Reg and all its sub-registers to BV.
-  private void addRegWithSubRegs(BitSet BV, int Reg) {
+  /**
+   * Add reg and all its sub-registers to res.
+   * @param res
+   * @param reg
+   */
+  private void addRegWithSubRegs(BitSet res, int reg) {
+    res.set(reg);
+    int[] subregs = tri.getSubRegisters(reg);
+    if (subregs == null);
+    for (int subreg : subregs)
+      res.set(subreg);
   }
 
-  /// Add Reg and its aliases to BV.
-  private void addRegWithAliases(BitSet BV, int Reg) {
+  /**
+   * Add reg and its aliases to res.
+   * @param res
+   * @param reg
+   */
+  private void addRegWithAliases(BitSet res, int reg) {
+    res.set(reg);
+    int[] aliasRegs = tri.getAliasSet(reg);
+    if (aliasRegs == null);
+    for (int ar : aliasRegs)
+      res.set(ar);
   }
 
-  private int findSurvivorReg(int MI, BitSet Candidates, int InstrLimit,
-                              int UseMI) {
-    // TODO: 17-8-3
-    return 0;
+  private void clearRegWithAliases(BitSet res, int reg) {
+    res.clear(reg);
+    int[] aliasRegs = tri.getAliasSet(reg);
+    if (aliasRegs == null);
+    for (int ar : aliasRegs)
+      res.clear(ar);
+  }
+
+  /**
+   * Return the candidate register that is unused for the longest after startMI.
+   * useMI is the index of using machine instruction where searching stop.
+   *
+   * No more than instrLimit instructions are inspected.
+   * @param startMI
+   * @param candidates
+   * @param instrLimit
+   * @param useMI
+   * @return
+   */
+  private int findSurvivorReg(int startMI,
+                              BitSet candidates,
+                              int instrLimit,
+                              OutRef<MachineInstr> useMI) {
+    int survivor = candidates.nextSetBit(0);
+    Util.assertion(survivor > 0, "no candidates for scavenging!");
+
+    int termIdx = mbb.getFirstTerminator();
+    Util.assertion(startMI != termIdx, "mi already at terminator");
+    int restorePointMI = startMI;
+    int mi = startMI;
+    boolean inVirtLiveRange = false;
+    for (++mi; instrLimit > 0 && mi != termIdx; ++mi, --instrLimit) {
+      boolean isVirtKillInst = false;
+      boolean isVirtDefInst = false;
+      MachineInstr inst = mbb.getInstAt(mi);
+      for (int i = 0, e = inst.getNumOperands(); i < e; ++i) {
+        MachineOperand mo = inst.getOperand(i);
+        if (!mo.isRegister() || mo.isUndef() || mo.getReg() == 0)
+          continue;;
+          int reg = mo.getReg();
+          if (TargetRegisterInfo.isVirtualRegister(reg)) {
+            if (mo.isDef())
+              isVirtDefInst = true;
+            else if (mo.isKill())
+              isVirtKillInst = true;
+            continue;
+          }
+          clearRegWithAliases(candidates, reg);
+      }
+      // if we are not in a virtual register live range, this is a valid
+      // restore point.
+      if (!inVirtLiveRange)
+        restorePointMI = mi;
+
+      if (isVirtKillInst) inVirtLiveRange = false;
+      if (isVirtDefInst) inVirtLiveRange = true;
+
+      // was our survivor untouched by this instruction?
+      if (candidates.get(survivor))
+        continue;
+
+      // all candidates gone?
+      if (candidates.isEmpty())
+        break;
+
+      survivor = candidates.nextSetBit(0);
+    }
+
+    // if we ran off the end, this is where we want to restore.
+    if (mi == termIdx) restorePointMI = termIdx;
+    Util.assertion(restorePointMI != startMI, "no available scavenger restore localtion!");
+    useMI.set(restorePointMI == mbb.size() ? null : mbb.getInstAt(restorePointMI));
+    return survivor;
   }
 }
