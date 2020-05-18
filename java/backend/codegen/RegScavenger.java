@@ -95,6 +95,9 @@ public class RegScavenger {
     scavengedRC = null;
     killRegs = new BitMap();
     defRegs = new BitMap();
+    regsAvailable = new BitSet();
+    calleeSavedRegs = new BitSet();
+    reservedRegs = new BitSet();
   }
 
   /**
@@ -109,15 +112,19 @@ public class RegScavenger {
     Util.assertion(numPhysRegs == 0 || numPhysRegs == tri.getNumRegs(),
             "target changed?");
 
+    killRegs.clear();
+    defRegs.clear();
+    regsAvailable.clear();
+    calleeSavedRegs.clear();
+    reservedRegs.clear();
     this.mbb = mbb;
-    if (mbb == null) {
-      numPhysRegs = tri.getNumRegs();
-      reservedRegs = tri.getReservedRegs(mf);
-      int[] csregs = tri.getCalleeSavedRegs(mf);
-      if (csregs != null) {
-        for (int reg : csregs)
-          calleeSavedRegs.set(reg);
-      }
+
+    numPhysRegs = tri.getNumRegs();
+    reservedRegs = tri.getReservedRegs(mf);
+    int[] csregs = tri.getCalleeSavedRegs(mf);
+    if (csregs != null) {
+      for (int reg : csregs)
+        calleeSavedRegs.set(reg);
     }
     initRegState();
     tracking = false;
@@ -130,16 +137,15 @@ public class RegScavenger {
     scavengedReg = 0;
     scavengedRC = null;
     scavengeRestore = null;
-    regsAvailable = new BitSet();
-    reservedRegs = new BitSet();
-    calleeSavedRegs = new BitSet();
 
     // all physical registers are free at the beginning.
-    for (int i = 0; i < numPhysRegs; ++i)
+    for (int i = 1; i < numPhysRegs; ++i)
       regsAvailable.set(i);
 
     // set reserved registers as used.
-    regsAvailable.xor(reservedRegs);
+    for (int reg = reservedRegs.nextSetBit(1); reg > 0; reg = reservedRegs.nextSetBit(reg+1))
+      regsAvailable.clear(reg);
+
     if (mbb == null)
       return;
 
@@ -283,6 +289,8 @@ public class RegScavenger {
    */
   public int scavengeRegister(MCRegisterClass rc, int itr, int spAdj) {
     BitSet candidates = tri.getAllocatableSet(mbb.getParent(), rc);
+    candidates.and(reservedRegs);
+
     // exclude all the registers being used by the instruction.
     MachineInstr mi = mbb.getInstAt(itr);
     for (int i = 0, e = mi.getNumOperands(); i < e; ++i) {
@@ -397,12 +405,14 @@ public class RegScavenger {
       regsAvailable.clear(subreg);
   }
 
-  private void setUsed(BitSet Regs) {
-    regsAvailable.andNot(Regs);
+  private void setUsed(BitSet regs) {
+    for (int idx = regs.nextSetBit(1); idx > 0; idx = regs.nextSetBit(idx+1))
+      regsAvailable.clear(idx);
   }
 
-  private void setUnused(BitSet Regs) {
-    regsAvailable.or(Regs);
+  private void setUnused(BitSet regs) {
+    for (int idx = regs.nextSetBit(1); idx > 0; idx = regs.nextSetBit(idx+1))
+      regsAvailable.set(idx);
   }
 
   /**

@@ -140,7 +140,8 @@ public class SelectionDAGLegalizer {
         action = tli.getOperationAction(node.getOpcode(),
             node.getOperand(0).getValueType());
         break;
-      case ISD.FP_ROUND_INREG: {
+      case ISD.FP_ROUND_INREG:
+      case ISD.SIGN_EXTEND_INREG: {
         EVT innerType = ((VTSDNode) node.getOperand(1).getNode()).getVT();
         action = tli.getOperationAction(node.getOpcode(), innerType);
         break;
