@@ -1,8 +1,7 @@
-package backend.pass;
+package backend.passManaging;
 
 import backend.analysis.LoopInfo;
-import backend.passManaging.PMDataManager;
-import backend.passManaging.PassManagerType;
+import backend.pass.*;
 import backend.value.Function;
 import backend.value.Loop;
 import tools.Util;
@@ -88,7 +87,9 @@ public class LPPassManager extends PMDataManager implements FunctionPass {
       for (Pass p : loopPasses) {
         initializeAnalysisImpl(p);
         if (p instanceof LoopPass) {
+          PassManagerPrettyStackEntry x = new PassManagerPrettyStackEntry(p, currentLoop.getHeaderBlock());
           changed |= ((LoopPass) p).runOnLoop(currentLoop, this);
+          x.unregister();
         }
         //removeDeadedPasses(p);
         if (skipThisLoop)

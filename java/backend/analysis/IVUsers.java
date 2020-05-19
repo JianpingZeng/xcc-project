@@ -17,7 +17,7 @@ package backend.analysis;
  */
 
 import backend.pass.AnalysisResolver;
-import backend.pass.LPPassManager;
+import backend.passManaging.LPPassManager;
 import backend.pass.LoopPass;
 import backend.pass.Pass;
 import backend.value.*;

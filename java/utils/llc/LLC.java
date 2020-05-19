@@ -31,6 +31,7 @@ import backend.value.Module;
 import cfe.basic.TargetInfo;
 import cfe.system.Process;
 import tools.OutRef;
+import tools.PrintStackTraceProgram;
 import tools.SMDiagnostic;
 import tools.Util;
 import tools.commandline.*;
@@ -200,6 +201,16 @@ public class LLC {
   private static Module theModule;
 
   public static void main(String[] args) throws IOException {
+    String[] temp;
+    if (args[0].equals("llc")) {
+      temp = args;
+    } else {
+      temp = new String[args.length + 1];
+      temp[0] = "llc";
+      System.arraycopy(args, 0, temp, 1, args.length);
+    }
+    new PrintStackTraceProgram(temp);
+
     // Initialize Target machine
     TargetSelect.InitializeAllTargetInfo();
     TargetSelect.InitializeAllTarget();

@@ -10,7 +10,7 @@ import backend.analysis.aa.AliasSetTracker.AliasSet;
 import backend.analysis.aa.ModRefBehavior;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
-import backend.pass.LPPassManager;
+import backend.passManaging.LPPassManager;
 import backend.pass.LoopPass;
 import backend.support.CallSite;
 import backend.value.*;

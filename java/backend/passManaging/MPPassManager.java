@@ -70,8 +70,12 @@ public class MPPassManager extends PMDataManager implements Pass {
    */
   public boolean runOnModule(Module m) {
     boolean changed = false;
-    for (int index = 0; index < getNumContainedPasses(); ++index)
+    for (int index = 0; index < getNumContainedPasses(); ++index) {
+      Pass p = getContainedPass(index);
+      PassManagerPrettyStackEntry x = new PassManagerPrettyStackEntry(p, m);
       changed |= getContainedPass(index).runOnModule(m);
+      x.unregister();
+    }
     return changed;
   }
 

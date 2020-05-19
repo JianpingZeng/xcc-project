@@ -1,4 +1,4 @@
-package backend.pass;
+package backend.passManaging;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2020, Jianping Zeng.
@@ -18,6 +18,7 @@ package backend.pass;
 
 import backend.analysis.CallGraph;
 import backend.analysis.CallGraphNode;
+import backend.pass.*;
 import backend.passManaging.FPPassManager;
 import backend.passManaging.PMDataManager;
 import backend.passManaging.PassManagerType;

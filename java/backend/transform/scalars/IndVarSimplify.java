@@ -18,6 +18,7 @@ package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.pass.*;
+import backend.passManaging.LPPassManager;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;

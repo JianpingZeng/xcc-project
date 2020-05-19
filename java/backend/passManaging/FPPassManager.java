@@ -66,7 +66,11 @@ public final class FPPassManager extends PMDataManager implements ModulePass {
       dumpRequiredSet(fp);
 
       initializeAnalysisImpl(fp);
-      changed |= fp.runOnFunction(f);
+      {
+        PassManagerPrettyStackEntry x = new PassManagerPrettyStackEntry(fp, f);
+        changed |= fp.runOnFunction(f);
+        x.unregister();
+      }
 
       if (TargetOptions.PrintMachineCode.value &&
           fp.getPassInfo() != null &&

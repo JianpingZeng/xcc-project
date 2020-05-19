@@ -74,7 +74,11 @@ public class BBPassManager extends PMDataManager implements FunctionPass {
         dumpRequiredSet(bbp);
 
         initializeAnalysisImpl(bbp);
-        changed |= bbp.runOnBasicBlock(bb);
+        {
+          PassManagerPrettyStackEntry x = new PassManagerPrettyStackEntry(bbp, bb);
+          changed |= bbp.runOnBasicBlock(bb);
+          x.unregister();
+        }
 
         if (changed) {
           dumpPassInfo(bbp, MODIFICATION_MSG, ON_FUNCTION_MSG, f.getName());

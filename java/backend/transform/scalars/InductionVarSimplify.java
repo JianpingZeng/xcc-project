@@ -4,7 +4,7 @@ import backend.analysis.DomTree;
 import backend.analysis.LoopInfo;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
-import backend.pass.LPPassManager;
+import backend.passManaging.LPPassManager;
 import backend.pass.LoopPass;
 import backend.type.Type;
 import backend.value.*;

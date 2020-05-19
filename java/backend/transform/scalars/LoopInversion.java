@@ -2,7 +2,7 @@
 
 import backend.value.Loop;
 import backend.value.BasicBlock;
-import backend.pass.LPPassManager;
+import backend.passManaging.LPPassManager;
 import backend.pass.LoopPass;
 import backend.value.Instruction;
 import backend.value.Instruction.BranchInst;

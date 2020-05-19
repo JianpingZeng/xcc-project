@@ -2,6 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.pass.*;
+import backend.passManaging.LPPassManager;
 import backend.support.IntStatistic;
 import backend.support.PredIteratorCache;
 import backend.value.*;

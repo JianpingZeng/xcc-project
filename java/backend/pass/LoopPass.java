@@ -17,10 +17,7 @@ package backend.pass;
  */
 
 import backend.analysis.LoopInfo;
-import backend.passManaging.FPPassManager;
-import backend.passManaging.PMDataManager;
-import backend.passManaging.PMStack;
-import backend.passManaging.PassManagerType;
+import backend.passManaging.*;
 import backend.support.PrintLoopPass;
 import backend.value.Loop;
 import tools.Util;

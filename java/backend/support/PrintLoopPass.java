@@ -18,6 +18,7 @@
 package backend.support;
 
 import backend.pass.*;
+import backend.passManaging.LPPassManager;
 import backend.value.BasicBlock;
 import backend.value.Loop;
 

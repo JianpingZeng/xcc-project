@@ -3,7 +3,7 @@ package backend.transform.scalars;
 import backend.analysis.*;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
-import backend.pass.LPPassManager;
+import backend.passManaging.LPPassManager;
 import backend.pass.LoopPass;
 import backend.value.BasicBlock;
 import backend.value.Instruction;
