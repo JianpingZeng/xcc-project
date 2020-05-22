@@ -34,6 +34,7 @@ import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetFrameLowering;
 import backend.target.TargetRegisterInfo;
+import tools.BitMap;
 import tools.OutRef;
 import tools.Util;
 
@@ -577,6 +578,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
       // of GPRs, spill one extra callee save GPR so we won't have to pad between
       // the integer and double callee save areas.
       int targetAlign = getStackAlignment();
+      BitMap reservedRegs = regInfo.getReservedRegs(mf);
       if (targetAlign == 8 && (numGPRSpills & 1) != 0) {
         if (cs1Spilled && !unspilledCS1GPRs.isEmpty()) {
           for (int reg : unspilledCS1GPRs) {
@@ -584,7 +586,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
             if (!afi.isThumb1OnlyFunction() ||
             isARMLowRegister(reg) || reg == ARMGenRegisterNames.LR) {
               mf.getMachineRegisterInfo().setPhysRegUsed(reg);
-              if (!regInfo.isReservedReg(mf, reg))
+              if (!reservedRegs.get(reg))
                 extraCSSpill = true;
               break;
             }
@@ -593,7 +595,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
         else if (!unspilledCS2GPRs.isEmpty() && !afi.isThumb1OnlyFunction()) {
           int reg = unspilledCS2GPRs.get(0);
           mf.getMachineRegisterInfo().setPhysRegUsed(reg);
-          if (!regInfo.isReservedReg(mf, reg))
+          if (!reservedRegs.get(reg))
             extraCSSpill = true;
         }
       }
@@ -609,7 +611,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
         ArrayList<Integer> extras = new ArrayList<>();
         while (numExtras != 0 && !unspilledCS1GPRs.isEmpty()) {
           int reg = unspilledCS1GPRs.removeLast();
-          if (!regInfo.isReservedReg(mf, reg)) {
+          if (!reservedRegs.get(reg)) {
             extras.add(reg);
             --numExtras;
           }
@@ -618,7 +620,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
         if (!afi.isThumb1OnlyFunction()) {
           while (numExtras != 0 && !unspilledCS2GPRs.isEmpty()) {
             int reg = unspilledCS2GPRs.removeLast();
-            if (!regInfo.isReservedReg(mf, reg)) {
+            if (!reservedRegs.get(reg)) {
               extras.add(reg);
               --numExtras;
             }

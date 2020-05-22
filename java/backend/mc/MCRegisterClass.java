@@ -96,25 +96,12 @@ public abstract class MCRegisterClass {
   /**
    * Returns all of register in current target machine, and contains unavailable
    * register. If want to obtain all available registers, just consulting by
-   * {@linkplain #getAllocableRegs(MachineFunction)}.
+   * {@linkplain TargetRegisterInfo#getAllocatableSet(MachineFunction)}.
    *
    * @return
    */
   public int[] getRegs() {
     return regs;
-  }
-
-  /**
-   * Obtains the allocatable registers of type array.
-   * Default, returned array is as same as registers array contained in this
-   * MCRegisterClass. But it is may be altered for concrete sub class. e.g.
-   * GR32RegisterClass have more register (R8D, R9D etc) in 64bit subtarget.
-   *
-   * @return An array of allocatable registers for specified sub-target.
-   */
-  @Deprecated
-  public int[] getAllocableRegs(MachineFunction mf) {
-    return getRawAllocationOrder(mf);
   }
 
   /**

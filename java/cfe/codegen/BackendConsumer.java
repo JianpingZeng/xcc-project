@@ -17,10 +17,10 @@ package cfe.codegen;
  */
 
 import backend.codegen.MachineCodeEmitter;
+import backend.codegen.RegAllocLocal;
 import backend.codegen.RegisterRegAlloc;
 import backend.codegen.dagisel.RegisterScheduler;
 import backend.codegen.dagisel.ScheduleDAGFast;
-import backend.codegen.linearscan.WimmerLinearScanRegAllocator;
 import backend.pass.Pass;
 import backend.pass.PassCreator;
 import backend.passManaging.FunctionPassManager;
@@ -323,7 +323,7 @@ public class BackendConsumer implements ASTConsumer {
         tm.setAsmVerbosityDefault(true);
 
         // Set the default Register Allocator.
-        RegisterRegAlloc.setDefault(WimmerLinearScanRegAllocator::createWimmerLinearScanRegAlloc);
+        RegisterRegAlloc.setDefault(RegAllocLocal::createLocalRegAllocator);
 
         // Set the default instruction scheduler.
         RegisterScheduler.setDefault(ScheduleDAGFast::createFastDAGScheduler);

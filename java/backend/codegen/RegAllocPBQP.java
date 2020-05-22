@@ -28,6 +28,7 @@ import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectDoubleHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.BitMap;
 import tools.OutRef;
 import tools.Pair;
 import tools.Util;
@@ -76,7 +77,7 @@ public final class RegAllocPBQP extends MachineFunctionPass {
   private MachineRegisterInfo mri;
   private LiveInterval[] li2Nodes;
   private TObjectIntHashMap<LiveInterval> node2LI;
-  private TIntArrayList[] allowedRegs;
+  private BitMap[] allowedRegs;
   private VirtRegMap vrm;
 
   @Override
@@ -128,18 +129,20 @@ public final class RegAllocPBQP extends MachineFunctionPass {
         // construct PBQP problem
         PBQPGraph problem = constructPBQPProblem();
         if (Util.DEBUG) {
-          System.err.printf("Allowed Register: [");
-          for (int i = 0, e = allowedRegs[0].size(); i < e; i++) {
-            System.err.printf("%s", tri.getName(allowedRegs[0].get(i)));
+          System.err.print("Allowed Register: [");
+          int i = 0, e = allowedRegs[0].size();
+          for (int reg = allowedRegs[0].findFirst(); reg > 0; reg = allowedRegs[0].findNext(reg+1)) {
+            System.err.printf("%s", tri.getName(reg));
             if (i < e - 1)
               System.err.print(',');
+            ++i;
           }
           System.err.println("]");
           for (PBQPVector node : problem.nodeCosts)
             node.dump();
           System.err.println();
 
-          for (int i = 0; i < problem.numNodes; i++) {
+          for (i = 0; i < problem.numNodes; i++) {
             for (AdjNode adj = problem.adjList[i]; adj != null; adj = adj.next) {
               if (i < adj.adj) {
                 System.err.printf("Edge<n%d, n%d>:\n", i, adj.adj);
@@ -244,7 +247,7 @@ public final class RegAllocPBQP extends MachineFunctionPass {
       node2LI.put(li2Nodes[i], i);
     }
 
-    allowedRegs = new TIntArrayList[virtIntervalToBeHandled.size()];
+    allowedRegs = new BitMap[virtIntervalToBeHandled.size()];
     ArrayList<LiveInterval> phyIntervals = new ArrayList<>();
 
     for (Map.Entry<Integer, LiveInterval> ins : li.reg2LiveInterval.entrySet()) {
@@ -264,9 +267,7 @@ public final class RegAllocPBQP extends MachineFunctionPass {
 
     for (int node = 0; node < li2Nodes.length; node++) {
       LiveInterval interval = li2Nodes[node];
-      int[] allowedSet = mri.getRegClass(interval.register).getAllocableRegs(mf);
-      TIntArrayList isAllowed = new TIntArrayList();
-      isAllowed.addAll(allowedSet);
+      BitMap isAllowed = tri.getAllocatableSet(mf, mri.getRegClass(interval.register));
 
       // Remove some physical register that conflicts with physical interval
       // from isAllowed
@@ -279,14 +280,14 @@ public final class RegAllocPBQP extends MachineFunctionPass {
         if (coalsceMap.containsKey(Pair.get(phyInt.register, interval.register)))
           continue;
 
-        if (isAllowed.contains(phyInt.register))
-          isAllowed.remove(phyInt.register);
+        if (isAllowed.get(phyInt.register))
+          isAllowed.clear(phyInt.register);
 
         int[] alias = tri.getAliasSet(phyInt.register);
         if (alias != null && alias.length > 0) {
           for (int aliasReg : alias) {
-            if (isAllowed.contains(aliasReg))
-              isAllowed.remove(aliasReg);
+            if (isAllowed.get(aliasReg))
+              isAllowed.clear(aliasReg);
           }
         }
       }
@@ -327,18 +328,17 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     return graph;
   }
 
-  private PBQPMatrix buildCoalscingEdgeCosts(
-      TIntArrayList allowedReg1,
-      TIntArrayList allowedReg2, double cost) {
+  private PBQPMatrix buildCoalscingEdgeCosts(BitMap allowedReg1,
+                                             BitMap allowedReg2,
+                                             double cost) {
     PBQPMatrix m = new PBQPMatrix(allowedReg1.size() + 1, allowedReg2.size() + 1);
     boolean isAllZero = true;
 
     int i = 1;
-    for (TIntIterator itr = allowedReg1.iterator(); itr.hasNext(); ) {
+    for (int reg1 = allowedReg1.findFirst(); reg1 > 0; reg1 = allowedReg1.findNext(reg1+1)) {
       int j = 1;
-      int reg1 = itr.next();
-      for (TIntIterator itr2 = allowedReg2.iterator(); itr2.hasNext(); ) {
-        if (reg1 == itr2.next()) {
+      for (int reg2 = allowedReg2.findFirst(); reg2 > 0; reg2 = allowedReg2.findNext(reg2+1)) {
+        if (reg1 == reg2) {
           m.set(i, j, -cost);
           isAllZero = false;
         }
@@ -351,19 +351,16 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     return m;
   }
 
-  private PBQPMatrix buildInterferenceEdgeCosts(
-      TIntArrayList allowedReg1,
-      TIntArrayList allowedReg2) {
+  private PBQPMatrix buildInterferenceEdgeCosts(BitMap allowedReg1,
+                                                BitMap allowedReg2) {
     PBQPMatrix m = new PBQPMatrix(allowedReg1.size() + 1, allowedReg2.size() + 1);
     boolean isAllZero = true;
 
     int i = 1;
-    for (TIntIterator itr = allowedReg1.iterator(); itr.hasNext(); ) {
+    for (int reg1 = allowedReg1.findFirst(); reg1 > 0; reg1 = allowedReg1.findNext(reg1+1)) {
       int j = 1;
-      int reg1 = itr.next();
-      for (TIntIterator itr2 = allowedReg2.iterator(); itr2.hasNext(); ) {
+      for (int reg2 = allowedReg2.findFirst(); reg2 > 0; reg2 = allowedReg2.findNext(reg2+1)) {
         // If the row/column regs are identical or alias insert an infinity.
-        int reg2 = itr2.next();
         if (tri.regsOverlap(reg1, reg2)) {
           m.set(i, j, Double.MAX_VALUE);
           isAllZero = false;
@@ -378,18 +375,19 @@ public final class RegAllocPBQP extends MachineFunctionPass {
   }
 
   private PBQPVector constructCostVector(int vreg,
-                                         TIntArrayList allowedReg,
+                                         BitMap allowedReg,
                                          TObjectDoubleHashMap<Pair<Integer, Integer>> coalsceMap,
                                          double spillCost) {
     PBQPVector cost = new PBQPVector(allowedReg.size() + 1);
     cost.set(0, spillCost);
 
-    for (int i = 0, e = allowedReg.size(); i < e; i++) {
-      int preg = allowedReg.get(i);
+    int i = 0;
+    for (int preg = allowedReg.findFirst(); preg > 0; preg = allowedReg.findNext(preg+1)) {
       Pair<Integer, Integer> regPair = Pair.get(preg, vreg);
       if (coalsceMap.containsKey(regPair)) {
         cost.set(i + 1, -coalsceMap.get(regPair));
       }
+      ++i;
     }
     return cost;
   }
@@ -432,12 +430,10 @@ public final class RegAllocPBQP extends MachineFunctionPass {
       int virReg = interval.register;
       int idx = solution.get(node);
       if (idx != 0) {
-        int phyreg = allowedRegs[node].get(idx);
-        Util.assertion(phyreg != 0);
-        vrm.assignVirt2Phys(virReg, phyreg);
+        vrm.assignVirt2Phys(virReg, idx);
         if (Util.DEBUG)
           System.err.printf("Assign %%reg%d to virtual register %%%s%n",
-              virReg, tri.getName(phyreg));
+              virReg, tri.getName(idx));
       } else {
         // This live interval been spilled into stack.
         int slot = vrm.assignVirt2StackSlot(virReg);
@@ -459,7 +455,8 @@ public final class RegAllocPBQP extends MachineFunctionPass {
     for (LiveInterval interval : emptyIntervalToBeHandled) {
       int phyReg = interval.register;
       if (phyReg == 0) {
-        phyReg = mri.getRegClass(interval.register).getAllocableRegs(mf)[0];
+        phyReg = tri.getAllocatableSet(mf, mri.getRegClass(interval.register)).findFirst();
+        Util.assertion(phyReg > 0, "No available physical register in PBQP register allocator!");
       }
       vrm.assignVirt2Phys(interval.register, phyReg);
     }

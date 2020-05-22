@@ -179,34 +179,25 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
 
   @Override
   public BitMap getReservedRegs(MachineFunction mf) {
-    BitMap res = new BitMap(getNumRegs());
-    res.set(ARMGenRegisterNames.SP);
-    res.set(ARMGenRegisterNames.PC);
+    BitMap reserved = new BitMap(getNumRegs());
+    reserved.set(ARMGenRegisterNames.SP);
+    reserved.set(ARMGenRegisterNames.PC);
+    reserved.set(ARMGenRegisterNames.FPSCR);
     if (subtarget.isTargetDarwin() || tfl.hasFP(mf))
-      res.set(framePtr);
+      reserved.set(framePtr);
+    if (hasBasePointer(mf))
+      reserved.set(basePtr);
 
     // Some target reserves R9.
     if (subtarget.isR9Reserved())
-      res.set(ARMGenRegisterNames.R9);
+      reserved.set(ARMGenRegisterNames.R9);
 
-    return res;
-  }
-
-  public boolean isReservedReg(MachineFunction mf, int reg) {
-    switch (reg) {
-      default:
-        break;
-      case ARMGenRegisterNames.SP:
-      case ARMGenRegisterNames.PC:
-        return true;
-      case ARMGenRegisterNames.R7:
-      case ARMGenRegisterNames.R11:
-        if (framePtr == reg && (subtarget.isTargetDarwin() || tfl.hasFP(mf)))
-          return true;
-      case ARMGenRegisterNames.R9:
-        return subtarget.isR9Reserved();
+    // reserve D16-D31 if the subtarget doesn't support them.
+    if (!subtarget.hasVFP3() || subtarget.hasD16()) {
+      for (int i = 0; i != 16; ++i)
+        reserved.set(i + ARMGenRegisterNames.D16);
     }
-    return false;
+    return reserved;
   }
 
   @Override
@@ -643,6 +634,15 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
           immIdx = frameRegIdx + 2;
           instrOffset = ARM_AM.getAM2Offset((int) mi.getOperand(immIdx).getImm());
           if (ARM_AM.getAM2Op((int) mi.getOperand(immIdx).getImm()) == ARM_AM.AddrOpc.sub)
+            instrOffset *= -1;
+          numBits = 12;
+          break;
+        }
+        case AddrMode3: {
+          immIdx = frameRegIdx + 2;
+          int immOp = (int) mi.getOperand(immIdx).getImm();
+          instrOffset = ARM_AM.getAM3Offset(immOp);
+          if (ARM_AM.getAM3Op(immOp) == ARM_AM.AddrOpc.sub)
             instrOffset *= -1;
           numBits = 8;
           break;

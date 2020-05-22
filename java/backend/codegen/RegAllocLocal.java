@@ -119,8 +119,7 @@ public class RegAllocLocal extends MachineFunctionPass {
     MCRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
     // first check to see if we have a free register.
     int phyReg = getFreeReg(rc);
-    TIntHashSet allocableRegs = new TIntHashSet();
-    allocableRegs.addAll(rc.getAllocableRegs(mf));
+    BitMap allocableRegs = regInfo.getAllocatableSet(mf, rc);
 
     if (phyReg == 0) {
       Util.assertion(!phyRegsUseOrder.isEmpty(), "No allocatable registers");
@@ -136,14 +135,14 @@ public class RegAllocLocal extends MachineFunctionPass {
         // We just can spill those physical register occupied with virtual
         // register
         if (phyRegUsed[r] > 0) {
-          if (allocableRegs.contains(r)) {
+          if (allocableRegs.get(r)) {
             phyReg = r;
             break;
           } else {
             int[] aliases = regInfo.getAliasSet(r);
             if (aliases != null && aliases.length > 0) {
               for (int aliasReg : aliases) {
-                if (allocableRegs.contains(aliasReg) &&
+                if (allocableRegs.get(aliasReg) &&
                     phyRegUsed[aliasReg] != 0 &&
                     phyRegUsed[aliasReg] != -2) {
                   phyReg = aliasReg;
@@ -184,9 +183,9 @@ public class RegAllocLocal extends MachineFunctionPass {
   }
 
   private int getFreeReg(MCRegisterClass rc) {
-    for (int phyReg : rc.getAllocableRegs(mf)) {
+    BitMap allocatable = regInfo.getAllocatableSet(mf, rc);
+    for (int phyReg = allocatable.findFirst(); phyReg > 0; phyReg = allocatable.findNext(phyReg+1)) {
       if (isPhyRegAvailable(phyReg)) {
-        Util.assertion(phyReg != 0, "Can not use register!");
         return phyReg;
       }
     }

@@ -115,14 +115,13 @@ public abstract class MCRegisterInfo {
    */
   public BitMap getAllocatableSet(MachineFunction mf, MCRegisterClass rc) {
     BitMap allocatable = new BitMap(desc.length);
-    if (rc != null) {
+    if (rc != null)
       getAllocatableSetForRC(mf, rc, allocatable);
-      return allocatable;
+    else {
+      for (MCRegisterClass _rc : regClasses)
+        getAllocatableSetForRC(mf, _rc, allocatable);
     }
-    for (MCRegisterClass _rc : regClasses)
-      getAllocatableSetForRC(mf, _rc, allocatable);
-
-    BitMap temp = getReservedRegs(mf).clone();
+    BitMap temp = getReservedRegs(mf);
     allocatable.diff(temp);
     return allocatable;
   }

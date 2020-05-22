@@ -24,6 +24,7 @@ import backend.support.MachineFunctionPass;
 import backend.mc.MCRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.set.hash.TIntHashSet;
+import tools.BitMap;
 import tools.Util;
 
 import java.util.*;
@@ -254,7 +255,8 @@ public class RegAllocLinearScan extends MachineFunctionPass {
     float minWeigth = Float.MAX_VALUE;
     int minReg = 0;
     MCRegisterClass rc = mri.getRegClass(cur.register);
-    for (int reg : rc.getAllocableRegs(mf)) {
+    BitMap allocatable = tri.getAllocatableSet(mf, rc);
+    for (int reg = allocatable.findFirst(); reg > 0; reg = allocatable.findNext(reg+1)) {
       if (spillWeights[reg] <= minWeigth) {
         minWeigth = spillWeights[reg];
         minReg = reg;
@@ -433,7 +435,8 @@ public class RegAllocLinearScan extends MachineFunctionPass {
 
   private int getFreePhysReg(LiveInterval cur) {
     MCRegisterClass rc = mri.getRegClass(cur.register);
-    for (int reg : rc.getAllocableRegs(mf)) {
+    BitMap allocatable = tri.getAllocatableSet(mf, rc);
+    for (int reg = allocatable.findFirst(); reg > 0; reg = allocatable.findNext(reg+1)) {
       if (prt.isRegAvail(reg))
         return reg;
     }
