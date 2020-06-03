@@ -3188,8 +3188,7 @@ public class DAGTypeLegalizer {
 
   private SDValue softenFloatRes_FPOW(SDNode n) {
     EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
-    SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
-        getSoftenedFloat(n.getOperand(0))};
+    SDValue[] ops = {getSoftenedFloat(n.getOperand(0))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
         RTLIB.POW_F32,
@@ -3231,7 +3230,7 @@ public class DAGTypeLegalizer {
 
   private SDValue softenFloatRes_FRINT(SDNode n) {
     EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
-    SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+    SDValue[] ops = {getSoftenedFloat(n.getOperand(0))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
         RTLIB.RINT_F32,
@@ -3244,7 +3243,7 @@ public class DAGTypeLegalizer {
 
   private SDValue softenFloatRes_FSIN(SDNode n) {
     EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
-    SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+    SDValue[] ops = {getSoftenedFloat(n.getOperand(0))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
         RTLIB.SIN_F32,
@@ -3257,7 +3256,7 @@ public class DAGTypeLegalizer {
 
   private SDValue softenFloatRes_FSQRT(SDNode n) {
     EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
-    SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+    SDValue[] ops = {getSoftenedFloat(n.getOperand(0))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
         RTLIB.SQRT_F32,
@@ -3284,7 +3283,7 @@ public class DAGTypeLegalizer {
 
   private SDValue softenFloatRes_FTRUNC(SDNode n) {
     EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
-    SDValue[] ops = {getSoftenedFloat(n.getOperand(1))};
+    SDValue[] ops = {getSoftenedFloat(n.getOperand(0))};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
         RTLIB.TRUNC_F32,
@@ -3315,7 +3314,7 @@ public class DAGTypeLegalizer {
         ld.getOffset(), ld.getSrcValue(), ld.getSrcValueOffset(),
         ld.getMemoryVT(), ld.isVolatile(), ld.getAlignment());
     replaceValueWith(new SDValue(n, 1), newL.getValue(1));
-    return bitConvertToInteger(dag.getNode(ISD.FP_ROUND, vt, newL));
+    return bitConvertToInteger(dag.getNode(ISD.FP_EXTEND, vt, newL));
   }
 
   private SDValue softenFloatRes_SELECT(SDNode n) {

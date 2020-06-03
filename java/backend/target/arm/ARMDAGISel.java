@@ -276,7 +276,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
               SDValue ops[] = {V, V, ShImmOp, getAL(curDAG), Reg0, Reg0};
               return curDAG.selectNodeTo(node, ARMGenInstrNames.t2RSBrs, new EVT(MVT.i32), ops);
             } else {
-              SDValue ops[] = {V, V, Reg0, ShImmOp, getAL(curDAG), Reg0, Reg0};
+              SDValue ops[] = {V, V, ShImmOp, getAL(curDAG), Reg0, Reg0};
               return curDAG.selectNodeTo(node, ARMGenInstrNames.RSBrsi, new EVT(MVT.i32), ops);
             }
           }
@@ -1448,7 +1448,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     }
     SDValue[] tmp1 = new SDValue[3];
     if (selectRegShifterOperand(trueVal, tmp1)) {
-      SDValue cpTmp0 = tmp1[0], cpTmp1 = tmp[1], cpTmp2 = tmp1[2];
+      SDValue cpTmp0 = tmp1[0], cpTmp1 = tmp1[1], cpTmp2 = tmp1[2];
       SDValue cc = curDAG.getTargetConstant(armcc.ordinal(), new EVT(MVT.i32));
       SDValue[] ops = new SDValue[]{falseVal, cpTmp0, cpTmp1, cpTmp2, cc, ccr, inflag};
       return curDAG.selectNodeTo(n, ARMGenInstrNames.MOVCCsr, new EVT(MVT.i32), ops);

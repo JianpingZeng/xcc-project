@@ -215,19 +215,19 @@ public class ARMExpandPseudoInsts extends MachineFunctionPass {
             mi.getOperand(0).getReg())
             .addOperand(mi.getOperand(1).clone())
             .addImm(ARM_AM.getSORegOpc(
-                opcode == ARMGenInstrNames.MOVsrl_flag ? ARM_AM.ShiftOpc.lsr : ARM_AM.ShiftOpc.asr, 1))
-            .addReg(ARMGenRegisterNames.CPSR, getDefRegState(true)));
+                opcode == ARMGenInstrNames.MOVsrl_flag ? ARM_AM.ShiftOpc.lsr : ARM_AM.ShiftOpc.asr, 1)))
+                .addReg(ARMGenRegisterNames.CPSR, getDefRegState(true));
         mi.removeFromParent();
         return true;
       }
       case ARMGenInstrNames.RRX: {
         // This encodes as "MOVs Rd, Rm, rrx
-        MachineInstrBuilder mib = buildMI(mbb, mbbi, mi.getDebugLoc(),
-            tii.get(ARMGenInstrNames.MOVsi), mi.getOperand(0).getReg());
-        mib.addOperand(mi.getOperand(1).clone())
-            .addImm(ARM_AM.getSORegOpc(ARM_AM.ShiftOpc.rrx, 0))
-            .addReg(0);
-        mib = addDefaultPred(mib);
+        MachineInstrBuilder mib =
+                addDefaultPred(buildMI(mbb, mbbi, mi.getDebugLoc(),
+                        tii.get(ARMGenInstrNames.MOVsi), mi.getOperand(0).getReg())
+                        .addOperand(mi.getOperand(1).clone())
+                        .addImm(ARM_AM.getSORegOpc(ARM_AM.ShiftOpc.rrx, 0)))
+                        .addReg(0);
         transferTmpOps(mi, mib, mib);
         mi.removeFromParent();
         return true;
@@ -1264,9 +1264,9 @@ public class ARMExpandPseudoInsts extends MachineFunctionPass {
       MachineOperand mo = oldMI.getOperand(i);
       Util.assertion(mo.isRegister() && mo.getReg() != 0);
       if (mo.isUse())
-        useMI.addReg(mo.getReg(), getKillRegState(mo.isKill()));
+        useMI.addOperand(mo);
       else
-        defMI.addReg(mo.getReg(), getDefRegState(mo.isDead()));
+        useMI.addOperand(mo);
     }
   }
 }

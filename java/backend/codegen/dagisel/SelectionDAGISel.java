@@ -417,7 +417,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       curDAG.setRoot(dummy.getValue());
       dummy.dropOperands();
       curDAG.removeDeadNodes();
-    }while (changed);
+    } while (changed);
 
     postprocessISelDAG();
   }

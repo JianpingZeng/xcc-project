@@ -757,7 +757,7 @@ public class SelectionDAG {
         Util.assertion(evt.bitsLE(vt), "Not extending");
         if (evt.equals(vt)) return op0;
         if (cn0 != null) {
-          APInt val = cn0.getAPIntValue();
+          APInt val = cn0.getAPIntValue().clone();
           int fromBits = evt.getScalarType().getSizeInBits();
           val.shlAssign(val.getBitWidth() - fromBits);
           val.ashrAssign(val.getBitWidth() - fromBits);

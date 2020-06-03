@@ -428,8 +428,11 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
       newMBB = mf.getMBBAt(waterIter+1);
     }
     else {
-      newMBB = createNewWater(cpi, userOffset);
-      MachineBasicBlock waterMBB = mf.getMBBAt(mf.getIndexOfMBB(newMBB) + 1);
+      newMBB = createNewWater(cpIdx, userOffset);
+      MachineBasicBlock waterMBB;
+      int prior = mf.getIndexOfMBB(newMBB) - 1;
+      Util.assertion(prior >= 0, "Invalid created new water basic block!");
+      waterMBB = mf.getMBBAt(prior);
       waterIter = waterLists.indexOf(waterMBB);
       if (waterIter != -1)
         newWaterList.remove(waterMBB);
@@ -485,7 +488,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
         bbSizes.get(userMBB.getNumber());
     Util.assertion(offsetOfNextBlock == bbOffets.get(userMBB.getNumber() + 1));
 
-    MachineBasicBlock newMBB = null;
+    MachineBasicBlock newMBB;
 
     if (hasFallThrough(userMBB) &&
         offsetIsInRange(userOffset, offsetOfNextBlock + (isThumb1 ? 2 : 4), user.maxDisp, user.negOk)) {
@@ -535,7 +538,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
       int endInsertOffset = (int) (baseInsertPoffset + cpeMI.getOperand(2).getImm());
       int idx = userMI.getIndexInMBB();
-      MachineInstr mi = userMBB.getInstAt(idx+1);
+      MachineInstr mi = userMBB.getInstAt(++idx);
       int cpuIndex = cpi + 1;
       int numCPUsers = cpUsers.size();
       MachineInstr lastIT = null;
@@ -730,10 +733,9 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     int cpi = cpeMI.getOperand(1).getIndex();
     ArrayList<CPEntry> cpes = cpEntries.get(cpi);
     for (int i = 0, e = cpes.size(); i != e; ++i) {
-      if (cpes.get(i).cpemi.equals(cpeMI))
-        continue;
-
       if (cpes.get(i).cpemi == null)
+        continue;
+      if (cpes.get(i).cpemi.equals(cpeMI))
         continue;
 
       if (cpeIsInRange(userMI, userOffset, cpes.get(i).cpemi, user.maxDisp, user.negOk, false)) {
@@ -949,7 +951,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
         if (opc == ARMGenInstrNames.CONSTPOOL_ENTRY)
           continue;
 
-        // scan the instructioins for constant pool operands.
+        // scan the instruction for constant pool operands.
         for (int op = 0, e = mi.getNumOperands(); op != e; ++op) {
           if (mi.getOperand(op).isConstantPoolIndex()) {
             // we found a constant pool entry index constant.
@@ -1025,7 +1027,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
   private CPEntry findConstantPoolEntry(int cpi, MachineInstr cpeMI) {
     ArrayList<CPEntry> cpes = cpEntries.get(cpi);
     for (CPEntry entry : cpes)
-      if (entry.cpemi.equals(cpeMI))
+      if (entry.cpemi != null && entry.cpemi.equals(cpeMI))
         return entry;
 
     return null;

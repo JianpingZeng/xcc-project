@@ -139,8 +139,7 @@ public class RegScavenger {
     scavengeRestore = null;
 
     // all physical registers are free at the beginning.
-    for (int i = 1; i < numPhysRegs; ++i)
-      regsAvailable.set(i);
+    regsAvailable.set(0, numPhysRegs);
 
     // set reserved registers as used.
     for (int reg = reservedRegs.nextSetBit(1); reg > 0; reg = reservedRegs.nextSetBit(reg+1))
@@ -306,10 +305,9 @@ public class RegScavenger {
     // RegsAvailable, as RegsAvailable does not take aliases into account.
     // That's what getRegsAvailable() is for.
     BitSet available = getRegsAvailable(rc);
-    BitSet temp = (BitSet) available.clone();
-    temp.and(candidates);
-    if (temp.size() == temp.length())
-      candidates.and(available);
+    available.and(candidates);
+    if (!available.isEmpty())
+      candidates = available;
 
     // Find the register whose use is furthest away.
     OutRef<MachineInstr> useMI = new OutRef<>(null);

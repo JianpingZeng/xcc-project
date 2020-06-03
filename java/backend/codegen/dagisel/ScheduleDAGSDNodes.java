@@ -194,14 +194,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
             vrBaseMap);
       }
 
-      // emit all memory operand.
-      /*if (tid.usesCustomInsertionHook()) {
-        mbb = tli.emitInstrWithCustomInserter(mi, mbb);
-        insertPos = mbb.size();
-      } else */{
-        mbb.insert(insertPos++, mi);
-      }
-
+      mbb.insert(insertPos++, mi);
       if (hasPhysRegOuts) {
         for (int i = tid.getNumDefs(); i < numResults; i++) {
           int reg = tid.getImplicitDefs()[i - tid.getNumDefs()];
@@ -468,7 +461,8 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       mi.addOperand(MachineOperand.createFPImm(imm));
     } else if (op.getNode() instanceof RegisterSDNode) {
       int reg = ((RegisterSDNode) op.getNode()).getReg();
-      mi.addOperand(MachineOperand.createReg(reg, false, false));
+      boolean isImp = tid != null && iiOpNum >= tid.getNumOperands() && !tid.isVariadic();
+      mi.addOperand(MachineOperand.createReg(reg, false, isImp));
     } else if (op.getNode() instanceof GlobalAddressSDNode) {
       GlobalAddressSDNode gas = (GlobalAddressSDNode) op.getNode();
       mi.addOperand(MachineOperand.createGlobalAddress(gas.getGlobalValue(),

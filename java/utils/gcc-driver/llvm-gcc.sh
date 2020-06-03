@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # IMPORTANT: Set these variables in accordance with your local environment
-LLVM="${HOME}/Development/Compiler/xcc/cmake-build-debug"
+LLVM="${HOME}/Development/Compiler/xcc/cmake-build-debug/bin"
 CLANG="${HOME}/Development/Compiler/clang+llvm-3.0-x86_64-apple-darwin11/bin"
 ARM_GCC="${HOME}/Development/Compiler/arm-unknown-linux-gnueabi/bin"
 
@@ -376,7 +376,7 @@ if [ $compile -ne 0 ] || [ $link -ne 0 ] || [ $assemble -ne 0 ]; then
     DOut 1 "\nCompiling $llfile --> $asm"
 
 
-    DCall "${LLVM}/bin/llc ${llfile} -o ${asm} \
+    DCall "${LLVM}/llc ${llfile} -o ${asm} \
     $LLC_DAMAGE_CONTROL $CPU ${FLAG_verify} ${FLAG_verify_all}" || Die "LLVM llc failed!"
   
     SetGCCOpts gcc_back_opts "optimization"
