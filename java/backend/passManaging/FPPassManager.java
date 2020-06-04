@@ -22,7 +22,10 @@ import backend.value.Function;
 import backend.value.Module;
 import tools.Util;
 
+import java.util.Objects;
+
 import static backend.passManaging.PMDataManager.PassDebuggingString.*;
+import static backend.support.BackendCmdOptions.*;
 import static backend.support.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 
 /**
@@ -66,13 +69,22 @@ public final class FPPassManager extends PMDataManager implements ModulePass {
       dumpRequiredSet(fp);
 
       initializeAnalysisImpl(fp);
+
+      if ((PrintBeforeAll.value || Objects.equals(PrintBefore.valueStr, f.getName())) &&
+              fp.getPassInfo() != null &&
+              !fp.getPassInfo().isAnalysis()) {
+        createMachineFunctionPrinterPass(System.err,
+                String.format("# *** IR dump after %s ***", fp.getPassName())).runOnFunction(f);
+      }
+
       {
         PassManagerPrettyStackEntry x = new PassManagerPrettyStackEntry(fp, f);
         changed |= fp.runOnFunction(f);
         x.unregister();
       }
 
-      if (TargetOptions.PrintMachineCode.value &&
+      if ((TargetOptions.PrintMachineCode.value || PrintAfterAll.value ||
+              Objects.equals(PrintAfter.valueStr, f.getName())) &&
           fp.getPassInfo() != null &&
           !fp.getPassInfo().isAnalysis()) {
         createMachineFunctionPrinterPass(System.err,
