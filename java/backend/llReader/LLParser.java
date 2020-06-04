@@ -21,8 +21,8 @@ import backend.ir.FreeInst;
 import backend.ir.IndirectBrInst;
 import backend.ir.SelectInst;
 import backend.support.*;
-import backend.type.*;
 import backend.type.Type;
+import backend.type.*;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
@@ -429,17 +429,83 @@ public final class LLParser {
     ///   GlobalVar '=' OptionalLinkage OptionalVisibility ...   -> global variable
     OutRef<Boolean> hasLinkage = new OutRef<>();
     OutRef<LinkageType> linkage = new OutRef<>();
-    OutRef<VisibilityTypes> visbility = new OutRef<>();
+    OutRef<VisibilityTypes> visibility = new OutRef<>();
     if (parseToken(equal, "expected '=' after name") ||
         parseOptionalLinkage(linkage, hasLinkage) ||
-        parseOptionalVisibility(visbility))
+        parseOptionalVisibility(visibility))
       return true;
 
     if (hasLinkage.get() || lexer.getTokKind() != kw_alias)
       return parseGlobal(name, nameLoc, linkage.get(), hasLinkage.get(),
-          visbility.get());
+          visibility.get());
 
-    return error(nameLoc, "alias not supported");
+    return parseAlias(name, nameLoc, visibility);
+  }
+
+  private boolean parseAlias(String name, SMLoc nameLoc,
+                             OutRef<VisibilityTypes> visibility) {
+    Util.assertion(lexer.getTokKind() == kw_alias);
+    lexer.lex();
+    SMLoc linkageLoc = lexer.getLoc();
+    OutRef<LinkageType> linkage = new OutRef<>();
+    if (parseOptionalLinkage(linkage))
+      return true;
+
+    switch (linkage.get()) {
+      case ExternalLinkage:
+      case WeakAnyLinkage:
+      case WeakODRLinkage:
+      case InternalLinkage:
+      case PrivateLinkage:
+      case LinkerPrivateLinkage:
+      case LinkerPrivateWeakLinkage:
+      case LinkerPrivateWeakDefAutoLinkage:
+        break;
+      default:
+        return error(linkageLoc, "invalid linkage type for alias");
+    }
+
+    OutRef<Constant> aliasee = new OutRef<>();
+    SMLoc aliaseeLoc = lexer.getLoc();
+    if (lexer.getTokKind() != kw_bitcast &&
+        lexer.getTokKind() != kw_getelementptr) {
+      if (parseGlobalTypeAndValue(aliasee))
+        return true;
+    } else {
+      ValID id = new ValID();
+      if (parseValID(id)) return true;
+      if (id.kind != t_Constant)
+        return error(aliaseeLoc, "invalid aliasee");
+      aliasee.set(id.constantVal);
+    }
+
+    if (!aliasee.get().getType().isPointerType())
+      return error(aliaseeLoc, "alias must have pointer type");
+
+    GlobalAlias ga = new GlobalAlias(aliasee.get().getType(),
+            linkage.get(), name, aliasee.get(), null);
+    ga.setVisibility(visibility.get());
+
+    // check name conflict
+    GlobalValue gv = m.getValueByName(name);
+    if (gv != null) {
+      // check if it is a redefinition
+      if (!forwardRefVals.containsKey(name))
+        return error(nameLoc, "redefinition of a global named '@"+name + "'");
+      // Otherwise, this is a definition of forward reference.
+      // Verify that types are consistent.
+      if (gv.getType().equals(ga.getType()))
+        return error(nameLoc, "forward reference and definition of alias have different type");
+
+      // if agree, replace all references to old value with the new value.
+      gv.replaceAllUsesWith(ga);
+      gv.eraseFromParent();
+      forwardRefVals.remove(name);
+    }
+
+    m.addGlobalAlias(ga);
+    Util.assertion(ga.getName().equals(name), "should not be a name conflict");
+    return false;
   }
 
   private boolean parseUnnamedGlobal() {

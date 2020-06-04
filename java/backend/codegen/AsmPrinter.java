@@ -185,7 +185,22 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     }
     if (mai.hasSetDirective()) {
       outStreamer.addBlankLine();
-      // TODO, handle alias
+      for (GlobalAlias ga : m.getAliasList()) {
+        MCSymbol name = mangler.getSymbol(ga);
+        GlobalValue gv = ga.getAliasedGlobal();
+        MCSymbol target = mangler.getSymbol(gv);
+        if (ga.hasExternalLinkage() ||
+                mai.getWeakRefDirective() == null ||
+                mai.getWeakRefDirective().isEmpty())
+          outStreamer.emitSymbolAttribute(name, MCSymbolAttr.MCSA_Global);
+        else if (ga.hasWeakLinkage())
+          outStreamer.emitSymbolAttribute(name, MCSymbolAttr.MCSA_WeakReference);
+        else
+          Util.assertion(ga.hasLocalLinkage(), "invalid alias linkage");
+
+        emitVisibility(name, ga.getVisibility());
+        outStreamer.emitAssignment(name, MCSymbolRefExpr.create(target));
+      }
     }
 
     Function trampolineIntrinsic = m.getFunction("llvm.init.trampoline");

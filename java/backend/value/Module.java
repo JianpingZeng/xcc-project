@@ -139,7 +139,7 @@ public final class Module implements Iterable<Function> {
    * @param name
    * @return
    */
-  private GlobalValue getValueByName(String name) {
+  public GlobalValue getValueByName(String name) {
     Value val = valSymTable.getValue(name);
     if (val instanceof GlobalValue)
       return (GlobalValue) val;
@@ -309,6 +309,14 @@ public final class Module implements Iterable<Function> {
     if (gv.getName() != null && !gv.getName().isEmpty())
       valSymTable.createValueName(gv.getName(), gv);
     gv.setParent(this);
+  }
+
+  public void addGlobalAlias(GlobalAlias ga) {
+    Util.assertion(ga != null && !aliasList.contains(ga), "duplicate insertion");
+    aliasList.add(ga);
+    if (ga.getName() != null && !ga.getName().isEmpty())
+      valSymTable.createValueName(ga.getName(), ga);
+    ga.setParent(this);
   }
 
   public int getMDKindID(String name) {

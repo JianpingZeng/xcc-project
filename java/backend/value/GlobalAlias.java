@@ -55,8 +55,8 @@ public class GlobalAlias extends GlobalValue {
     if (aliasee != null)
       Util.assertion(aliasee.getType().equals(getType()),
           "Alias and aliasee types should match!");
-
-    setOperand(0, aliasee);
+    reserve(1);
+    setOperand(0, new Use(aliasee, this));
     if (parent != null)
       parent.getAliasList().add(this);
   }

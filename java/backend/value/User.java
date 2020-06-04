@@ -60,14 +60,6 @@ public abstract class User extends Value {
     Util.assertion(use != null, "can't set operand as null");
     Util.assertion(operandList != null, "should initialize operands list before update operand");
     Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
-    /*if (index >= getNumOfOperands()) {
-      // allocate extra 10 elements.
-      int oldNumOps = numOps;
-      numOps = index+10;
-      Use[] newArray = new Use[numOps];
-      System.arraycopy(operandList, 0, newArray, 0, oldNumOps);
-      operandList = newArray;
-    }*/
     FltSemantics fltSemantics = null;
     if (use.getValue() instanceof ConstantFP)
       fltSemantics = ((ConstantFP)use.getValue()).getValueAPF().getSemantics();
@@ -102,7 +94,6 @@ public abstract class User extends Value {
    */
   public int getNumOfOperands() {
     return numOps;
-    // return operandList != null ? operandList.length : 0;
   }
 
   /**
