@@ -291,7 +291,7 @@ public class SubtargetFeatures {
       if (featureKV.value == kv.value)
         continue;
       if ((featureKV.implies & kv.value) != 0) {
-        bits |= featureKV.value;
+        bits |= kv.value;
         bits = setImpliedBits(bits, kv, featureTable);
       }
     }

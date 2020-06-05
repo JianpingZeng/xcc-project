@@ -28,6 +28,7 @@ import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.SwitchInst;
 import gnu.trove.list.array.TLongArrayList;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.APInt;
 import tools.Util;
 
@@ -91,11 +92,9 @@ public class FunctionLoweringInfo {
    * The set of basic blocks visited thus used for instruction selection.
    */
   public HashSet<BasicBlock> visitedBBs;
-
-  private HashMap<Argument, Integer> byValArgFrameIndexMap;
-
   public ArrayList<MachineInstr> argDbgValues;
   public MachineInstr insertPtr;
+  private TObjectIntHashMap<Argument> byValArgFrameIndexMap;
 
   public FunctionLoweringInfo(TargetLowering tli) {
     this.tli = tli;
@@ -105,7 +104,7 @@ public class FunctionLoweringInfo {
     staticAllocaMap = new HashMap<>();
     liveOutRegInfo = new HashMap<>();
     visitedBBs = new HashSet<>();
-    byValArgFrameIndexMap = new HashMap<>();
+    byValArgFrameIndexMap = new TObjectIntHashMap<>();
     argDbgValues = new ArrayList<>();
   }
 
@@ -141,7 +140,7 @@ public class FunctionLoweringInfo {
    * @param arg
    * @return Return true if it is.
    */
-  private static boolean isOnlyUsedInEntryBlock(Argument arg) {
+  public static boolean isOnlyUsedInEntryBlock(Argument arg) {
     if (arg.isUseEmpty())
       return true;
 
@@ -513,5 +512,9 @@ public class FunctionLoweringInfo {
         return byValArgFrameIndexMap.get(arg);
 
     return 0;
+  }
+
+  public void setArgumentFrameIndex(Argument arg, int fi) {
+    byValArgFrameIndexMap.put(arg, fi);
   }
 }

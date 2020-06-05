@@ -1747,7 +1747,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     // set up the incoming arguments.
     int i = 0;
     idx = 1;
-    for (Argument arg : fn.getArgumentList()) {
+    for (int ii = 0, sz = fn.getNumOfArgs(); ii != sz; ++ii, ++idx) {
+      Argument arg = fn.getArgumentList().get(ii);
       ArrayList<SDValue> argValues = new ArrayList<>();
       ArrayList<EVT> vts = new ArrayList<>();
       computeValueVTs(tli, arg.getType(), vts);
@@ -1768,11 +1769,34 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         }
         i += numParts;
       }
-      if (!arg.isUseEmpty()) {
-        sdl.setValue(arg, dag.getMergeValues(argValues));
+      if (argValues.isEmpty())
+        continue;
+      if (argValues.get(0).getNode() instanceof FrameIndexSDNode) {
+        FrameIndexSDNode fi = (FrameIndexSDNode) argValues.get(0).getNode();
+        funcInfo.setArgumentFrameIndex(arg, fi.getFrameIndex());
+      }
+
+      SDValue res = dag.getMergeValues(argValues);
+      sdl.setValue(arg, res);
+      if (res.getOpcode() == ISD.BUILD_PAIR) {
+        if (res.getOperand(0).getNode() instanceof LoadSDNode) {
+          LoadSDNode ld = (LoadSDNode) res.getOperand(0).getNode();
+          if (ld.getBasePtr().getNode() instanceof FrameIndexSDNode)
+            funcInfo.setArgumentFrameIndex(arg, ((FrameIndexSDNode)ld.getBasePtr().getNode()).getFrameIndex());
+        }
+      }
+
+      if (res.getOpcode() == ISD.CopyFromReg) {
+        int reg = ((RegisterSDNode)res.getOperand(1).getNode()).getReg();
+        if (TargetRegisterInfo.isVirtualRegister(reg)) {
+          funcInfo.valueMap.put(arg, reg);
+          continue;
+        }
+      }
+      if (!FunctionLoweringInfo.isOnlyUsedInEntryBlock(arg)) {
+        funcInfo.initializeRegForValue(arg);
         sdl.copyToExportRegsIfNeeds(arg);
       }
-      ++idx;
     }
 
     Util.assertion(i == inVals.size());
