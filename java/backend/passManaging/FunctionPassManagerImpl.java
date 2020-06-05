@@ -18,6 +18,7 @@ package backend.passManaging;
 
 import backend.pass.*;
 import backend.support.BackendCmdOptions;
+import backend.support.MachineFunctionPass;
 import backend.support.PrintFunctionPass;
 import backend.value.Function;
 import backend.value.Module;
@@ -201,7 +202,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
       return;
     }
 
-    if (pi != null && !pi.isAnalysis() && shouldPrintBeforePass(pi)) {
+    if (((pi != null && !pi.isAnalysis()) || p instanceof MachineFunctionPass) && shouldPrintBeforePass(pi)) {
       Pass pp = p.createPrinterPass(System.err,
           String.format("*** IR Dump Before %s ***", p.getPassName()));
       pp.assignPassManager(activeStack, getTopLevelPassManagerType());
@@ -210,7 +211,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
     // Now all required passes are available.
     p.assignPassManager(activeStack, getTopLevelPassManagerType());
 
-    if (pi != null && !pi.isAnalysis() && shouldPrintAfterPass(pi)) {
+    if (((pi != null && !pi.isAnalysis()) || p instanceof MachineFunctionPass) && shouldPrintAfterPass(pi)) {
       Pass pp = p.createPrinterPass(System.err,
           String.format("*** IR Dump After %s ***", p.getPassName()));
       pp.assignPassManager(activeStack, getTopLevelPassManagerType());
