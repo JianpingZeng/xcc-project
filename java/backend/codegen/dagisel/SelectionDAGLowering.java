@@ -26,6 +26,7 @@ import backend.debug.DebugLoc;
 import backend.intrinsic.Intrinsic;
 import backend.ir.AllocationInst;
 import backend.ir.IndirectBrInst;
+import backend.mc.MCSymbol;
 import backend.support.*;
 import backend.target.*;
 import backend.type.*;
@@ -35,6 +36,7 @@ import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.IntrinsicInst.DbgDeclareInst;
 import backend.value.IntrinsicInst.DbgValueInst;
+import cfe.clex.IdentifierInfoLookup;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -47,8 +49,7 @@ import static backend.codegen.dagisel.RegsForValue.getCopyToParts;
 import static backend.intrinsic.Intrinsic.ID.*;
 import static backend.target.TargetOptions.DisableJumpTables;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
-import static backend.value.Operator.And;
-import static backend.value.Operator.Or;
+import static backend.value.Operator.*;
 
 /**
  * @author Jianping Zeng
@@ -69,6 +70,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   private HashMap<Value, DanglingDebugInfo> danglingDebugInfoMap;
 
   private LLVMContext context;
+  public HashMap<MachineBasicBlock, TIntArrayList> lpadToCallSiteMap;
 
   public boolean hasTailCall() {
     return hasTailCall;
@@ -287,11 +289,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     unusedArgNodeMap = new HashMap<>();
     danglingDebugInfoMap = new HashMap<>();
     context = dag.getContext();
+    lpadToCallSiteMap = new HashMap<>();
   }
 
   public void init(AliasAnalysis aa) {
     this.aa = aa;
     td = dag.getTarget().getTargetData();
+    clear();
   }
 
   public void clear() {
@@ -303,6 +307,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     curDebugLoc = new DebugLoc();
     unusedArgNodeMap.clear();
     danglingDebugInfoMap.clear();
+    lpadToCallSiteMap.clear();
   }
 
   public SDValue getRoot() {
@@ -496,15 +501,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
                           MachineBasicBlock landingPad) {
     PointerType pt = (PointerType) (cs.getCalledValue().getType());
     FunctionType fty = (FunctionType) pt.getElementType();
-    MachineModuleInfo mmi = dag.getMachineModuleInfo();
-    int beginLabel = 0, endLabel = 0;
+    MachineModuleInfo mmi = funcInfo.mf.getMMI();
+    MCSymbol beginLabel = null;
 
     ArrayList<ArgListEntry> args = new ArrayList<>(cs.getNumOfArguments());
 
     for (int i = 0, e = cs.getNumOfArguments(); i < e; i++) {
       ArgListEntry entry = new ArgListEntry();
-      SDValue arg = getValue(cs.getArgument(i));
-      entry.node = arg;
+      entry.node = getValue(cs.getArgument(i));
       entry.ty = cs.getArgument(i).getType();
 
       int attrInd = i + 1;
@@ -519,9 +523,18 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
 
     if (landingPad != null && mmi != null) {
-      beginLabel = mmi.nextLabelID();
+      beginLabel = mmi.getContext().createTemporarySymbol();
+      int callSiteIndex = mmi.getCurrentCallSite();
+      if (callSiteIndex != 0) {
+        mmi.setCallSiteBeginLabel(beginLabel, callSiteIndex);
+        if (!lpadToCallSiteMap.containsKey(landingPad))
+          lpadToCallSiteMap.put(landingPad, new TIntArrayList());
+        lpadToCallSiteMap.get(landingPad).add(callSiteIndex);
+        mmi.setCurrentCallSite(0);
+      }
+
       getRoot();
-      dag.setRoot(dag.getLabel(ISD.EH_LABEL, getControlRoot(), beginLabel));
+      dag.setRoot(dag.getEHLabel(getCurDebugLoc(), getControlRoot(), beginLabel));
     }
 
     if (isTailCall && !isInTailCallPosition(cs.getInstruction(),
@@ -545,8 +558,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       hasTailCall = true;
 
     if (landingPad != null && mmi != null) {
-      endLabel = mmi.getNextLabelID();
-      dag.setRoot(dag.getLabel(ISD.EH_LABEL, getRoot(), endLabel));
+      MCSymbol endLabel = mmi.getContext().createTemporarySymbol();
+      dag.setRoot(dag.getEHLabel(getCurDebugLoc(), getRoot(), endLabel));
       mmi.addInvoke(landingPad, beginLabel, endLabel);
     }
   }
@@ -787,6 +800,17 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         visitIndirectBr(u);
         break;
       case Invoke:
+        visitInvoke(u);
+        break;
+      case Resume:
+        visitResume(u);
+        break;
+      case Unwind:
+        visitUnwind(u);
+        break;
+      case LandingPad:
+        visitLandingPad(u);
+        break;
       default:
         // TODO 1/16/2019
         Util.shouldNotReachHere(String.format("Unknown operator '%s'", opc.opName));
@@ -2103,7 +2127,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     boolean isVolatile = si.isVolatile();
     int align = si.getAlignment();
     for (int i = 0; i < numValues; i++) {
-      chains.add(dag.getStore(root, new SDValue(src.getNode(), src.getResNo() + i),
+      chains.add(dag.getStore(root, new SDValue(src.getNode(), i),
           dag.getNode(ISD.ADD, ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
           ptrVal, (int) offsets.get(i), isVolatile, align));
     }
@@ -2306,11 +2330,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       }
       case eh_selector: {
-        Util.assertion("eh_selector is not supported as yet!");
         MachineBasicBlock callMBB = funcInfo.mbb;
         MachineModuleInfo mmi = dag.getMachineModuleInfo();
         if (callMBB.isLandingPad()) {
-          // addCatchInfo(ci, mmi, callMBB);
+          addCatchInfo(ci, mmi, callMBB);
         }
         else {
           // mark the exception selector register as live in.
@@ -3247,5 +3270,142 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDNode.SDVTList vts = dag.getVTList(op1.getValueType(), new EVT(MVT.i1));
     setValue(inst, dag.getNode(opc, vts, op1, op2));
     return null;
+  }
+
+  private void visitInvoke(User u) {
+    InvokeInst ii = (InvokeInst) u;
+    MachineBasicBlock invokeMBB = funcInfo.mbb;
+    MachineBasicBlock returnBB = funcInfo.mbbmap.get(ii.getSuccessor(0));
+    MachineBasicBlock landingPadBB = funcInfo.mbbmap.get(ii.getSuccessor(1));
+    Value callee = ii.getCalledValue();
+    if (callee instanceof InlineAsm)
+      Util.shouldNotReachHere("InlineAsm is not supported yet!");
+    else
+      lowerCallTo(new CallSite(ii), getValue(callee), false, landingPadBB);
+
+    copyToExportRegsIfNeeds(ii);
+    invokeMBB.addSuccessor(returnBB);
+    invokeMBB.addSuccessor(landingPadBB);
+    dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), getControlRoot(), dag.getBasicBlock(returnBB)));
+  }
+
+  private void visitUnwind(User u) {}
+
+  private void visitResume(User u) {
+    Util.shouldNotReachHere("SelectionDAGLowering shouldn't visit resume instruction!");
+  }
+
+  private void visitLandingPad(User u) {
+    LandingPadInst lpi = (LandingPadInst) u;
+    Util.assertion(funcInfo.mbb.isLandingPad(), "call to landingpad not in landing pad!");
+    MachineBasicBlock mbb = funcInfo.mbb;
+    MachineModuleInfo mmi = dag.getMachineModuleInfo();
+    addLandingPadInfo(lpi, mmi, mbb);
+    ArrayList<EVT> valueVTs = new ArrayList<>();
+    computeValueVTs(tli, lpi.getType(), valueVTs);
+
+    Util.assertion(funcInfo.mbb.isLandingPad(), "call to eh.exception not in landing pad!");
+    SDNode.SDVTList vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
+
+    SDValue op1 = dag.getNode(ISD.EXCEPTIONADDR, vts, dag.getRoot());
+    SDValue chain = op1.getValue(1);
+
+    vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
+    SDValue[] ops = new SDValue[]{op1, chain};
+    SDValue op2 = dag.getNode(ISD.EHSELECTION, vts, ops);
+    chain = op2.getValue(1);
+    op2 = dag.getSExtOrTrunc(op2, new EVT(MVT.i32));
+    ops[0] = op1;
+    ops[1] = op2;
+    SDValue res = dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs.get(0)), ops);
+    setValue(lpi, res);
+    dag.setRoot(chain);
+  }
+
+  private void addLandingPadInfo(LandingPadInst inst,
+                                 MachineModuleInfo mmi,
+                                 MachineBasicBlock mbb) {
+    mmi.addPersonality(mbb, (Function)inst.getPersonalityFn().stripPointerCasts());
+    if (inst.isCleanup())
+      mmi.addCleanup(mbb);
+
+    for (int i = inst.getNumClauses(); i != 0; --i) {
+      Value v = inst.getClause(i - 1);
+      if (inst.isCatch(i - 1))
+        mmi.addCatchTypeInfo(mbb, (GlobalVariable)v.stripPointerCasts());
+      else {
+        Constant cval = (Constant) v;
+        ArrayList<GlobalVariable> filterList = new ArrayList<>();
+        for (int j = 0, e = cval.getNumOfOperands(); j != e; ++j)
+          filterList.add((GlobalVariable) cval.operand(j).stripPointerCasts());
+
+        mmi.addFilterTypeInfo(mbb, filterList);
+      }
+    }
+  }
+
+  void addCatchInfo(CallInst ci, MachineModuleInfo mmi, MachineBasicBlock mbb) {
+    ConstantExpr ce = (ConstantExpr) ci.getArgOperand(1);
+    Util.assertion(ce.getOpcode() == BitCast && ce.operand(0) instanceof Function,
+            "Personality should be a function");
+    mmi.addPersonality(mbb, (Function)ce.operand(0));
+
+    ArrayList<GlobalVariable> tyInfo = new ArrayList<>();
+    int n = ci.getNumsOfArgs();
+    for (int i = n - 1; i > 1; --i) {
+      if (ci.getArgOperand(i) instanceof ConstantInt) {
+        ConstantInt c = (ConstantInt) ci.getArgOperand(i);
+        long filterLength = c.getZExtValue();
+        long firstCatch = i + filterLength + (filterLength != 0 ? 0 : 1);
+        Util.assertion(firstCatch <= n, "invalid filter length!");
+
+        if(firstCatch < n) {
+          for (long j = firstCatch; j < n; ++j)
+            tyInfo.add(extractTypeInfo(ci.getArgOperand((int) j)));
+
+          mmi.addCatchTypeInfo(mbb, tyInfo);
+          tyInfo.clear();
+        }
+
+        if (filterLength == 0)
+          // cleanup
+          mmi.addCleanup(mbb);
+        else {
+          // filter
+          for (long j = i + 1; j < firstCatch; ++j)
+            tyInfo.add(extractTypeInfo(ci.getArgOperand((int) j)));
+
+          mmi.addFilterTypeInfo(mbb, tyInfo);
+          tyInfo.clear();
+        }
+        n = i;
+      }
+    }
+
+    if (n > 2) {
+      for (int j = 2; j < n; ++j)
+        tyInfo.add(extractTypeInfo(ci.getArgOperand(j)));
+
+      mmi.addCatchTypeInfo(mbb, tyInfo);
+    }
+  }
+
+  private GlobalVariable extractTypeInfo(Value v) {
+    v = v.stripPointerCasts();
+    GlobalVariable gv = null;
+    if (v instanceof GlobalVariable) {
+      gv = (GlobalVariable) v;
+      if (gv.getName().equals("llvm.eh.catch.all.value")) {
+        Util.assertion(gv.hasInitializer(), "the EH catch all value must have an initializer");
+        Value init = gv.getInitializer();
+        if (!(init instanceof GlobalVariable))
+          v = (ConstantPointerNull)init;
+        else
+          gv = (GlobalVariable) init;
+      }
+    }
+    Util.assertion(gv != null || v instanceof ConstantPointerNull,
+            "TypeInfo must be a global variable or NULL");
+    return gv;
   }
 }

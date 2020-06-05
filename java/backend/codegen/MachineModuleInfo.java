@@ -17,12 +17,21 @@ package backend.codegen;
  */
 
 import backend.debug.DebugLoc;
+import backend.mc.MCAsmInfo;
+import backend.mc.MCRegisterInfo;
+import backend.mc.MCSymbol;
 import backend.pass.AnalysisResolver;
 import backend.pass.ImmutablePass;
+import backend.value.Function;
+import backend.value.GlobalVariable;
 import backend.value.MDNode;
+import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
+import tools.Util;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * @author Jianping Zeng
@@ -33,6 +42,29 @@ public class MachineModuleInfo implements ImmutablePass {
   private int nextLabelID;
   private boolean dgbInfoAvailable;
   private ArrayList<Pair<MDNode, Pair<Integer, DebugLoc>>> variableDbgInfo;
+  private HashMap<MCSymbol, TIntArrayList> lpadToCallSiteMap;
+  private MCSymbol.MCContext context;
+  private ArrayList<Function> personalities;
+  private int currentCallSite;
+  private TObjectIntHashMap<MCSymbol> callSiteMap;
+
+  public MachineModuleInfo(MCAsmInfo mai,
+                           MCRegisterInfo mri) {
+    nextLabelID = 0;
+    dgbInfoAvailable = false;
+    variableDbgInfo = new ArrayList<>();
+    lpadToCallSiteMap = new HashMap<>();
+    context = new MCSymbol.MCContext(mai, mri);
+    personalities = new ArrayList<>();
+    currentCallSite = 0;
+    callSiteMap = new TObjectIntHashMap<>();
+  }
+
+  public MachineModuleInfo() {
+    Util.shouldNotReachHere("This pass should be explicitly called in LLVMTargetMachine");
+  }
+
+  public MCSymbol.MCContext getContext() { return context; }
 
   @Override
   public void setAnalysisResolver(AnalysisResolver resolver) {
@@ -62,8 +94,9 @@ public class MachineModuleInfo implements ImmutablePass {
     return nextLabelID;
   }
 
-  public void addInvoke(MachineBasicBlock landingPad, int beginLabel,
-                        int endLabel) {
+  public void addInvoke(MachineBasicBlock landingPad,
+                        MCSymbol beginLabel,
+                        MCSymbol endLabel) {
 
   }
 
@@ -81,5 +114,49 @@ public class MachineModuleInfo implements ImmutablePass {
 
   public ArrayList<Pair<MDNode, Pair<Integer, DebugLoc>>> getVariableDbgInfo() {
     return variableDbgInfo;
+  }
+
+  public void addPersonality(MachineBasicBlock mbb, Function stripPointerCasts) {
+
+  }
+
+  public void addCleanup(MachineBasicBlock mbb) {
+
+  }
+
+  public void addCatchTypeInfo(MachineBasicBlock mbb, GlobalVariable tyInfo) {
+    ArrayList<GlobalVariable> list = new ArrayList<>();
+    list.add(tyInfo);
+    addCatchTypeInfo(mbb, list);
+  }
+
+  public void addCatchTypeInfo(MachineBasicBlock mbb, ArrayList<GlobalVariable> tyInfos) {
+
+  }
+
+  public void addFilterTypeInfo(MachineBasicBlock mbb, ArrayList<GlobalVariable> filterList) {
+
+  }
+
+  public MCSymbol addLandingPad(MachineBasicBlock mbb) {
+    return null;
+  }
+
+  public void setCallSiteLandingPad(MCSymbol sym, TIntArrayList sites) {
+    if (!lpadToCallSiteMap.containsKey(sym))
+      lpadToCallSiteMap.put(sym, new TIntArrayList());
+    lpadToCallSiteMap.get(sym).addAll(sites);
+  }
+
+  public int getCurrentCallSite() {
+    return currentCallSite;
+  }
+
+  public void setCurrentCallSite(int val) {
+    this.currentCallSite = val;
+  }
+
+  public void setCallSiteBeginLabel(MCSymbol beginLabel, int site) {
+    callSiteMap.put(beginLabel, site);
   }
 }

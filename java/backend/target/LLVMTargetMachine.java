@@ -70,6 +70,11 @@ public abstract class LLVMTargetMachine extends TargetMachine {
     if (level.compareTo(CodeGenOpt.None) > 0)
       pm.add(createUnreachableBlockEliminationPass());
 
+    // Install a MachineModuleInfo pass which is an immutable pass that holds
+    // all the per-module stuff we are generating, including MCContext.
+    MachineModuleInfo mmi = new MachineModuleInfo(getMCAsmInfo(),
+            getSubtarget().getRegisterInfo());
+    pm.add(mmi);
     pm.add(new MachineFunctionAnalysis(this, level));
 
     // Ask the target for an isel.

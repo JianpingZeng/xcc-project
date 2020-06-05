@@ -2,7 +2,9 @@ package backend.support;
 
 import backend.type.Type;
 import backend.value.Function;
+import backend.value.Instruction;
 import backend.value.Instruction.CallInst;
+import backend.value.Instruction.InvokeInst;
 import backend.value.Value;
 import tools.Util;
 
@@ -12,9 +14,10 @@ import tools.Util;
  */
 public class CallSite {
   // Returns the operand number of the first argument
-  private static final int ArgumentOffset = 1;
+  private static int ArgumentOffset;
 
-  private CallInst inst;
+  private Instruction inst;
+  private boolean isInvoke;
 
   public CallSite() {
     inst = null;
@@ -22,11 +25,21 @@ public class CallSite {
 
   public CallSite(CallInst ii) {
     inst = ii;
+    isInvoke = false;
+    ArgumentOffset = 1;
+  }
+
+  public CallSite(InvokeInst ii) {
+    inst = ii;
+    isInvoke = true;
+    ArgumentOffset = 3;
   }
 
   public static CallSite get(Value v) {
     if (v instanceof CallInst)
       return new CallSite((CallInst) v);
+    else if (v instanceof InvokeInst)
+      return new CallSite((InvokeInst) v);
     return new CallSite();
   }
 
@@ -34,10 +47,22 @@ public class CallSite {
     return inst.getType();
   }
 
-  public CallInst getInstruction() {
+  public Instruction getInstruction() {
     return inst;
   }
 
+  public boolean isInvoke() { return isInvoke; }
+  public boolean isCall() { return !isInvoke; }
+
+  public CallInst getCallInst() {
+    Util.assertion(isCall());
+    return (CallInst) inst;
+  }
+
+  public InvokeInst getInvokeInst() {
+    Util.assertion(isInvoke());
+    return (InvokeInst) inst;
+  }
   /**
    * Return the caller function for this call site
    *
@@ -76,15 +101,16 @@ public class CallSite {
   }
 
   public Value getArgument(int idx) {
-    Util.assertion(idx >= 0 && idx < inst.getNumsOfArgs(),
+    int nums = isCall() ? getCallInst().getNumsOfArgs() : getInvokeInst().getNumOfOperands();
+    Util.assertion(idx >= 0 && idx < nums,
         String.format("Argument #%d out of range!", idx));
     return inst.operand(ArgumentOffset + idx);
   }
 
   public void setArgument(int idx, Value newVal) {
     Util.assertion(inst != null, "Not a call inst");
-    Util.assertion(idx + ArgumentOffset >= 1 && idx + 1 < inst.getNumsOfArgs(), "Argument # out of range!");
-
+    int nums = isCall() ? getCallInst().getNumsOfArgs() : getInvokeInst().getNumsOfArgs();
+    Util.assertion(idx >= 0 && idx + ArgumentOffset < nums, "Argument # out of range!");
     inst.setOperand(idx + ArgumentOffset, newVal, inst);
   }
 
@@ -93,55 +119,110 @@ public class CallSite {
   }
 
   public boolean doesNotAccessMemory() {
-    return getInstruction().doesNotAccessMemory();
+    if (isCall())
+      return getCallInst().doesNotAccessMemory();
+    else
+      return getInvokeInst().doesNotAccessMemory();
   }
 
   public void setDoesNotAccessMemory(boolean val) {
-    getInstruction().setDoesNotAccessMemory(val);
+    if (isCall())
+      getCallInst().setDoesNotAccessMemory(val);
+    else
+      getInvokeInst().setDoesNotAccessMemory(val);
   }
 
   public boolean onlyReadsMemory() {
-    return getInstruction().onlyReadsMemory();
+    if (isCall())
+      return getCallInst().onlyReadsMemory();
+    else
+      return getInvokeInst().onlyReadsMemory();
   }
 
   public void setOnlyReadsMemory(boolean val) {
-    getInstruction().setOnlyReadsMemory(val);
+    if (isCall())
+      getCallInst().setOnlyReadsMemory(val);
+    else
+      getInvokeInst().setOnlyReadsMemory(val);
   }
 
   public boolean doesNotReturn() {
-    return getInstruction().doesNotReturn();
+    if (isCall())
+      return getCallInst().doesNotReturn();
+    else
+      return getCallInst().doesNotReturn();
   }
 
   public void setDoesNotReturn(boolean val) {
-    getInstruction().setDoesNotReturn(val);
+    if (isCall())
+      getCallInst().setDoesNotReturn(val);
+    else
+      getInvokeInst().setDoesNotReturn(val);
   }
 
   public boolean doesNotThrow() {
-    return getInstruction().doesNotThrow();
+    if (isCall())
+      return getCallInst().doesNotThrow();
+    else
+      return getInvokeInst().doesNotThrow();
   }
 
   public void setDoesNotThrow(boolean val) {
-    getInstruction().setDoesNotThrow(val);
+    if (isCall())
+      getCallInst().setDoesNotThrow(val);
+    else
+      getInvokeInst().setDoesNotThrow(val);
   }
 
   public CallingConv getCallingConv() {
-    return inst.getCallingConv();
+    if (isCall())
+      return getCallInst().getCallingConv();
+    else
+      return getInvokeInst().getCallingConv();
   }
 
   public boolean paramHasAttr(int idx, int attr) {
-    return inst.paramHasAttr(idx, attr);
+    if (isCall())
+      return getCallInst().paramHasAttr(idx, attr);
+    else
+      return getInvokeInst().paramHasAttr(idx, attr);
   }
 
   public int paramAlignment(int idx) {
-    return inst.getParamAlignment(idx);
+    if (isCall())
+      return getCallInst().getParamAlignment(idx);
+    else
+      return getInvokeInst().getParamAlignment(idx);
   }
 
   public AttrList getAttributes() {
-    return inst.getAttributes();
+    if (isCall())
+      return getCallInst().getAttributes();
+    else
+      return getInvokeInst().getAttributes();
   }
 
   public void setAttributes(AttrList attrs) {
-    getInstruction().setAttributes(attrs);
+    if (isCall())
+      getCallInst().setAttributes(attrs);
+    else
+      getInvokeInst().setAttributes(attrs);
+  }
+
+  public void setCallingConv(CallingConv cc) {
+    if (isCall())
+      getCallInst().setCallingConv(cc);
+    else
+      getInvokeInst().setCallingConv(cc);
+  }
+
+  public boolean isTailCall() {
+    return isCall() && getCallInst().isTailCall();
+  }
+
+  public void setTailCall(boolean b) {
+    if (isCall())
+      getCallInst().setTailCall(b);
   }
 }
 

@@ -181,8 +181,6 @@ public class InlineCostAnalyzer {
 
   public float getInlineFudgeFactor(CallSite cs) {
     Function callee = cs.getCalledFunction();
-    Function caller = cs.getCaller();
-    CallInst ci = cs.getInstruction();
     FunctionInliningInfo info = cachedFunctionInfos.get(callee);
     if (info == null) {
       info = new FunctionInliningInfo();
@@ -201,8 +199,7 @@ public class InlineCostAnalyzer {
   public InlineCost getInlineCost(CallSite cs, HashSet<Function> neverInlined) {
     Function callee = cs.getCalledFunction();
     Function caller = cs.getCaller();
-    CallInst ci = cs.getInstruction();
-    BasicBlock bb = ci.getParent();
+    BasicBlock bb = cs.getInstruction().getParent();
 
     // if we have an indirect call, we must not inline this call site.
     if (callee == null || callee.hasFnAttr(Attribute.NoInline) ||
@@ -240,7 +237,7 @@ public class InlineCostAnalyzer {
     // If the calling convention is "Cold", should not inline it.
     if (callee.getCallingConv() == CallingConv.Cold)
       cost += 2000;
-    Instruction afterInst = bb.getInstAt(ci.getIndexToBB() + 1);
+    Instruction afterInst = bb.getInstAt(cs.getInvokeInst().getIndexToBB() + 1);
     if (afterInst != null && afterInst instanceof UnreachableInst)
       cost += 10000;
 

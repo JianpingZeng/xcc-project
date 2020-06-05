@@ -19,12 +19,12 @@ package backend.codegen.dagisel;
 
 import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
-import backend.codegen.dagisel.SDNode.CondCodeSDNode;
-import backend.codegen.dagisel.SDNode.ConstantSDNode;
-import backend.codegen.dagisel.SDNode.LabelSDNode;
-import backend.codegen.dagisel.SDNode.MachineSDNode;
+import backend.codegen.dagisel.SDNode.*;
 import backend.debug.DebugLoc;
+import backend.intrinsic.Intrinsic;
+import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
+import backend.mc.MCSymbol;
 import backend.pass.AnalysisUsage;
 import backend.support.Attribute;
 import backend.support.DepthFirstOrder;
@@ -34,9 +34,7 @@ import backend.target.TargetMachine.CodeGenOpt;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
-import backend.value.Instruction.AllocaInst;
-import backend.value.Instruction.PhiNode;
-import backend.value.Instruction.TerminatorInst;
+import backend.value.Instruction.*;
 import tools.APInt;
 import tools.OutRef;
 import tools.Pair;
@@ -129,7 +127,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     Function f = mf.getFunction();
     //AliasAnalysis aa = (AliasAnalysis) getAnalysisToUpDate(AliasAnalysis.class);
     MachineModuleInfo mmi = (MachineModuleInfo) getAnalysisToUpDate(MachineModuleInfo.class);
-
+    mf.setMMI(mmi);
     curDAG.init(mf, mmi);
     funcInfo.set(f, mf);
     sdl.init(aa);
@@ -185,8 +183,14 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         }
       }
       funcInfo.visitedBBs.add(llvmBB);
+      funcInfo.insertPtr = funcInfo.mbb.getFirstNonPHI();
 
       int bi = 0, end = llvmBB.size();
+
+      // set up an EH landing-pad block.
+      if (funcInfo.mbb.isLandingPad())
+        prepareEHLandingPad();
+
       // Lower any arguments needed in this block if this is entry block.
       if (llvmBB.equals(fn.getEntryBlock())) {
         boolean fail = lowerArguments(llvmBB);
@@ -953,6 +957,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       case ISD.TokenFactor:
       case ISD.CopyFromReg:
       case ISD.CopyToReg:
+      case ISD.EH_LABEL:
         // mark it as selected.
         nodeToMatch.setNodeID(-1);
         return null;
@@ -963,8 +968,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         return null;
       case ISD.INLINEASM:
         return select_INLINEASM(new SDValue(nodeToMatch, 0));
-      case ISD.EH_LABEL:
-        return select_EH_LABEL(new SDValue(nodeToMatch, 0));
       case ISD.UNDEF:
         return select_UNDEF(new SDValue(nodeToMatch, 0));
     }
@@ -2100,14 +2103,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         new EVT(MVT.Other), tmp, chain);
   }
 
-  public SDNode select_EH_LABEL(SDValue n) {
-    SDValue chain = n.getOperand(0);
-    int c = ((LabelSDNode) n.getNode()).getLabelID();
-    SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
-    return curDAG.selectNodeTo(n.getNode(), TargetOpcode.EH_LABEL,
-        new EVT(MVT.Other), tmp, chain);
-  }
-
   public SDNode select_DECLARE(SDValue n) {
     Util.shouldNotReachHere("This method should be overrided by concrete target!");
     return null;
@@ -2165,5 +2160,62 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       curDAG.computeMaskedBits(src, mask, knownVals, 0);
       funcInfo.addLiveOutRegInfo(destReg, numSignBits, knownVals[0], knownVals[1]);
     }while (!worklist.isEmpty());
+  }
+
+  private void prepareEHLandingPad() {
+    MachineBasicBlock mbb = funcInfo.mbb;
+    MCSymbol label = mf.getMMI().addLandingPad(mbb);
+    mf.getMMI().setCallSiteLandingPad(label, sdl.lpadToCallSiteMap.get(mbb));
+
+    MCInstrDesc mcid = tm.getSubtarget().getInstrInfo().get(TargetOpcode.EH_LABEL);
+    buildMI(mbb, funcInfo.insertPtr.getIndexInMBB(), sdl.getCurDebugLoc(), mcid)
+            .addMCSym(label);
+
+    int reg = tli.getExceptionPointerRegister();
+    if (reg != 0) mbb.addLiveIn(reg);
+
+    reg = tli.getExceptionSelectorRegister();
+    if (reg != 0) mbb.addLiveIn(reg);
+
+    BasicBlock llvmBB = mbb.getBasicBlock();
+    BranchInst br = llvmBB.getTerminator() instanceof BranchInst ?
+            (BranchInst)llvmBB.getTerminator() : null;
+    if (br != null && br.isUnconditional()) {
+      int i = 0, e = llvmBB.size() - 1;
+      for (; i != e; ++i) {
+        if (llvmBB.getInstAt(i) instanceof CallInst) {
+          CallInst ci = (CallInst) llvmBB.getInstAt(i);
+          if (ci.getCalledFunction().getIntrinsicID() == Intrinsic.ID.eh_selector)
+            break;
+        }
+      }
+      if (i == e)
+        copyCatchInfo(br.getSuccessor(0), llvmBB, mf.getMMI(), funcInfo);
+    }
+  }
+
+  private void copyCatchInfo(BasicBlock succBB, BasicBlock lpad,
+                             MachineModuleInfo mmi, FunctionLoweringInfo funcInfo) {
+    HashSet<BasicBlock> visited = new HashSet<>();
+
+    // The 'eh.selector' call may not be in the direct successor of a basic block,
+    // but could be several successors deeper. If we don't find it, try going one
+    // level further.
+    while (visited.add(succBB)) {
+      for (Instruction inst : succBB) {
+        if (inst instanceof CallInst && ((CallInst)inst).getCalledFunction()
+                .getIntrinsicID() == Intrinsic.ID.eh_selector) {
+          sdl.addCatchInfo((CallInst) inst, mmi, funcInfo.mbbmap.get(lpad));
+          return;
+        }
+
+        BranchInst br = succBB.getTerminator() instanceof BranchInst ?
+                (BranchInst) succBB.getTerminator() : null;
+        if (br != null && br.isUnconditional())
+          succBB = br.getSuccessor(0);
+        else
+          break;
+      }
+    }
   }
 }

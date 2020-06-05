@@ -54,6 +54,7 @@ public class MachineFunction {
   private int alignment;
   private MachineJumpTableInfo jumpTableInfo;
   private int functionNumber;
+  private MachineModuleInfo mmi;
 
   public MachineFunction(Function fn, TargetMachine tm, int fnNumber) {
     this.fn = fn;
@@ -72,6 +73,9 @@ public class MachineFunction {
     // associate this machine function with HIR function.
     fn.setMachineFunc(this);
   }
+
+  public MachineModuleInfo getMMI() { return mmi; }
+  public void setMMI(MachineModuleInfo mmi) { this.mmi = mmi; }
 
   public Function getFunction() {
     return fn;

@@ -3,6 +3,7 @@ package backend.codegen;
 import backend.codegen.MachineOperand.RegState;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
+import backend.mc.MCSymbol;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
 import backend.value.MDNode;
@@ -202,6 +203,11 @@ public final class MachineInstrBuilder {
                                                long offset,
                                                int targetFlags) {
     mi.addOperand(MachineOperand.createExternalSymbol(symName, offset, targetFlags));
+    return this;
+  }
+
+  public MachineInstrBuilder addMCSym(MCSymbol sym) {
+    mi.addOperand(MachineOperand.createMCSymbol(sym));
     return this;
   }
 

@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.mc.MCSymbol;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import gnu.trove.list.array.TIntArrayList;
@@ -60,6 +61,9 @@ public class MachineBasicBlock {
   public boolean isLandingPad() {
     return isLandingPad;
   }
+
+  public void setIsLandingPad() { isLandingPad = true; }
+  public void setIsLandingPad(boolean b) { isLandingPad = b; }
 
   public BasicBlock getBasicBlock() {
     return bb;
@@ -511,5 +515,12 @@ public class MachineBasicBlock {
     for (MachineInstr mi : toDelete) {
       insert(i++, mi);
     }
+  }
+
+  public MachineInstr getFirstNonPHI() {
+    for (int i = 0, e = size(); i != e; ++i)
+      if (getInstAt(i).getOpcode() != TargetOpcode.PHI)
+        return getInstAt(i);
+    return null;
   }
 }

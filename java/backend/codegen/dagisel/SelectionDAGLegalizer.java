@@ -2376,6 +2376,13 @@ public class SelectionDAGLegalizer {
         for (int i = 0, e = node.getNumValues(); i != e; ++i)
           results.add(new SDValue(node, i));
         break;
+      case ISD.EHSELECTION: {
+        int reg = tli.getExceptionSelectorRegister();
+        Util.assertion(reg != 0, "can't expand to unknow register");
+        results.add(dag.getCopyFromReg(node.getOperand(1), reg, node.getValueType(0)));
+        results.add(results.get(0).getValue(1));
+        break;
+      }
       default:
         if (Util.DEBUG) {
           node.dump(dag);

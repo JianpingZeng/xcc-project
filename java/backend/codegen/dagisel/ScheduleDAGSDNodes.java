@@ -22,6 +22,7 @@ import backend.codegen.dagisel.SDNode.*;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
+import backend.mc.MCSymbol;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
@@ -244,6 +245,10 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
       case ISD.CopyFromReg:
         int srcReg = ((RegisterSDNode) node.getOperand(1).getNode()).getReg();
         emitCopyFromReg(node, 0, isClone, isCloned, srcReg, vrBaseMap);
+        break;
+      case ISD.EH_LABEL:
+        MCSymbol sym = ((EHLabelSDNode)node).getLabel();
+        buildMI(mbb, insertPos, node.getDebugLoc(), tii.get(TargetOpcode.EH_LABEL)).addMCSym(sym);
         break;
       case ISD.INLINEASM:
         Util.shouldNotReachHere("InlineAsm not supported currently!");

@@ -1984,7 +1984,7 @@ public final class LLParser {
     if (kind == Eof)
       return tokError("found end of file when expecting more instructions") ?
           InstError :
-          InstResult.InstNormal;
+          InstNormal;
 
     SMLoc loc = lexer.getLoc();
     Operator opc = parseOperator(kind);
@@ -1994,25 +1994,27 @@ public final class LLParser {
       default:
         return error(loc, "expected instruction") ?
             InstError :
-            InstResult.InstNormal;
+            InstNormal;
       case kw_unwind:
         inst.set(new UnWindInst(context));
-        return InstResult.InstNormal;
+        return InstNormal;
       case kw_invoke:
-        return tokError("currently, invoke is not supported")?
-            InstError :
-            InstResult.InstNormal;
+        return parseInvoke(inst,pfs) ? InstError : InstNormal;
+      case kw_resume:
+        return parseResume(inst, pfs) ? InstError : InstNormal;
+      case kw_landingpad:
+        return parseLandingPad(inst, pfs) ? InstError : InstNormal;
       case kw_indirectbr:
-        return parseIndirectBr(inst, pfs) ? InstError : InstResult.InstNormal;
+        return parseIndirectBr(inst, pfs) ? InstError : InstNormal;
       case kw_unreachable:
         inst.set(new UnreachableInst(context));
-        return InstResult.InstNormal;
+        return InstNormal;
       case kw_ret:
         return parseRet(inst, bb, pfs);
       case kw_br:
-        return parseBr(inst, pfs) ? InstError : InstResult.InstNormal;
+        return parseBr(inst, pfs) ? InstError : InstNormal;
       case kw_switch:
-        return parseSwitch(inst, pfs) ? InstError : InstResult.InstNormal;
+        return parseSwitch(inst, pfs) ? InstError : InstNormal;
       case kw_add:
       case kw_sub:
       case kw_mul:
@@ -2035,12 +2037,12 @@ public final class LLParser {
               return error(modifierLoc,
                   "nuw only applies to integer operation") ?
                   InstError :
-                  InstResult.InstNormal;
+                  InstNormal;
             if (nsw)
               return error(modifierLoc,
                   "nsw only applies to integer operation")?
                   InstError :
-                  InstResult.InstNormal;
+                  InstNormal;
           }
           // Allow nsw and nuw, but ignores it.
           ((OverflowingBinaryOperator)inst.get()).setHasNoUnsignedWrap(true);
@@ -2048,13 +2050,13 @@ public final class LLParser {
         }
         return result ?
             InstError :
-            InstResult.InstNormal;
+            InstNormal;
       }
       case kw_fadd:
       case kw_fsub:
       case kw_fmul:
         return parseArithmetic(inst, pfs, opc, 2)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       case kw_sdiv:
       case kw_udiv:
       case kw_lshr:
@@ -2066,25 +2068,25 @@ public final class LLParser {
           return InstError;
         if (exact)
           ((ExactBinaryOperator)inst.get()).setIsExact(true);
-        return InstResult.InstNormal;
+        return InstNormal;
       }
       case kw_urem:
       case kw_srem:
         return parseArithmetic(inst, pfs, opc, 1)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       case kw_fdiv:
       case kw_frem:
         return parseArithmetic(inst, pfs, opc, 2)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       case kw_and:
       case kw_or:
       case kw_xor:
         return parseLogical(inst, pfs, opc)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       case kw_icmp:
       case kw_fcmp:
         return parseCompare(inst, pfs, opc)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       // Casts.
       case kw_trunc:
       case kw_zext:
@@ -2099,19 +2101,19 @@ public final class LLParser {
       case kw_inttoptr:
       case kw_ptrtoint:
         return parseCast(inst, pfs, opc)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       // Other.
       case kw_select:
         return parseSelect(inst, pfs)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       case kw_phi:
         return parsePHI(inst, pfs);
       case kw_call:
         return parseCall(inst, pfs, false)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       case kw_tail:
         return parseCall(inst, pfs, true)
-            ? InstError : InstResult.InstNormal;
+            ? InstError : InstNormal;
       // Memory.
       case kw_alloca:
         return parseAlloc(inst, pfs, true, bb);
@@ -2633,7 +2635,7 @@ public final class LLParser {
 
     if (!ty.get().isFirstClassType())
       return error(typeLoc, "phi node must have first class type")
-          ? InstResult.InstError : InstResult.InstNormal;
+          ? InstResult.InstError : InstNormal;
 
     OutRef<Value> val = new OutRef<>();
     OutRef<Value> val2 = new OutRef<>();
@@ -2815,7 +2817,7 @@ public final class LLParser {
       return InstError;
     if (retTy.get().isVoidType()) {
       inst.set(new ReturnInst(context));
-      return InstResult.InstNormal;
+      return InstNormal;
     }
 
     OutRef<Value> rv = new OutRef<>();
@@ -2850,7 +2852,7 @@ public final class LLParser {
       }
     }
     inst.set(new ReturnInst(context, rv.get()));
-    return extraComma ? InstResult.InstExtraComma : InstResult.InstNormal;
+    return extraComma ? InstResult.InstExtraComma : InstNormal;
   }
 
   private boolean parseTypeAndValue(OutRef<Value> op,
@@ -4411,6 +4413,166 @@ public final class LLParser {
       return error(loc.get(), "invalid shufflevector operrands");
 
     inst.set(new ShuffleVectorInst(op0.get(), op1.get(), op2.get()));
+    return false;
+  }
+
+  /**
+   * Invoke ::= 'invoke' OptionalCallingConv OptionalAttrs Type Value ParamList
+   *            OptionalAttrs 'to' TypeAndValue 'unwind' TypeAndValue
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseInvoke(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<CallingConv> cc = new OutRef<>();
+    OutRef<Integer> retAttrs = new OutRef<>(), fnAttrs = new OutRef<>();
+    OutRef<Type> retType = new OutRef<>();
+    OutRef<SMLoc> retTypeLoc = new OutRef<>();
+    SMLoc callLoc = lexer.getLoc();
+    ValID calleeID = new ValID();
+    ArrayList<ParamInfo> argList = new ArrayList<>();
+    BasicBlock normalBB, unwindBB;
+    if (parseOptionalCallingConv(cc) ||
+        parseOptionalAttrs(retAttrs, 1) ||
+        parseType(retType, retTypeLoc, true) ||
+        parseValID(calleeID) ||
+        parseParameterList(argList, pfs) ||
+        parseOptionalAttrs(fnAttrs, 2) ||
+        parseToken(kw_to, "expected 'to' in invoke") ||
+        (normalBB = parseTypeAndBasicBlock(pfs)) == null ||
+        parseToken(kw_unwind, "expected 'unwind' in invoke") ||
+        (unwindBB = parseTypeAndBasicBlock(pfs)) == null)
+      return true;
+
+    PointerType pfTy;
+    FunctionType ty;
+    if (!(retType.get() instanceof PointerType) ||
+        !(((PointerType)retType.get()).getElementType() instanceof FunctionType)) {
+      ArrayList<Type> paramTypes = new ArrayList<>(argList.stream().map(a -> a.val.getType()).collect(Collectors.toList()));
+      if (!FunctionType.isValidReturnType(retType.get()))
+        return error(retTypeLoc.get(), "Invalid return type for LLVM function");
+
+      ty = FunctionType.get(retType.get(), paramTypes, false);
+      pfTy = PointerType.getUnqual(ty);
+    }
+    else {
+      pfTy = (PointerType) retType.get();
+      ty = (FunctionType) pfTy.getElementType();
+    }
+
+    // look up the callee.
+    OutRef<Value> callee = new OutRef<>();
+    if (convertValIDToValue(pfTy, calleeID, callee, pfs))
+      return true;
+
+    // set up attributes for the function.
+    ArrayList<AttributeWithIndex> attrs = new ArrayList<>();
+    if (retAttrs.get() != Attribute.None)
+      attrs.add(AttributeWithIndex.get(0, retAttrs.get()));
+
+    ArrayList<Value> args = new ArrayList<>();
+    int paTyItr = 0, paTySize = ty.getNumParams();
+    for (int i = 0, e = argList.size(); i != e; ++i) {
+      ParamInfo paramInfo = argList.get(i);
+      Type expectedTy = null;
+      if (paTyItr != paTySize) {
+        expectedTy = ty.getParamType(paTyItr++);
+      }
+      else if (!ty.isVarArg()) {
+        return error(paramInfo.loc, "too many arguments specified");
+      }
+
+      if (expectedTy != null && !expectedTy.equals(paramInfo.val.getType()))
+        return error(paramInfo.loc, "argument is not of expected type '" +
+                expectedTy.toString() + "'");
+
+      args.add(paramInfo.val);
+      if (paramInfo.attrs != Attribute.None)
+        attrs.add(AttributeWithIndex.get(i+1, paramInfo.attrs));
+    }
+
+    if (paTyItr != paTySize)
+      return error(callLoc, "not enough parameters specified for call");
+
+    if (fnAttrs.get() != Attribute.None)
+      attrs.add(AttributeWithIndex.get(~0, fnAttrs.get()));
+
+    AttrList attrList = new AttrList(attrs);
+    InvokeInst ii = InvokeInst.create(callee.get(), normalBB, unwindBB, args);
+    ii.setCallingConv(cc.get());
+    ii.setAttributes(attrList);
+    inst.set(ii);
+    return false;
+  }
+
+  /**
+   * Resume ::= 'resume' TypeAndValue
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseResume(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<Value> exn = new OutRef<>();
+    OutRef<SMLoc> exnLoc = new OutRef<>();
+    if (parseTypeAndValue(exn, exnLoc, pfs))
+      return true;
+
+    inst.set(ResumeInst.create(exn.get()));
+    return false;
+  }
+
+  /**
+   * <pre>
+   * LandingPad ::= 'landingpad' Type 'personality' TypeAndValue 'cleanup'? Clause+
+   * Clause ::= 'catch' TypeAndValue
+   *            'filter'
+   *            'filter' TypeAndValue ( ',' TypeAndValue )*
+   * </pre>
+   * @param inst
+   * @param pfs
+   * @return
+   */
+  private boolean parseLandingPad(OutRef<Instruction> inst, PerFunctionState pfs) {
+    OutRef<Type> ty = new OutRef<>();
+    OutRef<SMLoc> tyLoc = new OutRef<>();
+    OutRef<Value> persFn = new OutRef<>();
+    OutRef<SMLoc> persFnLoc = new OutRef<>();
+    if (parseType(ty, tyLoc) ||
+        parseToken(kw_personality, "expected 'personality'") ||
+        parseTypeAndValue(persFn, persFnLoc, pfs))
+      return true;
+
+    boolean isCleanup = eatIfPresent(kw_cleanup);
+    ArrayList<Value> clauses = new ArrayList<>();
+    while (lexer.getTokKind() == kw_catch || lexer.getTokKind() == kw_filter) {
+      LandingPadInst.ClauseType ct;
+      if (eatIfPresent(kw_catch))
+        ct = LandingPadInst.ClauseType.Catch;
+      else if (eatIfPresent(kw_filter))
+        ct = LandingPadInst.ClauseType.Filter;
+      else
+        return tokError("expected 'catch' or 'filter' clause type");
+
+      OutRef<Value> v = new OutRef<>();
+      OutRef<SMLoc> vloc = new OutRef<>();
+      if (parseTypeAndValue(v, vloc, pfs))
+        return true;
+
+      if (ct == LandingPadInst.ClauseType.Catch) {
+        if (v.get().getType() instanceof ArrayType)
+          return error(vloc.get(), "'catch' clause has an invalid type");
+      } else {
+        if (!(v.get().getType() instanceof ArrayType))
+          return error(vloc.get(), "'filter' clause has an invalid type");
+      }
+      clauses.add(v.get());
+    }
+
+    LandingPadInst lp = LandingPadInst.create(ty.get(), persFn.get(), clauses.size());
+    lp.setCleanup(isCleanup);
+    for (Value v : clauses)
+      lp.addClause(v);
+    inst.set(lp);
     return false;
   }
 }

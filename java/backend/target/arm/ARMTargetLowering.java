@@ -511,6 +511,8 @@ public class ARMTargetLowering extends TargetLowering {
     setOperationAction(ISD.DYNAMIC_STACKALLOC, MVT.i32  , Expand);
     setOperationAction(ISD.EHSELECTION, MVT.i32, Expand);
     setOperationAction(ISD.EXCEPTIONADDR, MVT.i32, Expand);
+    setExceptionPointerRegister(ARMGenRegisterNames.R0);
+    setExceptionSelectorRegister(ARMGenRegisterNames.R1);
 
     // ARMv6 Thumb1 (except for CPUs that support dmb / dsb) and earlier use
     // the default expansion.

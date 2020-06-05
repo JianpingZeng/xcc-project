@@ -20,6 +20,7 @@ package backend.codegen.dagisel;
 import backend.codegen.*;
 import backend.debug.DebugLoc;
 import backend.intrinsic.Intrinsic;
+import backend.mc.MCSymbol;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetIntrinsicInfo;
 import backend.target.TargetLowering;
@@ -1576,6 +1577,17 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     public int getLabelID() {
       return labelID;
     }
+  }
+
+  public static class EHLabelSDNode extends SDNode {
+    private MCSymbol label;
+    public EHLabelSDNode(DebugLoc dl, SDValue ch, MCSymbol l) {
+      super(ISD.EH_LABEL, getSDVTList(new EVT(MVT.Other)));
+      initOperands(ch);
+      this.label = l;
+    }
+
+    public MCSymbol getLabel() { return label; }
   }
 
   public static class BlockAddressSDNode extends SDNode {

@@ -2428,6 +2428,342 @@ public abstract class Instruction extends User {
     }
   }
 
+  public static class ResumeInst extends TerminatorInst {
+    private ResumeInst(Value exn) {
+      this(exn, (Instruction)null);
+    }
+    private ResumeInst(Value exn, Instruction insertBefore) {
+      super(Type.getVoidTy(exn.getContext()), Resume, "", insertBefore);
+      reserve(1);
+      setOperand(0, exn, this);
+    }
+
+    private ResumeInst(Value exn, BasicBlock insertAtEnd) {
+      super(Type.getVoidTy(exn.getContext()), Resume, "", insertAtEnd);
+      reserve(1);
+      setOperand(0, exn, this);
+    }
+
+    public static ResumeInst create(Value exn) {
+      return new ResumeInst(exn);
+    }
+
+    @Override
+    public BasicBlock getSuccessor(int index) {
+      Util.shouldNotReachHere("Resume has not successor");
+      return null;
+    }
+
+    @Override
+    public int getNumOfSuccessors() {
+      return 0;
+    }
+
+    @Override
+    public void setSuccessor(int index, BasicBlock bb) {
+      Util.shouldNotReachHere("Resume has not successor");
+    }
+  }
+
+  public static class InvokeInst extends TerminatorInst {
+    private AttrList attributes;
+    private CallingConv cc;
+
+    public static InvokeInst create(Value func, BasicBlock ifNormal, BasicBlock ifException,
+                                    ArrayList<Value> args) {
+      return create(func, ifNormal, ifException, args, "");
+    }
+
+    public static InvokeInst create(Value func, BasicBlock ifNormal, BasicBlock ifException,
+                                    ArrayList<Value> args, String name) {
+      return create(func, ifNormal, ifException, args, name, (Instruction)null);
+    }
+
+    public static InvokeInst create(Value func, BasicBlock ifNormal, BasicBlock ifException,
+               ArrayList<Value> args, String name, Instruction insertBefore) {
+      return new InvokeInst(func, ifNormal, ifException, args, name, insertBefore);
+    }
+
+    public static InvokeInst create(Value func, BasicBlock ifNormal, BasicBlock ifException,
+                       ArrayList<Value> args, String name, BasicBlock insertAtEnd) {
+      return new InvokeInst(func, ifNormal, ifException, args, name, insertAtEnd);
+    }
+
+    private InvokeInst(Value func, BasicBlock ifNormal, BasicBlock ifException,
+                       ArrayList<Value> args, String name, Instruction insertBefore) {
+      super(((FunctionType)((PointerType)func.getType()).getElementType()).getReturnType(),
+              Invoke, name, insertBefore);
+      init(func, ifNormal, ifException, args, name);
+    }
+
+    private InvokeInst(Value func, BasicBlock ifNormal, BasicBlock ifException,
+                       ArrayList<Value> args, String name, BasicBlock insertAtEnd) {
+      super(((FunctionType)((PointerType)func.getType()).getElementType()).getReturnType(),
+              Invoke, name, insertAtEnd);
+      init(func, ifNormal, ifException, args, name);
+    }
+
+    private void init(Value func, BasicBlock ifNormal, BasicBlock ifException,
+                      ArrayList<Value> args, String name) {
+      reserve(3+args.size());
+      setOperand(0, func, this);
+      setOperand(1, ifNormal, this);
+      setOperand(2, ifException, this);
+      int i = 3;
+      for (Value arg : args)
+        setOperand(i++, arg, this);
+      setName(name);
+    }
+
+    public int getNumsOfArgs() {
+      return getNumOfOperands() - 3;
+    }
+
+    public BasicBlock getNormalDest() {
+      return (BasicBlock) operand(1);
+    }
+
+    public void setNormalDest(BasicBlock bb) {
+      setOperand(1, bb);
+    }
+
+    public BasicBlock getExceptionDest() {
+      return (BasicBlock) operand(2);
+    }
+
+    public void setExceptionDest(BasicBlock bb) {
+      setOperand(2, bb);
+    }
+
+    public Function getCalledFunction() {
+      return (Function) operand(0);
+    }
+
+    public Value getCalledValue() {
+      return operand(0);
+    }
+
+    public void setCalledFunction(Value fn) {
+      setOperand(0, fn);
+    }
+
+    /**
+     * Get the landingpad instruction from the landing pad block (the unwind destination).
+     * @return
+     */
+    public LandingPadInst getLandingPadInst() {
+      return (LandingPadInst) getExceptionDest().getInstAt(getExceptionDest().getFirstNonPhi());
+    }
+
+    @Override
+    public BasicBlock getSuccessor(int index) {
+      Util.assertion(index < 2, "successor # out of range for invoke");
+      return index == 0 ? getNormalDest() : getExceptionDest();
+    }
+
+    @Override
+    public int getNumOfSuccessors() {
+      return 2;
+    }
+
+    @Override
+    public void setSuccessor(int index, BasicBlock bb) {
+      Util.assertion(index < 2, "successor # out of range for invoke");
+      setOperand(index + 1, bb);
+    }
+
+    public Value getArgOperand(int i) { return operand(i+3); }
+    public void setArgOperand(int i, Value v) { setOperand(i+3, v);}
+    public void setCallingConv(CallingConv cc) { this.cc = cc; }
+    public CallingConv getCallingConv() { return cc; }
+    public AttrList getAttributes() { return attributes; }
+    public void setAttributes(AttrList attrList) { this.attributes = attrList; }
+    public boolean hasFnAttr(int n) {
+      return attributes.paramHasAttr(0, n);
+    }
+
+    public void addFnAttr(int n) {
+      addAttribute(0, n);
+    }
+
+    public void removeFnAttr(int n) {
+      removeAttribute(0, n);
+    }
+
+    private void addAttribute(int index, int attr) {
+      // TODO: 2017/11/27
+    }
+
+    private void removeAttribute(int index, int attr) {
+      // TODO: 2017/11/27
+    }
+
+    public boolean paramHasAttr(int i, int attr) {
+      return attributes.paramHasAttr(i, attr);
+    }
+
+    public int getParamAlignment(int index) {
+      return attributes.getParamAlignment(index);
+    }
+
+    /// @brief Determine if the function does not access memory.
+    public boolean doesNotAccessMemory() {
+      return hasFnAttr(Attribute.ReadNone);
+    }
+
+    public void setDoesNotAccessMemory() {
+      setDoesNotAccessMemory(true);
+    }
+
+    public void setDoesNotAccessMemory(boolean doesNotAccessMemory) {
+      if (doesNotAccessMemory)
+        addFnAttr(Attribute.ReadNone);
+      else
+        removeFnAttr(Attribute.ReadNone);
+    }
+
+    /// @brief Determine if the function does not access or only reads memory.
+    public boolean onlyReadsMemory() {
+      return doesNotAccessMemory() || hasFnAttr(Attribute.ReadOnly);
+    }
+
+    public void setOnlyReadsMemory() {
+      setOnlyReadsMemory(true);
+    }
+
+    public void setOnlyReadsMemory(boolean OnlyReadsMemory) {
+      if (OnlyReadsMemory)
+        addFnAttr(Attribute.ReadOnly);
+      else
+        removeFnAttr(Attribute.ReadOnly | Attribute.ReadNone);
+    }
+
+    /// @brief Determine if the function cannot return.
+    public boolean doesNotReturn() {
+      return hasFnAttr(Attribute.NoReturn);
+    }
+
+    public void setDoesNotReturn() {
+      setDoesNotReturn(true);
+    }
+
+    public void setDoesNotReturn(boolean DoesNotReturn) {
+      if (DoesNotReturn)
+        addFnAttr(Attribute.NoReturn);
+      else
+        removeFnAttr(Attribute.NoReturn);
+    }
+
+    /// @brief Determine if the function cannot unwind.
+    public boolean doesNotThrow() {
+      return hasFnAttr(Attribute.NoUnwind);
+    }
+
+    public void setDoesNotThrow() {
+      setDoesNotThrow(true);
+    }
+
+    public void setDoesNotThrow(boolean DoesNotThrow) {
+      if (DoesNotThrow)
+        addFnAttr(Attribute.NoUnwind);
+      else
+        removeFnAttr(Attribute.NoUnwind);
+    }
+
+    /// @brief Determine if the function returns a structure through first
+    /// pointer argument.
+    public boolean hasStructRetAttr() {
+      return paramHasAttr(1, Attribute.StructRet);
+    }
+
+    public boolean hasByValArgument() {
+      // TODO: 6/4/20
+      Util.shouldNotReachHere();
+      return false;
+    }
+  }
+
+  public static class LandingPadInst extends Instruction {
+    public enum ClauseType {
+      Catch, Filter
+    }
+    private boolean isCleanup;
+    private int numOperands;
+
+    private void init(Value persFn, int numReservedValues, String name) {
+      reserve(numReservedValues);
+      numOperands = 1;
+      setOperand(0, persFn, this);
+      setCleanup(false);
+    }
+
+    private LandingPadInst(Type retTy,
+                           Value personalityFn,
+                           int numReservedValues,
+                           String name,
+                           Instruction insertBefore) {
+      super(retTy, Operator.LandingPad, name, insertBefore);
+      init(personalityFn, 1+numReservedValues, name);
+    }
+
+    private LandingPadInst(Type retTy,
+                           Value personalityFn,
+                           int numReservedValues,
+                           String name,
+                           BasicBlock insertAtEnd) {
+      super(retTy, Operator.LandingPad, name, insertAtEnd);
+      init(personalityFn, 1+numReservedValues, name);
+    }
+    public static LandingPadInst create(Type retTy,
+                                        Value personalityFn,
+                                        int numReservedValues) {
+      return create(retTy, personalityFn, numReservedValues, "");
+    }
+
+    public static LandingPadInst create(Type retTy,
+                                        Value personalityFn,
+                                        int numReservedValues,
+                                        String name) {
+      return create(retTy, personalityFn, numReservedValues, name, (Instruction)null);
+    }
+
+    public static LandingPadInst create(Type retTy,
+                                        Value personalityFn,
+                                        int numReservedValues,
+                                        String name,
+                                        Instruction insertBefore) {
+      return new LandingPadInst(retTy, personalityFn, numReservedValues, name, insertBefore);
+    }
+
+    public static LandingPadInst create(Type retTy,
+                                        Value personalityFn,
+                                        int numReservedValues,
+                                        String name,
+                                        BasicBlock insertAtEnd) {
+      return new LandingPadInst(retTy, personalityFn, numReservedValues, name, insertAtEnd);
+    }
+
+    @Override
+    public int getNumOfOperands() {
+      return numOperands;
+    }
+
+    public Value getPersonalityFn() { return operand(0); }
+    public boolean isCleanup() { return isCleanup; }
+    public void setCleanup(boolean cleanup) { isCleanup = cleanup; }
+    public void addClause(Value v) {
+      int opNo = getNumOfOperands();
+      Util.assertion(opNo < operandList.length);
+      ++numOperands;
+      setOperand(opNo, v, this);
+    }
+
+    public Value getClause(int idx) { return operand(idx + 1); }
+    public boolean isCatch(int idx) { return !(operand(id+1).getType() instanceof ArrayType);}
+    public boolean isFilter(int idx) { return operand(id+1).getType() instanceof ArrayType;}
+    public int getNumClauses() { return getNumOfOperands() - 1; }
+  }
+
   /**
    * FunctionProto invocation instruction.
    *

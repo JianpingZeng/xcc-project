@@ -21,6 +21,7 @@ import backend.analysis.aa.AliasAnalysis;
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
 import backend.debug.DebugLoc;
+import backend.mc.MCSymbol;
 import backend.support.DefaultDotGraphTrait;
 import backend.support.GraphWriter;
 import backend.support.LLVMContext;
@@ -3272,6 +3273,22 @@ public class SelectionDAG {
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
     SDNode n = new LabelSDNode(opc, root, labelID);
+    cseMap.put(id, n);
+    add(n);
+    return new SDValue(n, 0);
+  }
+
+  public SDValue getEHLabel(DebugLoc dl, SDValue root, MCSymbol label) {
+    FoldingSetNodeID compute = new FoldingSetNodeID();
+    SDValue[] ops = {root};
+    addNodeToIDNode(compute, ISD.BasicBlock, getVTList(new EVT(MVT.Other)),
+            ops);
+    compute.addInteger(label.hashCode());
+
+    int id = compute.computeHash();
+    if (cseMap.containsKey(id))
+      return new SDValue(cseMap.get(id), 0);
+    SDNode n = new EHLabelSDNode(dl, root, label);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);

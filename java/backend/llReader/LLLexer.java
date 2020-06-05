@@ -203,6 +203,10 @@ public final class LLLexer {
     keywords.put("une", kw_une);
     keywords.put("x", kw_x);
     keywords.put("blockaddress", kw_blockaddress);
+    keywords.put("personality", kw_personality);
+    keywords.put("cleanup", kw_cleanup);
+    keywords.put("catch", kw_catch);
+    keywords.put("filter", kw_filter);
   }
 
   private void initTypeKeywords() {
@@ -253,12 +257,14 @@ public final class LLLexer {
     opcKeywords.put("bitcast", Pair.get(BitCast, kw_bitcast));
     opcKeywords.put("select", Pair.get(Select, kw_select));
     opcKeywords.put("va_arg", Pair.get(VAArg, kw_va_arg));
+    opcKeywords.put("landingpad", Pair.get(LandingPad, kw_landingpad));
     opcKeywords.put("ret", Pair.get(Ret, kw_ret));
     opcKeywords.put("br", Pair.get(Br, kw_br));
     opcKeywords.put("switch", Pair.get(Switch, kw_switch));
     opcKeywords.put("indirectbr", Pair.get(IndirectBr, kw_indirectbr));
     opcKeywords.put("invoke", Pair.get(Invoke, kw_invoke));
     opcKeywords.put("unwind", Pair.get(Unwind, kw_unwind));
+    opcKeywords.put("resume", Pair.get(Resume, kw_resume));
     opcKeywords.put("unreachable", Pair.get(Unreachable, kw_unreachable));
     opcKeywords.put("malloc", Pair.get(Malloc, kw_malloc));
     opcKeywords.put("alloca", Pair.get(Alloca, kw_alloca));

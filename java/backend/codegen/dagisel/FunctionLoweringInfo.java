@@ -58,7 +58,6 @@ public class FunctionLoweringInfo {
     }
   }
 
-
   public TargetLowering tli;
   public Function fn;
   public MachineFunction mf;
@@ -96,6 +95,7 @@ public class FunctionLoweringInfo {
   private HashMap<Argument, Integer> byValArgFrameIndexMap;
 
   public ArrayList<MachineInstr> argDbgValues;
+  public MachineInstr insertPtr;
 
   public FunctionLoweringInfo(TargetLowering tli) {
     this.tli = tli;
@@ -229,6 +229,14 @@ public class FunctionLoweringInfo {
             buildMI(mbb, dl, tii.get(TargetOpcode.PHI), vreg + i);
           vreg += num;
         }
+      }
+    }
+
+    // mark landing pad blocks.
+    for (BasicBlock bb : fn) {
+      if (bb.getTerminator() instanceof Instruction.InvokeInst) {
+        Instruction.InvokeInst ii = (Instruction.InvokeInst) bb.getTerminator();
+        mbbmap.get(ii.getSuccessor(1)).setIsLandingPad();
       }
     }
   }

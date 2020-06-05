@@ -162,7 +162,7 @@ public abstract class Inliner extends CallGraphSCCPass {
   }
 
   private static boolean inlineFunction(CallSite cs, CallGraph cg, TargetData td) {
-    CallInst ci = cs.getInstruction();
+    Instruction ci = cs.getInstruction();
     BasicBlock origBB = ci.getParent();
     LLVMContext context = ci.getContext();
 
@@ -180,11 +180,11 @@ public abstract class Inliner extends CallGraphSCCPass {
     // If this call to the callee is not a tail call flag,
     // we have to clear the tail flag of any caller that we
     // will inline.
-    boolean mustClearTailCallFlag = !ci.isTailCall();
+    boolean mustClearTailCallFlag = !cs.isTailCall();
 
     // If the call to the callee can't throw any exception,
     // set the caller with nounwind flag.
-    boolean markNounwind = ci.doesNotThrow();
+    boolean markNounwind = cs.doesNotThrow();
 
     int argIdx = 0;
     HashMap<Value, Value> formalValToActual = new HashMap<>();
@@ -211,7 +211,7 @@ public abstract class Inliner extends CallGraphSCCPass {
         BitCastInst destPtr = new BitCastInst(newAlloca, voidPtrTy, "tmpdest", ci);
         BitCastInst srcPtr = new BitCastInst(actual, voidPtrTy, "tmpsrc", ci);
 
-        Value size = null;
+        Value size;
         if (td != null)
           size = ConstantInt.get(Type.getInt64Ty(context), td.getTypeAllocSize(aggTy));
         else
@@ -240,7 +240,7 @@ public abstract class Inliner extends CallGraphSCCPass {
     int firstNewBlockIdx = lastBlockIdx + 1;
     BasicBlock firstNewBlock = caller.getBlockAt(firstNewBlockIdx);
     if (cg != null)
-      updateCallGraphAfterInlining(ci, firstNewBlock, formalValToActual, cg);
+      updateCallGraphAfterInlining(cs, firstNewBlock, formalValToActual, cg);
 
     // move alloca instruction in the entry of callee into entry of
     // caller.
@@ -297,9 +297,9 @@ public abstract class Inliner extends CallGraphSCCPass {
           if (inst instanceof CallInst) {
             ci = (CallInst) inst;
             if (mustClearTailCallFlag)
-              ci.setTailCall(false);
+              cs.setTailCall(false);
             if (markNounwind)
-              ci.setDoesNotThrow();
+              cs.setDoesNotThrow(true);
           }
         }
       }
@@ -417,17 +417,17 @@ public abstract class Inliner extends CallGraphSCCPass {
    * callee's callee over call graph, and remove call edge connecting to
    * callee function.
    *
-   * @param ci
+   * @param cs
    * @param firstNewBlock
    * @param valueMap
    * @param cg
    */
-  private static void updateCallGraphAfterInlining(CallInst ci,
+  private static void updateCallGraphAfterInlining(CallSite cs,
                                                    BasicBlock firstNewBlock,
                                                    HashMap<Value, Value> valueMap,
                                                    CallGraph cg) {
-    Function callee = ci.getCalledFunction();
-    Function caller = ci.getParent().getParent();
+    Function callee = cs.getCalledFunction();
+    Function caller = cs.getInstruction().getParent().getParent();
     CallGraphNode calleeNode = cg.getNode(callee);
     CallGraphNode callerNode = cg.getNode(caller);
 
@@ -439,7 +439,7 @@ public abstract class Inliner extends CallGraphSCCPass {
     }
     while (itr.hasNext()) {
       Pair<CallSite, CallGraphNode> item = itr.next();
-      CallInst inst = item.first.getInstruction();
+      Instruction inst = item.first.getInstruction();
       CallGraphNode node = item.second;
       if (valueMap.containsKey(inst)) {
         CallInst newInst = (CallInst) valueMap.get(inst);
@@ -447,7 +447,7 @@ public abstract class Inliner extends CallGraphSCCPass {
         callerNode.addCalledFunction(newInst, node);
       }
     }
-    callerNode.removeCallEdgeFor(CallSite.get(ci));
+    callerNode.removeCallEdgeFor(cs);
   }
 
   /**

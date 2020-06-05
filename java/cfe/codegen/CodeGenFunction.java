@@ -1971,9 +1971,7 @@ public final class CodeGenFunction {
 
     CallSite cs = new CallSite(builder.createCall(callee, args));
     cs.setAttributes(attrs);
-
-    Instruction.CallInst ci = cs.getInstruction();
-    ci.setCallingConv(curFn.getCallingConv());
+    cs.setCallingConv(curFn.getCallingConv());
 
     // If the call doesn't return, finish the basic block and clear the
     // insertion point; this allows the rest of IRgen to discard
@@ -1984,8 +1982,8 @@ public final class CodeGenFunction {
       ensureInsertPoint();
       return getUndefRValue(retType);
     }
-    if (!ci.getType().isVoidType())
-      ci.setName("call");
+    if (!cs.getInstruction().getType().isVoidType())
+      cs.getInstruction().setName("call");
 
     switch (retAI.getKind()) {
       case Indirect:
@@ -2008,19 +2006,19 @@ public final class CodeGenFunction {
           // emit the returned value of type aggregate type.
           Value v = createTempAlloca(convertTypeForMem(retType),
               "agg.tmp");
-          builder.createStore(ci, v);
+          builder.createStore(cs.getInstruction(), v);
           return getAggregate(v);
         }
-        return get(ci);
+        return get(cs.getInstruction());
       case Ignore:
         // If we are ignoreing an argument that haa d result, make sure
         // to construct a appropriate return value for caller.
         return getUndefRValue(retType);
       case Coerce: {
         Value v = createTempAlloca(convertTypeForMem(retType), "coerce");
-        createCoercedStore(ci, v, this);
+        createCoercedStore(cs.getInstruction(), v, this);
         if (retType.isAnyComplexType()) {
-          Util.assertion(false, "Complex type is unsupported!");
+          Util.assertion("Complex type is unsupported!");
         }
         if (hasAggregateLLVMType(retType)) {
           return RValue.getAggregate(v);
@@ -2028,10 +2026,10 @@ public final class CodeGenFunction {
         return RValue.get(emitLoadOfScalar(v, false, retType));
       }
       case Expand:
-        Util.assertion(false, "Expand ABI is not allowed for return argument");
+        Util.assertion( "Expand ABI is not allowed for return argument");
     }
 
-    Util.assertion(false, "Unhandled ABIArgInfo.Kind");
+    Util.assertion("Unhandled ABIArgInfo.Kind");
     return get(null);
   }
 
