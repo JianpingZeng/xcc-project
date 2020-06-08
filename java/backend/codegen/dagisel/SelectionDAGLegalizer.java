@@ -111,7 +111,6 @@ public class SelectionDAGLegalizer {
     for (int i = 0, e = node.getNumValues(); i < e; i++)
       Util.assertion(getTypeAction(node.getValueType(i)) == TargetLowering.LegalizeAction.Legal, "Unexpected illegal type!");
 
-
     for (int i = 0, e = node.getNumOperands(); i < e; i++)
       Util.assertion(isTypeLegal(node.getOperand(i).getValueType()) || node.getOperand(i).getOpcode() == ISD.TargetConstant,
           "Unexpected illegal type!");

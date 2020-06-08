@@ -498,6 +498,7 @@ public class ARMTargetLowering extends TargetLowering {
     setOperationAction(ISD.ConstantPool,  MVT.i32,   Custom);
     setOperationAction(ISD.GLOBAL_OFFSET_TABLE, MVT.i32, Custom);
     setOperationAction(ISD.GlobalTLSAddress, MVT.i32, Custom);
+    setOperationAction(ISD.BlockAddress, MVT.i32, Custom);
 
     setOperationAction(ISD.TRAP, MVT.Other, Legal);
 

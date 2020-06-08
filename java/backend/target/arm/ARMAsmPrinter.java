@@ -31,6 +31,7 @@ import backend.codegen.*;
 import backend.mc.*;
 import backend.target.FloatABI;
 import backend.target.TargetMachine;
+import backend.value.BlockAddress;
 import backend.value.GlobalValue;
 import backend.value.Module;
 import tools.Util;
@@ -1178,6 +1179,61 @@ public class ARMAsmPrinter extends AsmPrinter {
       outStreamer.emitThumbFunc(curFuncSym);
     }
     outStreamer.emitLabel(curFuncSym);
+  }
+
+  @Override
+  protected void emitMachineConstantPoolValue(MachineConstantPoolValue cpv) {
+    long size = tm.getTargetData().getTypeAllocSize(cpv.getType());
+    ARMConstantPoolValue acpv = (ARMConstantPoolValue) cpv;
+    MCSymbol sym;
+    if (acpv.isLSDA()) {
+      String str = mai.getPrivateGlobalPrefix() + "_LSDA_" + getFunctionNumber();
+      sym = outContext.getOrCreateSymbol(str);
+    } else if (acpv.isBlockAddress()) {
+      BlockAddress ba = ((ARMConstantPoolConstant)acpv).getBlockAddress();
+      sym = getBlockAddressSymbol(ba);
+    } else if (acpv.isGlobalValue()) {
+      GlobalValue gv = ((ARMConstantPoolConstant)acpv).getGlobalValue();
+      sym = getGlobalValueSymbol(gv);
+    } else if (acpv.isMachineBasicBlock()) {
+      MachineBasicBlock mbb = ((ARMConstantPoolMBB)acpv).getMBB();
+      sym = mbb.getSymbol(outContext);
+    } else {
+      Util.assertion(acpv.isExtSymbol(), "unrecognized constant pool value");
+      String name = ((ARMConstantPoolSymbol)acpv).getSymbol();
+      sym = getExternalSymbolSymbol(name);
+    }
+
+    MCExpr expr = MCSymbolRefExpr.create(sym, getModifierVariantKind(acpv.getModifier()));
+    if (acpv.getPCAdjust() != 0) {
+      MCSymbol pclabel = getPICLabel(mai.getPrivateGlobalPrefix(),
+              getFunctionNumber(), acpv.getLabelID(), outContext);
+      MCExpr pcRelExpr = MCSymbolRefExpr.create(pclabel);
+      pcRelExpr = MCBinaryExpr.createAdd(pcRelExpr, MCConstantExpr.create(acpv.getPCAdjust(), outContext), outContext);
+      if (acpv.mustAddCurrentAddress()) {
+        // We want "(<expr> - .)", but MC doesn't have a concept of the '.'
+        // label, so just emit a local label end reference that instead.
+        MCSymbol dotSym = outContext.createTemporarySymbol();
+        outStreamer.emitLabel(dotSym);
+        MCExpr dotExpr = MCSymbolRefExpr.create(dotSym);
+        pcRelExpr = MCBinaryExpr.createSub(pcRelExpr, dotExpr, outContext);
+      }
+      expr = MCBinaryExpr.createSub(expr, pcRelExpr, outContext);
+    }
+    outStreamer.emitValue(expr, (int) size, 0);
+  }
+
+  private static int getModifierVariantKind(ARMConstantPoolValue.ARMCP.ARMCPModifier modifier) {
+    switch (modifier) {
+      case no_modifier: return MCSymbolRefExpr.VariantKind.VK_None;
+      case TLSGD: return MCSymbolRefExpr.VariantKind.VK_ARM_TLSGD;
+      case TPOFF: return MCSymbolRefExpr.VariantKind.VK_ARM_TPOFF;
+      case GOTTPOFF: return MCSymbolRefExpr.VariantKind.VK_ARM_GOTTPOFF;
+      case GOT: return MCSymbolRefExpr.VariantKind.VK_ARM_GOT;
+      case GOTOFF: return MCSymbolRefExpr.VariantKind.VK_ARM_GOTOFF;
+      default: Util.shouldNotReachHere("unknown modifier!");
+    }
+    return MCSymbolRefExpr.VariantKind.VK_None;
   }
 
   private interface AttributeEmitter {

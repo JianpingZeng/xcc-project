@@ -2138,7 +2138,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     os.print("Cannot yet selectCommonCode: ");
     n.print(os, curDAG);
     os.close();
-    reportFatalError(baos.toString());
+    Util.shouldNotReachHere(baos.toString());
   }
 
   public void cannotYetSelectIntrinsic(SDNode n) {
