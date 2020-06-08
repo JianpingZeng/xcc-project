@@ -143,7 +143,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
 
     basicBlockList.add(bb);
     bb.setParent(this);
-    symTab.createValueName(bb.getName(), bb);
+    if (bb.hasName())
+      symTab.createValueName(bb.getName(), bb);
   }
 
   public void addBasicBlockBefore(BasicBlock beforePos, BasicBlock bb) {
@@ -152,7 +153,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
     int idx = basicBlockList.indexOf(beforePos);
     basicBlockList.add(idx, bb);
     bb.setParent(this);
-    symTab.createValueName(bb.getName(), bb);
+    if (bb.hasName())
+      symTab.createValueName(bb.getName(), bb);
   }
 
   public void addBasicBlockAfter(BasicBlock afterPos, BasicBlock bb) {
@@ -161,19 +163,12 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
     int idx = basicBlockList.indexOf(afterPos);
     basicBlockList.add(idx + 1, bb);
     bb.setParent(this);
-    symTab.createValueName(bb.getName(), bb);
+    if (bb.hasName())
+      symTab.createValueName(bb.getName(), bb);
   }
 
   public LinkedList<BasicBlock> getBasicBlockList() {
     return basicBlockList;
-  }
-
-  public void setBasicBlockList(List<BasicBlock> bbs) {
-    basicBlockList.clear();
-    if (bbs == null || bbs.isEmpty()) {
-      return;
-    }
-    basicBlockList.addAll(bbs);
   }
 
   public boolean empty() {
