@@ -416,9 +416,7 @@ public class RegsForValue {
         int roundParts = 1 << Util.log2(numParts);
         int roundBits = roundParts * partBits;
         int oddParts = numParts - roundParts;
-        SDValue oddVal = dag.getNode(ISD.SRL, valueVT, val,
-            dag.getConstant(roundBits, new EVT(tli.getPointerTy()),
-                false));
+        SDValue oddVal = dag.getNode(ISD.SRL, valueVT, val, dag.getIntPtrConstant(roundBits));
 
         SDValue[] temp = new SDValue[oddParts];
         getCopyToParts(dag, oddVal, temp, partVT);

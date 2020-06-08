@@ -951,7 +951,7 @@ public class SelectionDAG {
           case ISD.SREM:
           case ISD.SRL:
           case ISD.SHL: {
-            if (vt.isVector())
+            if (!vt.isVector())
               return getConstant(0, vt, false);
             return op1;
           }
@@ -1279,12 +1279,22 @@ public class SelectionDAG {
     return res;
   }
 
-  public SDValue getConstantFP(float val, EVT vt, boolean isTarget) {
-    return getConstantFP(new APFloat(val), vt, isTarget);
-  }
-
   public SDValue getConstantFP(double val, EVT vt, boolean isTarget) {
-    return getConstantFP(new APFloat(val), vt, isTarget);
+    EVT eltVT = vt.getScalarType();
+    if (eltVT.equals(new EVT(MVT.f32)))
+      return getConstantFP(new APFloat((float)val), vt, isTarget);
+    else if (eltVT.equals(new EVT(MVT.f64)))
+      return getConstantFP(new APFloat(val), vt, isTarget);
+    else if (eltVT.equals(new EVT(MVT.f80)) || eltVT.equals(new EVT(MVT.f128))) {
+      APFloat apf = new APFloat(val);
+      OutRef<Boolean> ignored = new OutRef<>();
+      apf.convert(EVTToAPFloatSemantics(eltVT), rmNearestTiesToEven, ignored);
+      return getConstantFP(apf, vt, isTarget);
+    }
+    else {
+      Util.shouldNotReachHere("Unsupported type in getConstantFP");
+      return new SDValue();
+    }
   }
 
   public SDValue getTargetConstantFP(APFloat val, EVT vt) {

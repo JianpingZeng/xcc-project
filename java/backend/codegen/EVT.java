@@ -414,6 +414,10 @@ public class EVT implements Comparable<EVT> {
         return new EVT(new MVT(f128));
       case PointerTyID:
         return new EVT(new MVT(iPTR));
+      case VectorTyID:
+        VectorType vty = (VectorType) ty;
+        return getVectorVT(vty.getContext(), getEVT(vty.getElementType(), false),
+                (int) vty.getNumElements());
     }
   }
 

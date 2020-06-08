@@ -188,7 +188,7 @@ public class RegScavenger {
       MachineOperand mo = mi.getOperand(i);
       if (!mo.isRegister()) continue;
       int reg = mo.getReg();
-      if (reg == 0 || isReserved(reg))
+      if (reg == 0 || isReserved(reg) || !TargetRegisterInfo.isPhysicalRegister(reg))
         continue;
 
       if (mo.isUse()) {
