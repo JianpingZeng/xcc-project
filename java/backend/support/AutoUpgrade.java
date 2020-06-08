@@ -29,7 +29,6 @@ package backend.support;
 
 import backend.intrinsic.Intrinsic;
 import backend.ir.IRBuilder;
-import backend.target.arm.ARMFrameLowering;
 import backend.type.*;
 import backend.utils.SuccIterator;
 import backend.value.*;
