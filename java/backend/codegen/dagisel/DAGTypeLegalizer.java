@@ -3202,8 +3202,7 @@ public class DAGTypeLegalizer {
   private SDValue softenFloatRes_FPOWI(SDNode n) {
     Util.assertion(n.getOperand(1).getValueType().getSimpleVT().simpleVT == MVT.i32);
     EVT nvt = tli.getTypeToTransformTo(dag.getContext(), n.getValueType(0));
-    SDValue[] ops = {getSoftenedFloat(n.getOperand(1)),
-        getSoftenedFloat(n.getOperand(0))};
+    SDValue[] ops = {getSoftenedFloat(n.getOperand(0)), n.getOperand(1)};
 
     return makeLibCall(getFPLibCall(n.getValueType(0),
         RTLIB.POWI_F32,
