@@ -219,7 +219,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         break;
       case ISD.CopyToReg: {
         SDValue srcVal = node.getOperand(2);
-        int srcReg = 0;
+        int srcReg;
         if (srcVal.getNode() instanceof RegisterSDNode)
           srcReg = ((RegisterSDNode) srcVal.getNode()).getReg();
         else
@@ -227,18 +227,6 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
         int destReg = ((RegisterSDNode) node.getOperand(1).getNode()).getReg();
         if (srcReg == destReg) break;
-
-        MCRegisterClass srcRC = null, destRC = null;
-        if (isVirtualRegister(srcReg))
-          srcRC = mri.getRegClass(srcReg);
-        else
-          srcRC = tri.getPhysicalRegisterRegClass(srcReg);
-
-        if (isVirtualRegister(destReg))
-          destRC = mri.getRegClass(destReg);
-        else
-          destRC = tri.getPhysicalRegisterRegClass(destReg, node.getOperand(1).getValueType());
-
         buildMI(mbb, insertPos++, node.getDebugLoc(), tii.get(TargetOpcode.COPY), destReg).addReg(srcReg);
         break;
       }
@@ -248,7 +236,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         break;
       case ISD.EH_LABEL:
         MCSymbol sym = ((EHLabelSDNode)node).getLabel();
-        buildMI(mbb, insertPos, node.getDebugLoc(), tii.get(TargetOpcode.EH_LABEL)).addMCSym(sym);
+        buildMI(mbb, insertPos++, node.getDebugLoc(), tii.get(TargetOpcode.EH_LABEL)).addMCSym(sym);
         break;
       case ISD.INLINEASM:
         Util.shouldNotReachHere("InlineAsm not supported currently!");

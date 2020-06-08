@@ -2234,7 +2234,7 @@ public abstract class Instruction extends User {
     public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond,
                       BasicBlock insertAtEnd) {
       super(Type.getVoidTy(ifTrue.getContext()), Operator.Br, "", insertAtEnd);
-
+      reserve(3);
       setOperand(0, ifTrue, this);
       setOperand(1, ifFalse, this);
       setOperand(2, cond, this);
@@ -2248,6 +2248,7 @@ public abstract class Instruction extends User {
      */
     public BranchInst(BasicBlock ifTrue, BasicBlock insertAtEnd) {
       super(Type.getVoidTy(ifTrue.getContext()), Operator.Br, "", insertAtEnd);
+      reserve(1);
       setOperand(0, ifTrue, this);
     }
 
@@ -2506,45 +2507,80 @@ public abstract class Instruction extends User {
     private void init(Value func, BasicBlock ifNormal, BasicBlock ifException,
                       ArrayList<Value> args, String name) {
       reserve(3+args.size());
-      setOperand(0, func, this);
-      setOperand(1, ifNormal, this);
-      setOperand(2, ifException, this);
-      int i = 3;
+      operandList[0] = new Use(func, this);
+      operandList[1] = new Use(ifNormal, this);
+      operandList[2] = new Use(ifException, this);
+      int i = 0;
       for (Value arg : args)
         setOperand(i++, arg, this);
       setName(name);
     }
 
+    @Override
+    public Value operand(int index) {
+      return super.operand(index+3);
+    }
+
+    @Override
+    public Use getOperand(int index) {
+      return super.getOperand(index+3);
+    }
+
+    @Override
+    public void setOperand(int index, Use use) {
+      super.setOperand(index+3, use);
+    }
+
+    @Override
+    public void setOperand(int index, Value opVal) {
+      super.setOperand(index+3, opVal);
+    }
+
+    @Override
+    public void setOperand(int index, Value val, User user) {
+      super.setOperand(index+3, val, user);
+    }
+
+    @Override
+    public void removeOperand(int index) {
+      super.removeOperand(index+3);
+    }
+
     public int getNumsOfArgs() {
-      return getNumOfOperands() - 3;
+      return getNumOfOperands();
+    }
+
+    @Override
+    public int getNumOfOperands() {
+      return super.getNumOfOperands() - 3;
     }
 
     public BasicBlock getNormalDest() {
-      return (BasicBlock) operand(1);
+      return (BasicBlock) operandList[1].getValue();
     }
 
     public void setNormalDest(BasicBlock bb) {
-      setOperand(1, bb);
+      operandList[1].setValue(bb);
     }
 
-    public BasicBlock getExceptionDest() {
-      return (BasicBlock) operand(2);
+    public BasicBlock getUnwindDest() {
+      return (BasicBlock) operandList[2].getValue();
     }
 
-    public void setExceptionDest(BasicBlock bb) {
-      setOperand(2, bb);
+    public void setUnwindDest(BasicBlock bb) {
+      operandList[2].setValue(bb);
     }
 
     public Function getCalledFunction() {
-      return (Function) operand(0);
+      return (Function) operandList[0].getValue();
     }
 
     public Value getCalledValue() {
-      return operand(0);
+      return operandList[0].getValue();
     }
 
     public void setCalledFunction(Value fn) {
-      setOperand(0, fn);
+      operandList[0].setValue(fn);
     }
 
     /**
@@ -2552,13 +2588,13 @@ public abstract class Instruction extends User {
      * @return
      */
     public LandingPadInst getLandingPadInst() {
-      return (LandingPadInst) getExceptionDest().getInstAt(getExceptionDest().getFirstNonPhi());
+      return (LandingPadInst) getUnwindDest().getInstAt(getUnwindDest().getFirstNonPhi());
     }
 
     @Override
     public BasicBlock getSuccessor(int index) {
       Util.assertion(index < 2, "successor # out of range for invoke");
-      return index == 0 ? getNormalDest() : getExceptionDest();
+      return index == 0 ? getNormalDest() : getUnwindDest();
     }
 
     @Override
@@ -2572,8 +2608,8 @@ public abstract class Instruction extends User {
       setOperand(index + 1, bb);
     }
 
-    public Value getArgOperand(int i) { return operand(i+3); }
-    public void setArgOperand(int i, Value v) { setOperand(i+3, v);}
+    public Value getArgOperand(int i) { return operand(i); }
+    public void setArgOperand(int i, Value v) { setOperand(i, v);}
     public void setCallingConv(CallingConv cc) { this.cc = cc; }
     public CallingConv getCallingConv() { return cc; }
     public AttrList getAttributes() { return attributes; }
@@ -2692,6 +2728,7 @@ public abstract class Instruction extends User {
 
     private void init(Value persFn, int numReservedValues, String name) {
       reserve(numReservedValues);
+      setName(name);
       numOperands = 1;
       setOperand(0, persFn, this);
       setCleanup(false);
@@ -2758,9 +2795,9 @@ public abstract class Instruction extends User {
       setOperand(opNo, v, this);
     }
 
-    public Value getClause(int idx) { return operand(idx + 1); }
-    public boolean isCatch(int idx) { return !(operand(id+1).getType() instanceof ArrayType);}
-    public boolean isFilter(int idx) { return operand(id+1).getType() instanceof ArrayType;}
+    public Value getClause(int idx) { return operand(idx + 1);}
+    public boolean isCatch(int idx) { return !(operand(idx+1).getType() instanceof ArrayType);}
+    public boolean isFilter(int idx) { return operand(idx+1).getType() instanceof ArrayType;}
     public int getNumClauses() { return getNumOfOperands() - 1; }
   }
 
@@ -2770,8 +2807,6 @@ public abstract class Instruction extends User {
    * @author Jianping Zeng
    */
   public static class CallInst extends Instruction {
-    // Returns the operand number of the first argument
-    private final int ArgumentOffset = 1;
     private CallingConv callingConv;
     private boolean tailCall;
     private AttrList attributes;
@@ -2794,15 +2829,9 @@ public abstract class Instruction extends User {
       super(((FunctionType) ((PointerType) callee.getType()).
               getElementType()).getReturnType(),
           Operator.Call, name, insertBefore);
-
-      reserve(ArgumentOffset + args.size());
-      Util.assertion((getNumOfOperands() == ArgumentOffset + args.size()), "NumOperands not set up?");
-
-      setOperand(0, callee, this);
-      int idx = ArgumentOffset;
-      for (Value arg : args) {
-        setOperand(idx++, arg, this);
-      }
+      Value[] tmp = new Value[args.size()];
+      args.toArray(tmp);
+      init(callee, tmp);
     }
 
     /**
@@ -2965,27 +2994,49 @@ public abstract class Instruction extends User {
 
 
     private void init(Value target, Value[] args) {
-      reserve(ArgumentOffset + args.length);
-      Util.assertion((getNumOfOperands() == ArgumentOffset + args.length), "NumOperands not set up?");
-      setOperand(0, target, this);
-      int idx = ArgumentOffset;
+      reserve(1 + args.length);
+      Util.assertion((getNumOfOperands() == args.length), "NumOperands not set up?");
+      operandList[0] = new Use(target, this);
+      int idx = 0;
       for (Value arg : args) {
         setOperand(idx++, arg, this);
       }
+      attributes = new AttrList();
     }
 
-    public int getNumsOfArgs() {
-      return getNumOfOperands() - ArgumentOffset;
+    @Override
+    public Value operand(int index) {
+      return super.operand(index+1);
     }
 
-    public void setArgument(int index, Value val) {
-      Util.assertion(index >= 0 && index < getNumsOfArgs());
-      setOperand(index + ArgumentOffset, val, this);
+    @Override
+    public Use getOperand(int index) {
+      return super.getOperand(index+1);
     }
 
-    public Value argumentAt(int index) {
-      Util.assertion(index >= 0 && index < getNumsOfArgs());
-      return operand(index + ArgumentOffset);
+    @Override
+    public void setOperand(int index, Value val, User user) {
+      super.setOperand(index+1, val, user);
+    }
+
+    @Override
+    public void setOperand(int index, Value opVal) {
+      super.setOperand(index+1, opVal);
+    }
+
+    @Override
+    public void setOperand(int index, Use use) {
+      super.setOperand(index+1, use);
+    }
+
+    @Override
+    public void removeOperand(int index) {
+      super.removeOperand(index+1);
+    }
+
+    @Override
+    public int getNumOfOperands() {
+      return super.getNumOfOperands() - 1;
     }
 
     /**
@@ -2993,11 +3044,19 @@ public abstract class Instruction extends User {
      * @return
      */
     public Function getCalledFunction() {
-      return operand(0) instanceof Function ? (Function) operand(0) : null;
+      return operandList[0].getValue()  instanceof Function ? (Function)operandList[0].getValue() : null;
+    }
+
+    public void setCalledFunction(Value fn) {
+      operandList[0].setValue(fn);
     }
 
     public Value getCalledValue() {
-      return operand(0);
+      return operandList[0].getValue();
+    }
+
+    public void setCalledValue(Value val) {
+      operandList[0].setValue(val);
     }
 
     public static CallSite get(Value val) {
@@ -3164,11 +3223,11 @@ public abstract class Instruction extends User {
     }
 
     public Value getArgOperand(int i) {
-      return operand(i+1);
+      return operand(i);
     }
 
     public void setArgOperand(int i, Value val) {
-      setOperand(i+1, val);
+      setOperand(i, val);
     }
   }
 

@@ -10,6 +10,7 @@ import tools.Util;
 import java.io.PrintStream;
 
 import static backend.codegen.MachineOperand.MachineOperandType.*;
+import static backend.support.AssemblyWriter.writeAsOperand;
 
 /**
  * Purpose:
@@ -524,6 +525,20 @@ public abstract class MachineOperand {
           os.printf("+%d", getOffset());
         os.print(">");
         break;
+      case MO_BlockAddress:
+        os.print('<');
+        writeAsOperand(os, getBlockAddress(), false, null);
+        os.print('>');
+        break;
+      case MO_MCSymbol:
+        os.print("<MCSym=");
+        getMCSymbol().print(os);
+        os.print(">");
+        break;
+      case MO_Metadata:
+        os.print('<');
+        writeAsOperand(os, getMetadata(), false, null);
+        os.print('>');
       default:
         Util.shouldNotReachHere("Unrecognized operand type");
         break;
@@ -769,6 +784,22 @@ public abstract class MachineOperand {
 
   public boolean isBlockAddress() {
     return opKind == MO_BlockAddress;
+  }
+
+  public boolean isMCSymbol() { return opKind == MO_MCSymbol; }
+
+  public MCSymbol getMCSymbol() {
+    Util.assertion(isMCSymbol(), "Wrong MachineOperand accessor");
+    return ((MCSymbolMO)this).sym;
+  }
+
+  public boolean isMetadata() {
+    return opKind == MO_Metadata;
+  }
+
+  public MDNode getMetadata() {
+    Util.assertion(isMetadata(), "Wrong MachineOperand accessor");
+    return ((MetadataMO)this).md;
   }
   /**
    * Return true if this operand is identical to the specified

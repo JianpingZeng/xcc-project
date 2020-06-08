@@ -517,10 +517,11 @@ public class MachineBasicBlock {
     }
   }
 
-  public MachineInstr getFirstNonPHI() {
-    for (int i = 0, e = size(); i != e; ++i)
+  public int getFirstNonPHI() {
+    int i = 0;
+    for (int e = size(); i != e; ++i)
       if (getInstAt(i).getOpcode() != TargetOpcode.PHI)
-        return getInstAt(i);
-    return null;
+        return i;
+    return i;
   }
 }

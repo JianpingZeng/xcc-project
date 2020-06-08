@@ -124,10 +124,6 @@ public final class GraphWriter {
     if (!Config.XDOT_PATH.isEmpty()) {
       System.err.println("Running 'xdot' program... ");
       Process p = Runtime.getRuntime().exec("xdot " + filename.toString());
-      int res = p.waitFor();
-      if (res != 0) {
-        System.err.printf("Error viewing graph %s.\n", filename.getName());
-      }
     } else if (!Config.DOT_PATH.isEmpty()) {
       StringBuilder cmd = new StringBuilder();
       String pdfFilename = filename + ".pdf";

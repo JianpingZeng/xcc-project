@@ -17,7 +17,7 @@
 
 package cfe.codegen;
 
-import backend.ir.CGBuilder;
+import backend.ir.IRBuilder;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
@@ -266,7 +266,7 @@ public class X86_32ABIInfo implements ABIInfo {
     backend.type.Type bp = PointerType.getUnqual(Type.getInt8Ty(vmContext));
     backend.type.Type bpp = PointerType.getUnqual(bp);
 
-    CGBuilder builder = cgf.builder;
+    IRBuilder builder = cgf.builder;
     Value valistAddrAsBPP = builder.createBitCast(vaListAddr, bp, "ap");
 
     Value addr = builder.createLoad(valistAddrAsBPP, false, "ap.cur");

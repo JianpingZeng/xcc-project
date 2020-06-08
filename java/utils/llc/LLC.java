@@ -319,7 +319,8 @@ public class LLC {
 
     passes.doInitialization();
     // Run our queue of passes all at once now, efficiently.
-    for (Function fn : theModule.getFunctionList()) {
+    ArrayList<Function> functions = new ArrayList<>(theModule.getFunctionList());
+    for (Function fn : functions) {
       if (!fn.isDeclaration()) {
         passes.run(fn);
       }

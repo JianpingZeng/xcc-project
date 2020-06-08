@@ -36,7 +36,6 @@ import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.IntrinsicInst.DbgDeclareInst;
 import backend.value.IntrinsicInst.DbgValueInst;
-import cfe.clex.IdentifierInfoLookup;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -70,7 +69,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   private HashMap<Value, DanglingDebugInfo> danglingDebugInfoMap;
 
   private LLVMContext context;
-  public HashMap<MachineBasicBlock, TIntArrayList> lpadToCallSiteMap;
+  public HashMap<MachineBasicBlock, TLongArrayList> lpadToCallSiteMap;
 
   public boolean hasTailCall() {
     return hasTailCall;
@@ -504,12 +503,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     MachineModuleInfo mmi = funcInfo.mf.getMMI();
     MCSymbol beginLabel = null;
 
-    ArrayList<ArgListEntry> args = new ArrayList<>(cs.getNumOfArguments());
+    ArrayList<ArgListEntry> args = new ArrayList<>(cs.getNumOfOperands());
 
-    for (int i = 0, e = cs.getNumOfArguments(); i < e; i++) {
+    for (int i = 0, e = cs.getNumOfOperands(); i < e; i++) {
       ArgListEntry entry = new ArgListEntry();
-      entry.node = getValue(cs.getArgument(i));
-      entry.ty = cs.getArgument(i).getType();
+      entry.node = getValue(cs.getArgOperand(i));
+      entry.ty = cs.getArgOperand(i).getType();
 
       int attrInd = i + 1;
       entry.isSExt = cs.paramHasAttr(attrInd, Attribute.SExt);
@@ -524,11 +523,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
     if (landingPad != null && mmi != null) {
       beginLabel = mmi.getContext().createTemporarySymbol();
-      int callSiteIndex = mmi.getCurrentCallSite();
+      long callSiteIndex = mmi.getCurrentCallSite();
       if (callSiteIndex != 0) {
         mmi.setCallSiteBeginLabel(beginLabel, callSiteIndex);
         if (!lpadToCallSiteMap.containsKey(landingPad))
-          lpadToCallSiteMap.put(landingPad, new TIntArrayList());
+          lpadToCallSiteMap.put(landingPad, new TLongArrayList());
         lpadToCallSiteMap.get(landingPad).add(callSiteIndex);
         mmi.setCurrentCallSite(0);
       }
@@ -2164,11 +2163,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "copysign":
           case "copysignf": {
             if (ci.getNumOfOperands() == 3 &&
-                ci.operand(1).getType().isFloatingPointType() &&
-                ci.getType().equals(ci.operand(1).getType()) &&
-                ci.getType().equals(ci.operand(2).getType())) {
-              SDValue lhs = getValue(ci.operand(1));
-              SDValue rhs = getValue(ci.operand(2));
+                ci.getArgOperand(0).getType().isFloatingPointType() &&
+                ci.getType().equals(ci.getArgOperand(0).getType()) &&
+                ci.getType().equals(ci.getArgOperand(1).getType())) {
+              SDValue lhs = getValue(ci.getArgOperand(0));
+              SDValue rhs = getValue(ci.getArgOperand(1));
               setValue(ci, dag.getNode(ISD.FCOPYSIGN, lhs.getValueType(),
                   lhs, rhs));
               return null;
@@ -2178,9 +2177,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "fabs":
           case "fabsf": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPointType() &&
-                ci.getType().equals(ci.operand(1).getType())) {
-              SDValue lhs = getValue(ci.operand(1));
+                ci.getArgOperand(0).getType().isFloatingPointType() &&
+                ci.getType().equals(ci.getArgOperand(0).getType())) {
+              SDValue lhs = getValue(ci.getArgOperand(0));
               setValue(ci, dag.getNode(ISD.FABS, lhs.getValueType(), lhs));
               return null;
             }
@@ -2189,9 +2188,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "sin":
           case "sinf": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPointType() &&
-                ci.getType().equals(ci.operand(1).getType())) {
-              SDValue lhs = getValue(ci.operand(1));
+                ci.getArgOperand(0).getType().isFloatingPointType() &&
+                ci.getType().equals(ci.getArgOperand(0).getType())) {
+              SDValue lhs = getValue(ci.getArgOperand(0));
               setValue(ci, dag.getNode(ISD.FSIN, lhs.getValueType(), lhs));
               return null;
             }
@@ -2201,9 +2200,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           case "cosf":
           case "cosl": {
             if (ci.getNumOfOperands() == 2 &&
-                ci.operand(1).getType().isFloatingPointType() &&
-                ci.getType().equals(ci.operand(1).getType())) {
-              SDValue lhs = getValue(ci.operand(1));
+                ci.getArgOperand(0).getType().isFloatingPointType() &&
+                ci.getType().equals(ci.getArgOperand(0).getType())) {
+              SDValue lhs = getValue(ci.getArgOperand(0));
               setValue(ci, dag.getNode(ISD.FCOS, lhs.getValueType(), lhs));
               return null;
             }
@@ -2214,7 +2213,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
     SDValue callee;
     if (renameFn == null)
-      callee = getValue(inst.operand(0));
+      callee = getValue(((CallInst) inst).getCalledValue());
     else
       callee = dag.getExternalSymbol(renameFn, new EVT(tli.getPointerTy()));
 
@@ -2251,11 +2250,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       case returnaddress:
         setValue(ci, dag.getNode(ISD.RETURNADDR, new EVT(tli.getPointerTy()),
-            getValue(ci.operand(1))));
+            getValue(ci.getArgOperand(0))));
         return null;
       case frameaddress:
         setValue(ci, dag.getNode(ISD.FRAMEADDR, new EVT(tli.getPointerTy()),
-            getValue(ci.operand(1))));
+            getValue(ci.getArgOperand(0))));
         return null;
       case setjmp:
         return "_setjmp" + (tli.isUseUnderscoreSetJmp() ? "0" : "1");
@@ -2349,16 +2348,56 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         setValue(ci, dag.getSExtOrTrunc(op, new EVT(MVT.i32)));
         return null;
       }
-      case eh_typeid_for:
+      case eh_typeid_for: {
+        // find the type id for the given typeinfo.
+        GlobalVariable gv = extractTypeInfo(ci.getArgOperand(0));
+        int typeID = dag.getMachineFunction().getMMI().getTypeTDFor(gv);
+        SDValue res = dag.getConstant(typeID, new EVT(MVT.i32), false);
+        setValue(ci, res);
+        return null;
+      }
       case eh_return_i32:
       case eh_return_i64:
+        dag.getMachineFunction().getMMI().setCallsEHReturn(true);
+        dag.setRoot(dag.getNode(ISD.EH_RETURN, new EVT(MVT.Other),
+                getControlRoot(),
+                getValue(ci.getArgOperand(0)),
+                getValue(ci.getArgOperand(1))));
+        return null;
       case eh_unwind_init:
-      case eh_dwarf_cfa:
-      case eh_sjlj_callsite:
-      case eh_sjlj_setjmp:
+        dag.getMachineFunction().getMMI().setCallsUnwindInit(true);
+        return null;
+      case eh_dwarf_cfa: {
+        SDValue cfaArg = dag.getSExtOrTrunc(getValue(ci.getArgOperand(0)),
+                new EVT(tli.getPointerTy()));
+        SDValue offset = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()),
+                dag.getNode(ISD.FRAME_TO_ARGS_OFFSET, new EVT(tli.getPointerTy())),
+                cfaArg);
+        SDValue fa = dag.getNode(ISD.FRAMEADDR, new EVT(tli.getPointerTy()),
+                dag.getConstant(0, new EVT(tli.getPointerTy()), false));
+        setValue(ci, dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), fa, offset));
+        return null;
+      }
+      case eh_sjlj_callsite: {
+        MachineModuleInfo mmi = dag.getMachineModuleInfo();
+        Value arg0 = ci.getArgOperand(0);
+        ConstantInt c = arg0 instanceof ConstantInt ? (ConstantInt)arg0 : null;
+        Util.assertion(c != null, "Non-constant call site value in eh.sjlj.callsite!");
+        Util.assertion(mmi.getCurrentCallSite() == 0, "Overlapping call sites");
+        mmi.setCurrentCallSite(c.getZExtValue());
+        return null;
+      }
+      case eh_sjlj_setjmp: {
+        SDValue[] ops = new SDValue[] {getRoot(), getValue(ci.getArgOperand(0))};
+        SDValue op = dag.getNode(ISD.EH_SJLJ_SETJMP, dag.getVTList(new EVT(MVT.i32), new EVT(MVT.Other)),
+                ops);
+        setValue(ci, op.getValue(0));
+        dag.setRoot(op.getValue(1));
+        return null;
+      }
       case eh_sjlj_longjmp: {
-        // find the type_id for the given typeinfo.
-        Util.assertion(String.format("%s is not supported yet!", iid.name));
+        dag.setRoot(dag.getNode(ISD.EH_SJLJ_LONGJMP, new EVT(MVT.Other),
+                getRoot(), getValue(ci.getArgOperand(0))));
         return null;
       }
       case x86_mmx_pslli_w:
@@ -2442,15 +2481,15 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       }
       case sqrt:
-        setValue(ci, dag.getNode(ISD.FSQRT, getValue(ci.operand(1)).getValueType(),
-            getValue(ci.operand(1))));
+        setValue(ci, dag.getNode(ISD.FSQRT, getValue(ci.getArgOperand(0)).getValueType(),
+            getValue(ci.getArgOperand(0))));
         return null;
       case sin:
-        setValue(ci, dag.getNode(ISD.FSIN, getValue(ci.operand(1)).getValueType(),
-            getValue(ci.operand(1))));
+        setValue(ci, dag.getNode(ISD.FSIN, getValue(ci.getArgOperand(0)).getValueType(),
+            getValue(ci.getArgOperand(0))));
       case cos:
-        setValue(ci, dag.getNode(ISD.FCOS, getValue(ci.operand(1)).getValueType(),
-            getValue(ci.operand(1))));
+        setValue(ci, dag.getNode(ISD.FCOS, getValue(ci.getArgOperand(0)).getValueType(),
+            getValue(ci.getArgOperand(0))));
         return null;
       case log:
         visitLog(ci);
@@ -2474,29 +2513,29 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         setValue(ci, expandPowI(getValue(ci.getArgOperand(0)), getValue(ci.getArgOperand(1)), dag));
         return null;
       case pcmarker:
-        SDValue tmp = getValue(ci.operand(1));
+        SDValue tmp = getValue(ci.getArgOperand(0));
         dag.setRoot(dag.getNode(ISD.PCMARKER, new EVT(MVT.Other),
             getRoot(), tmp));
         return null;
       case bswap:
         setValue(ci, dag.getNode(ISD.BSWAP,
-            getValue(ci.operand(1)).getValueType(),
-            getValue(ci.operand(1))));
+            getValue(ci.getArgOperand(0)).getValueType(),
+            getValue(ci.getArgOperand(0))));
         return null;
       case cttz: {
-        SDValue arg = getValue(ci.operand(1));
+        SDValue arg = getValue(ci.getArgOperand(0));
         EVT vt = arg.getValueType();
         setValue(ci, dag.getNode(ISD.CTTZ, vt, arg));
         return null;
       }
       case ctlz: {
-        SDValue arg = getValue(ci.operand(1));
+        SDValue arg = getValue(ci.getArgOperand(0));
         EVT vt = arg.getValueType();
         setValue(ci, dag.getNode(ISD.CTLZ, vt, arg));
         return null;
       }
       case ctpop: {
-        SDValue arg = getValue(ci.operand(1));
+        SDValue arg = getValue(ci.getArgOperand(0));
         EVT vt = arg.getValueType();
         setValue(ci, dag.getNode(ISD.CTPOP, vt, arg));
         return null;
@@ -2510,7 +2549,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       }
       case stackrestore: {
-        SDValue res = getValue(ci.operand(1));
+        SDValue res = getValue(ci.getArgOperand(0));
         dag.setRoot(dag.getNode(ISD.STACKRESTORE, new EVT(MVT.Other), getRoot(),
             res));
         return null;
@@ -2930,12 +2969,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
   private void visitVAEnd(CallInst ci) {
     dag.setRoot(dag.getNode(ISD.VAEND, new EVT(MVT.Other), getRoot(),
-        getValue(ci.operand(0)), dag.getSrcValue(ci.operand(1))));
+        getValue(ci.getArgOperand(0)), dag.getSrcValue(ci.getArgOperand(0))));
   }
 
   private void visitVAStart(CallInst ci) {
     dag.setRoot(dag.getNode(ISD.VASTART, new EVT(MVT.Other), getRoot(),
-        getValue(ci.operand(1)), dag.getSrcValue(ci.operand(1))));
+        getValue(ci.getArgOperand(0)), dag.getSrcValue(ci.getArgOperand(0))));
   }
 
   private void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {
@@ -3317,7 +3356,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     op2 = dag.getSExtOrTrunc(op2, new EVT(MVT.i32));
     ops[0] = op1;
     ops[1] = op2;
-    SDValue res = dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs.get(0)), ops);
+    SDValue res = dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs), ops);
     setValue(lpi, res);
     dag.setRoot(chain);
   }
@@ -3331,8 +3370,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
     for (int i = inst.getNumClauses(); i != 0; --i) {
       Value v = inst.getClause(i - 1);
-      if (inst.isCatch(i - 1))
-        mmi.addCatchTypeInfo(mbb, (GlobalVariable)v.stripPointerCasts());
+      if (inst.isCatch(i - 1)) {
+        Value stripC = v.stripPointerCasts();
+        mmi.addCatchTypeInfo(mbb, stripC instanceof GlobalVariable ? (GlobalVariable)stripC : null);
+      }
       else {
         Constant cval = (Constant) v;
         ArrayList<GlobalVariable> filterList = new ArrayList<>();
@@ -3351,7 +3392,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     mmi.addPersonality(mbb, (Function)ce.operand(0));
 
     ArrayList<GlobalVariable> tyInfo = new ArrayList<>();
-    int n = ci.getNumsOfArgs();
+    int n = ci.getNumOfOperands();
     for (int i = n - 1; i > 1; --i) {
       if (ci.getArgOperand(i) instanceof ConstantInt) {
         ConstantInt c = (ConstantInt) ci.getArgOperand(i);

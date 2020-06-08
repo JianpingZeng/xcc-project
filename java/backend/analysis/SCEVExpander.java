@@ -1,6 +1,6 @@
 package backend.analysis;
 
-import backend.ir.CGBuilder;
+import backend.ir.IRBuilder;
 import backend.support.BasicBlockUtil;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -32,13 +32,13 @@ public final class SCEVExpander implements SCEVVisitor<Value> {
   private ScalarEvolution se;
   private HashMap<Pair<SCEV, Instruction>, Value> insertedExpressions;
   private HashSet<Value> insertedValues;
-  private CGBuilder builder;
+  private IRBuilder builder;
 
   public SCEVExpander(ScalarEvolution se) {
     this.se = se;
     insertedExpressions = new HashMap<>();
     insertedValues = new HashSet<>();
-    builder = new CGBuilder(se.getContext());
+    builder = new IRBuilder(se.getContext());
   }
 
   public void clear() {

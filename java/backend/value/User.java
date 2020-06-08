@@ -41,13 +41,12 @@ public abstract class User extends Value {
    * @return the index-th operand.
    */
   public Value operand(int index) {
-    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     return operandList[index] != null ? operandList[index].getValue() : null;
   }
 
   public void setOperand(int index, Value val, User user) {
-    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
-    setOperand(index, new Use(val, user));
+    Util.assertion(operandList != null, "should initialize operands list before update operand");
+    operandList[index] = new Use(val, user);
   }
 
   /**
@@ -59,7 +58,6 @@ public abstract class User extends Value {
   public void setOperand(int index, Use use) {
     Util.assertion(use != null, "can't set operand as null");
     Util.assertion(operandList != null, "should initialize operands list before update operand");
-    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     FltSemantics fltSemantics = null;
     if (use.getValue() instanceof ConstantFP)
       fltSemantics = ((ConstantFP)use.getValue()).getValueAPF().getSemantics();
@@ -71,17 +69,14 @@ public abstract class User extends Value {
   }
 
   public void setOperand(int index, Value opVal) {
-    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     operandList[index].setValue(opVal);
   }
 
   public Use getOperand(int index) {
-    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     return operandList[index];
   }
 
   public void removeOperand(int index) {
-    Util.assertion(index >= 0 && index < getNumOfOperands(), "index out of range");
     for (int i = index+1; i < getNumOfOperands() - 1; i++)
       operandList[i] = operandList[i+1];
     numOps -= 1;

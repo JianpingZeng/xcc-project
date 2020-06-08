@@ -30,7 +30,7 @@ import java.util.LinkedList;
 import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
- * This file defines a class "CGBuilder" that responsible for converting each
+ * This file defines a class "IRBuilder" that responsible for converting each
  * kind of AST node (Expression or Statement) into LLVM IR code. For instance,
  * converting all of statement (except for expression statement) into control
  * flow IR, e.g. br, icmp, fcmp, goto etc. In the another greatly important aspect,
@@ -40,7 +40,7 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  * @author Jianping Zeng
  * @version 0.4
  */
-public class CGBuilder {
+public class IRBuilder {
   /**
    * The basic block where all instruction will be inserted.
    */
@@ -49,14 +49,14 @@ public class CGBuilder {
   private Instruction insertPtr;
   private LLVMContext context;
 
-  public CGBuilder(LLVMContext ctx) {
+  public IRBuilder(LLVMContext ctx) {
     super();
     context = ctx;
   }
 
   public LLVMContext getLLVMContext() { return context; }
 
-  public CGBuilder(BasicBlock bb) {
+  public IRBuilder(BasicBlock bb) {
     setInsertPoint(bb);
   }
 
@@ -794,5 +794,21 @@ public class CGBuilder {
 
   public PhiNode createPhiNode(Type type, int numVals, String name) {
     return insert(new PhiNode(type, numVals, name));
+  }
+
+  public LandingPadInst createLandingPad(Type ty, Value persFn, int numClauses, String name) {
+    return insert(LandingPadInst.create(ty, persFn, numClauses, name));
+  }
+
+  public Value createExtractValue(Value aag, String name, int ... idxs) {
+    return insert(new ExtractValueInst(aag, idxs, name));
+  }
+
+  public Value createInsertValue(Value agg, Value op, String name, int ...idxs) {
+    return insert(new InsertValueInst(agg, op, idxs, name));
+  }
+
+  public void createResume(Value val) {
+    insert(ResumeInst.create(val));
   }
 }

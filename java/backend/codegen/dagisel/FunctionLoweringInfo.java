@@ -93,7 +93,7 @@ public class FunctionLoweringInfo {
    */
   public HashSet<BasicBlock> visitedBBs;
   public ArrayList<MachineInstr> argDbgValues;
-  public MachineInstr insertPtr;
+  public int insertPtr;
   private TObjectIntHashMap<Argument> byValArgFrameIndexMap;
 
   public FunctionLoweringInfo(TargetLowering tli) {
@@ -162,13 +162,6 @@ public class FunctionLoweringInfo {
     this.fn = fn;
     this.mf = mf;
     mri = mf.getMachineRegisterInfo();
-
-    // create virtual register for each argument that is not dead and is used
-    // outside of the entry block.
-    for (Argument arg : fn.getArgumentList()) {
-      if (!isOnlyUsedInEntryBlock(arg))
-        initializeRegForValue(arg);
-    }
 
     // Initialize the mapping of values to registers.  This is only set up for
     // instruction values that are used outside of the block that defines

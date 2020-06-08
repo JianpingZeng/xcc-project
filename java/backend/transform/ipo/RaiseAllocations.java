@@ -160,10 +160,10 @@ public final class RaiseAllocations implements ModulePass {
         User u = users.pop();
         if (u instanceof Instruction) {
           CallInst ci = u instanceof CallInst ? (CallInst) u : null;
-          if (ci != null && ci.getNumsOfArgs() != 0 &&
+          if (ci != null && ci.getNumOfOperands() != 0 &&
               (ci.getCalledFunction().equals(mallocFunc)) ||
               eqPointers.contains(ci.getCalledFunction())) {
-            Value source = ci.argumentAt(0);
+            Value source = ci.getArgOperand(0);
 
             // If no prototype was provided for malloc, we may need
             // to cast the source size.
@@ -203,10 +203,10 @@ public final class RaiseAllocations implements ModulePass {
         User u = users.pop();
         if (u instanceof Instruction) {
           CallInst ci = u instanceof CallInst ? (CallInst) u : null;
-          if (ci != null && ci.getNumsOfArgs() != 0 &&
+          if (ci != null && ci.getNumOfOperands() != 0 &&
               (ci.getCalledFunction().equals(freeFunc)) ||
               eqPointers.contains(ci.getCalledFunction())) {
-            Value source = ci.argumentAt(0);
+            Value source = ci.getArgOperand(0);
 
             if (!source.getType().isPointerType()) {
               // Perform IntToPointer cast on array size expresion.

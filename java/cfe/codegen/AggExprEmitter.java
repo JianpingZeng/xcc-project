@@ -16,7 +16,7 @@ package cfe.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.ir.CGBuilder;
+import backend.ir.IRBuilder;
 import backend.type.ArrayType;
 import backend.value.BasicBlock;
 import backend.value.Constant;
@@ -38,7 +38,7 @@ import tools.Util;
  */
 public class AggExprEmitter extends StmtVisitor<Void> {
   private CodeGenFunction cgf;
-  private CGBuilder builder;
+  private IRBuilder builder;
   private Value destPtr;
   private boolean volatileDest;
   private boolean ignoreResult;

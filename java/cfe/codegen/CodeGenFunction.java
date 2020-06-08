@@ -16,7 +16,7 @@ package cfe.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.ir.CGBuilder;
+import backend.ir.IRBuilder;
 import backend.support.AttrList;
 import backend.support.AttributeWithIndex;
 import backend.support.CallSite;
@@ -81,7 +81,7 @@ public final class CodeGenFunction {
    */
   private Instruction allocaInstPtr;
 
-  CGBuilder builder;
+  IRBuilder builder;
 
   /**
    * Indicates if code generation of this function has finished.
@@ -140,7 +140,7 @@ public final class CodeGenFunction {
   public CodeGenFunction(CodeGenModule generator) {
     this.generator = generator;
     target = generator.getASTContext().target;
-    builder = new CGBuilder(generator.getModule().getContext());
+    builder = new IRBuilder(generator.getModule().getContext());
     localVarMaps = new HashMap<>();
     labelMap = new HashMap<>();
     vlaSizeMap = new HashMap<>();

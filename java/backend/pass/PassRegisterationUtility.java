@@ -105,7 +105,8 @@ public final class PassRegisterationUtility {
     new RegisterPass("live-stack-slot", "Live Analysis of Stack Slot", LiveStackSlot.class);
     new RegisterPass("edge-bundles", "Bundle Machine CFG Edges", EdgeBundles.class);
     new RegisterPass("dead-mi-elimination", "Remove dead machine instruction", DeadMachineInstructionElim.class);
-
+    new RegisterPass("Dwarf Exception handling preparation", "dwarf-exception-handling", DwarfEHPrepare.class);
+    
     new RegisterPass("Verify generated machine code", "machine-verifier", MachineCodeVerifier.class);
 
     // Immutable Passes.

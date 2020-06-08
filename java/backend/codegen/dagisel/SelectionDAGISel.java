@@ -211,11 +211,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           sdl.visit(inst);
       }
       if (!sdl.hasTailCall()) {
-        for (bi = 0; bi != end; ++bi) {
+        /*for (bi = 0; bi != end; ++bi) {
           Instruction inst = llvmBB.getInstAt(bi);
           if (!(inst instanceof PhiNode))
             sdl.copyToExportRegsIfNeeds(inst);
-        }
+        }*/
         handlePhiNodeInSuccessorBlocks(llvmBB);
         sdl.visit(llvmBB.getTerminator());
       }
@@ -704,7 +704,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
       if (userOpc == ISD.CopyToReg ||
           userOpc == ISD.CopyFromReg ||
-          userOpc == ISD.INLINEASM) {
+          userOpc == ISD.INLINEASM ||
+          userOpc == ISD.EH_LABEL) {
         // If their node ID got reset to -1 then they've already been selected.
         // Treat them like a MachineOpcode.
         if (user.getNodeID() == -1)
@@ -1682,7 +1683,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
   private boolean lowerArguments(BasicBlock llvmBB) {
     Function fn = llvmBB.getParent();
     SelectionDAG dag = sdl.dag;
-    SDValue oldRoot = sdl.getRoot();
     TargetData td = tli.getTargetData();
 
     ArrayList<InputArg> ins = new ArrayList<>();
@@ -2192,8 +2192,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     mf.getMMI().setCallSiteLandingPad(label, sdl.lpadToCallSiteMap.get(mbb));
 
     MCInstrDesc mcid = tm.getSubtarget().getInstrInfo().get(TargetOpcode.EH_LABEL);
-    buildMI(mbb, funcInfo.insertPtr.getIndexInMBB(), sdl.getCurDebugLoc(), mcid)
-            .addMCSym(label);
+    buildMI(mbb, funcInfo.insertPtr, sdl.getCurDebugLoc(), mcid).addMCSym(label);
 
     int reg = tli.getExceptionPointerRegister();
     if (reg != 0) mbb.addLiveIn(reg);

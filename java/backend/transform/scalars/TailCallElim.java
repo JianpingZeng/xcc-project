@@ -87,7 +87,7 @@ public final class TailCallElim implements FunctionPass {
               }
 
               for (int i = 0, e = f.getNumOfArgs(); i != e; i++) {
-                argumentPhis.get(i).addIncoming(ci.argumentAt(i), bb);
+                argumentPhis.get(i).addIncoming(ci.getArgOperand(i), bb);
               }
 
               // Insert a unconditional branch to oldEntry before

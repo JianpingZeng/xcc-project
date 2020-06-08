@@ -133,51 +133,56 @@ public final class Attribute {
   // Attribute Function Definitions
   //===----------------------------------------------------------------------===//
 
-  public static String getAsString(int Attrs) {
+  public static String getAsString(int attrs) {
     StringBuffer result = new StringBuffer();
-    if ((Attrs & ZExt) != 0)
+    if ((attrs & ZExt) != 0)
       result.append("zeroext ");
-    if ((Attrs & SExt) != 0)
+    if ((attrs & SExt) != 0)
       result.append("signext ");
-    if ((Attrs & NoReturn) != 0)
+    if ((attrs & NoReturn) != 0)
       result.append("noreturn ");
-    if ((Attrs & NoUnwind) != 0)
+    if ((attrs & NoUnwind) != 0)
       result.append("nounwind ");
-    if ((Attrs & InReg) != 0)
+    if ((attrs & InReg) != 0)
       result.append("inreg ");
-    if ((Attrs & NoAlias) != 0)
+    if ((attrs & NoAlias) != 0)
       result.append("noalias ");
-    if ((Attrs & NoCapture) != 0)
+    if ((attrs & NoCapture) != 0)
       result.append("nocapture ");
-    if ((Attrs & StructRet) != 0)
+    if ((attrs & StructRet) != 0)
       result.append("sret ");
-    if ((Attrs & ByVal) != 0)
+    if ((attrs & ByVal) != 0)
       result.append("byval ");
-    if ((Attrs & Nest) != 0)
+    if ((attrs & Nest) != 0)
       result.append("nest ");
-    if ((Attrs & ReadNone) != 0)
+    if ((attrs & ReadNone) != 0)
       result.append("readnone ");
-    if ((Attrs & ReadOnly) != 0)
+    if ((attrs & ReadOnly) != 0)
       result.append("readonly ");
-    if ((Attrs & OptimizeForSize) != 0)
+    if ((attrs & OptimizeForSize) != 0)
       result.append("optsize ");
-    if ((Attrs & NoInline) != 0)
+    if ((attrs & NoInline) != 0)
       result.append("noinline ");
-    if ((Attrs & AlwaysInline) != 0)
+    if ((attrs & AlwaysInline) != 0)
       result.append("alwaysinline ");
-    if ((Attrs & StackProtect) != 0)
+    if ((attrs & StackProtect) != 0)
       result.append("ssp ");
-    if ((Attrs & StackProtectReq) != 0)
+    if ((attrs & StackProtectReq) != 0)
       result.append("sspreq ");
-    if ((Attrs & NoRedZone) != 0)
+    if ((attrs & NoRedZone) != 0)
       result.append("noredzone ");
-    if ((Attrs & NoImplicitFloat) != 0)
+    if ((attrs & NoImplicitFloat) != 0)
       result.append("noimplicitfloat ");
-    if ((Attrs & Naked) != 0)
+    if ((attrs & Naked) != 0)
       result.append("naked ");
-    if ((Attrs & Alignment) != 0) {
+    if ((attrs & Alignment) != 0) {
       result.append("align ");
-      result.append(getAlignmentFromAttrs(Attrs));
+      result.append(getAlignmentFromAttrs(attrs));
+      result.append(" ");
+    }
+    if ((attrs & InlineHint) != 0) {
+      result.append("inlinehint ");
+      result.append(getAlignmentFromAttrs(attrs));
       result.append(" ");
     }
     // Trim the trailing space.

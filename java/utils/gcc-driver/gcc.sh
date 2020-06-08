@@ -2,11 +2,11 @@
 
 # IMPORTANT: Set these variables in accordance with your local environment
 LLVM="${HOME}/Development/Compiler/xcc/cmake-build-debug"
-X86_GCC="${HOME}/Development/Compiler/GCC-4.6.4"
+X86_GCC="${HOME}/Development/Compiler/x86_64-unknown-linux-gnu"
 X86_DRAGONEGG="${HOME}/Development/Compiler/dragonegg-3.0"
 
 ARM_DRAGONEGG="${HOME}/Development/Compiler/dragonegg-3.0"
-ARM_GCC="${HOME}/Development/Research/arm-unknown-linux-gnueabi/bin"
+ARM_GCC="${HOME}/Development/Compiler/arm-unknown-linux-gnueabi/bin"
 
 # -----------------------------------------------------------------------------
 # Helpers 
@@ -276,7 +276,7 @@ if [[ $FLAG_target == "armv7" ]]; then
   GFORTRAN="${ARM_GCC}/arm-unknown-linux-gnueabi-gfortran"
   DRAGONEGG="${ARM_DRAGONEGG}/dragonegg.so"
   CPU="-march=arm"
-#  GCCCPU="-ccc-host-triple arm-linux-gnueabi"
+  GCCCPU="-mcpu=cortex-a9"
 else
   GCC="${X86_GCC}/bin/gcc"
   GPP="${X86_GCC}/bin/g++"
@@ -284,7 +284,7 @@ else
   GFORTRAN="${X86_GCC}/bin/gfortran"
   DRAGONEGG="${X86_DRAGONEGG}/dragonegg.so"
   CPU="-march=x86-64"
-#  GCCCPU="-mtune=corei7-avx"
+  GCCCPU="-mtune=corei7-avx"
 fi
 
 # FIXME: These passes, which run after register allocation in LLVM, potentially
@@ -337,7 +337,7 @@ for src in $srcs; do
 
   DCall "${GCC} \
   -fplugin=${DRAGONEGG} \
-  -fplugin-arg-dragonegg-emit-ir -O2 -S \
+  -fplugin-arg-dragonegg-emit-ir -S \
   ${src} -o ${llc} \
   ${gcc_front_opts}" || Die "GCC front-end compile failed!"
 

@@ -9,6 +9,7 @@
 package backend.mc;
 
 import backend.target.SectionKind;
+import tools.FormattedOutputStream;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -103,13 +104,17 @@ public class MCSymbol {
     return false;
   }
 
-  public void print(PrintStream os) {
+  public void print(FormattedOutputStream os) {
     if (!nameNeedsQuoting(getName())) {
       os.print(getName());
     }
     else {
       os.printf("\"%s\"", getName());
     }
+  }
+
+  public void print(PrintStream os) {
+    print(new FormattedOutputStream(os));
   }
   public void dump() {
     print(System.err);

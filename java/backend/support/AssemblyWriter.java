@@ -1231,10 +1231,28 @@ public class AssemblyWriter {
       for (int idx : ivi.getIndices()) {
         out.printf(", %d", idx);
       }
+    } else if (inst instanceof LandingPadInst) {
+      LandingPadInst lpi = (LandingPadInst) inst;
+      out.print(' ');
+      typePrinter.print(inst.getType(), out);
+      out.print(" personality ");
+      writeOperand(inst.operand(0), true);
+      out.println();
+      if (lpi.isCleanup()) {
+        out.print("          cleanup");
+      }
+      for (int i = 0, e = lpi.getNumClauses(); i != e; ++i) {
+        if (i != 0 || lpi.isCleanup()) out.println();
+        if (lpi.isCatch(i))
+          out.print("          catch ");
+        else
+          out.print("          filter ");
+        writeOperand(lpi.getClause(i), true);
+      }
     } else if (inst instanceof CallInst) {
-      Util.assertion(operand != null, "No called function for CallInst");
-
       CallInst ci = (CallInst) inst;
+      operand = ci.getCalledValue();
+      Util.assertion(operand != null, "No called function for CallInst");
       CallingConv cc = ci.getCallingConv();
       switch (cc) {
         case C:
@@ -1279,12 +1297,70 @@ public class AssemblyWriter {
       }
 
       out.print('(');
-      for (int op = 1, e = inst.getNumOfOperands(); op != e; op++) {
-        if (op > 1)
+      for (int op = 0, e = inst.getNumOfOperands(); op < e; op++) {
+        if (op != 0)
+          out.print(", ");
+        writeParamOperand(((CallInst) inst).getArgOperand(op));
+      }
+      out.print(')');
+    } else if (inst instanceof InvokeInst) {
+      InvokeInst ii = (InvokeInst) inst;
+      operand = ii.getCalledValue();
+      PointerType pty = (PointerType) operand.getType();
+      FunctionType fty = (FunctionType) pty.getElementType();
+      Type retTy = fty.getReturnType();
+      AttrList attrs = ii.getAttributes();
+      CallingConv cc = ii.getCallingConv();
+      switch (cc) {
+        case C:
+          break;
+        case Fast:
+          out.print(" fastcc");
+          break;
+        case Cold:
+          out.print(" coldcc");
+          break;
+        case X86_StdCall:
+          out.print(" x86_stdcallcc");
+          break;
+        case X86_FastCall:
+          out.print(" x86_fastcallcc");
+          break;
+        default:
+          out.print(" cc" + cc.name());
+          break;
+      }
+
+      if (attrs.getRetAttribute() != Attribute.None)
+        out.printf(" %s", Attribute.getAsString(attrs.getRetAttribute()));
+
+      // If possible, print out the short form of the call instruction.  We can
+      // only do this if the first argument is a pointer to a nonvararg function,
+      // and if the return type is not a pointer to a function.
+      out.print(' ');
+
+      if (!fty.isVarArg() && (!(retTy instanceof PointerType)
+              || !(((PointerType) (retTy)).getElementType() instanceof FunctionType))) {
+        typePrinter.print(retTy, out);
+        out.print(' ');
+        writeOperand(operand, false);
+      } else {
+        writeOperand(operand, true);
+      }
+
+      out.print('(');
+      for (int op = 0, e = inst.getNumOfOperands(); op < e; op++) {
+        if (op != 0)
           out.print(", ");
         writeParamOperand(inst.operand(op));
       }
       out.print(')');
+      if (attrs.getFnAttribute() != Attribute.None)
+        out.printf(" %s", Attribute.getAsString(attrs.getFnAttribute()));
+      out.print("\n          to ");
+      writeOperand(ii.getNormalDest(), true);
+      out.print(" unwind ");
+      writeOperand(ii.getUnwindDest(), true);
     } else if (inst instanceof AllocaInst) {
       AllocaInst ai = (AllocaInst) inst;
       out.print(' ');
@@ -1303,6 +1379,13 @@ public class AssemblyWriter {
         writeOperand(operand, true);
       }
       out.print(" to ");
+      typePrinter.print(inst.getType(), out);
+    } else if (inst instanceof VAArgInst) {
+      if (operand != null) {
+        out.print(' ');
+        writeOperand(operand, true);
+      }
+      out.print(", ");
       typePrinter.print(inst.getType(), out);
     } else if (operand != null) {
       // Print normal instruction.

@@ -547,8 +547,8 @@ public class CodeGenModule {
       int argNo = 0;
       boolean dontTransform = false;
       for (int j = 0, sz = newFn.getNumOfArgs(); j < sz; j++, argNo++) {
-        if (ci.getNumsOfArgs() == argNo ||
-            !ci.argumentAt(argNo).getType().equals(newFn.argAt(j).getType())) {
+        if (ci.getNumOfOperands() == argNo ||
+            !ci.getArgOperand(argNo).getType().equals(newFn.argAt(j).getType())) {
           dontTransform = true;
           break;
         }
@@ -561,7 +561,7 @@ public class CodeGenModule {
       // Okay, we can transform this.  Create the new call instruction and copy
       // over the required information.
       for (int j = 0; j < argNo; j++)
-        argList.add(ci.argumentAt(j));
+        argList.add(ci.getArgOperand(j));
 
       Value[] args = new Value[argNo];
       argList.toArray(args);

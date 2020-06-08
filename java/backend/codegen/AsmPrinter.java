@@ -460,9 +460,11 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
         switch (mi.getOpcode()) {
           case TargetOpcode.PROLOG_LABEL:
-          case TargetOpcode.EH_LABEL:
-          case TargetOpcode.GC_LABEL:
             printLabel(mi);
+            break;
+          case TargetOpcode.GC_LABEL:
+          case TargetOpcode.EH_LABEL:
+            outStreamer.emitLabel(mi.getOperand(0).getMCSymbol());
             break;
           case TargetOpcode.INLINEASM:
             printInlineAsm(mi);

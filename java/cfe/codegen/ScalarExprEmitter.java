@@ -16,7 +16,7 @@ package cfe.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.ir.CGBuilder;
+import backend.ir.IRBuilder;
 import backend.support.LLVMContext;
 import backend.type.FunctionType;
 import backend.type.IntegerType;
@@ -58,7 +58,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value> {
   }
 
   private CodeGenFunction cgf;
-  private CGBuilder builder;
+  private IRBuilder builder;
   private boolean ignoreResultAssign;
   private LLVMContext vmContext;
   

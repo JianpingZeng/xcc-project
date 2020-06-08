@@ -447,8 +447,8 @@ public final class SteensgaardAliasAnalysis extends AliasAnalysis implements
       return null;
     }
     Function calledFn = inst.getCalledFunction();
-    for (int i = 0, e = inst.getNumsOfArgs(); i < e; i++) {
-      Value arg = inst.argumentAt(i);
+    for (int i = 0, e = inst.getNumOfOperands(); i < e; i++) {
+      Value arg = inst.getArgOperand(i);
       if (!arg.getType().isPointerType())
         continue;
       Value param = calledFn.argAt(i);

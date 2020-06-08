@@ -189,7 +189,7 @@ public abstract class Inliner extends CallGraphSCCPass {
     int argIdx = 0;
     HashMap<Value, Value> formalValToActual = new HashMap<>();
     for (Argument param : callee.getArgumentList()) {
-      Value actual = cs.getArgument(argIdx);
+      Value actual = cs.getArgOperand(argIdx);
       // if this argument is passed by value, we can't directly
       // replace reference to formal parameter with actual argument.
       // Instead of we should use memcpy function to handle this situation.

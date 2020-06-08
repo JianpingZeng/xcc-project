@@ -53,6 +53,26 @@ public abstract class LLVMTargetMachine extends TargetMachine {
   }
 
   /**
+   * Turn exception handling constructs into something the code generator can
+   * handle.
+   * @param tm
+   * @param pm
+   */
+  private static void addPassesToHandleExceptions(TargetMachine tm,
+                                                  PassManagerBase pm) {
+    switch (tm.getMCAsmInfo().getExceptionHandlingType()) {
+      case Dwarf:
+      case ARM:
+        pm.add(DwarfEHPrepare.createDwarfEHPreparePass(tm));
+        break;
+      case SjLj:
+      case None:
+        break;
+    }
+    pm.add(createUnreachableBlockEliminationPass());
+  }
+
+  /**
    * Add standard LLVM codegen passes used for both emitting to assembly file
    * or machine code output.
    *
@@ -69,6 +89,9 @@ public abstract class LLVMTargetMachine extends TargetMachine {
 
     if (level.compareTo(CodeGenOpt.None) > 0)
       pm.add(createUnreachableBlockEliminationPass());
+
+    // Add exception handling passes.
+    addPassesToHandleExceptions(this, pm);
 
     // Install a MachineModuleInfo pass which is an immutable pass that holds
     // all the per-module stuff we are generating, including MCContext.

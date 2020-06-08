@@ -19,7 +19,9 @@ package backend.support;
 
 import backend.value.Value;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
 
+import java.util.Map;
 import java.util.TreeMap;
 
 /**
@@ -45,9 +47,7 @@ public class ValueSymbolTable {
    * @return The old value if the value associated with name exists in map.
    */
   public Value removeValueName(String name) {
-    // don't operate.
-    if (name == null)
-      return null;
+    Util.assertion(name != null && !name.isEmpty());
     return map.remove(name);
   }
 
@@ -61,6 +61,7 @@ public class ValueSymbolTable {
    * @return
    */
   public String createValueName(String name, Value value) {
+    Util.assertion(name != null && !name.isEmpty());
     // In the common case, the name is not already in the symbol table.
     if (!map.containsKey(name)) {
       map.put(name, value);
@@ -81,8 +82,7 @@ public class ValueSymbolTable {
   }
 
   public Value getValue(String name) {
-    if (name == null || name.isEmpty())
-      return null;
+    Util.assertion(name != null && !name.isEmpty());
     return map.get(name);
   }
 
@@ -94,7 +94,7 @@ public class ValueSymbolTable {
     return map.size();
   }
 
-  public TreeMap<String, Value> getMap() {
+  public Map<String, Value> getMap() {
     return map;
   }
 

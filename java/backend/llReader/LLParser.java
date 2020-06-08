@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 import static backend.llReader.LLParser.InstResult.*;
 import static backend.llReader.LLTokenKind.*;
 import static backend.llReader.ValID.ValIDKind.*;
+import static backend.support.AutoUpgrade.upgradeExceptionHandling;
 import static tools.Util.unEscapeLexed;
 
 /**
@@ -4118,6 +4119,9 @@ public final class LLParser {
       return error(first.getValue().second,
           String.format("use of undefined metadata '!%d'", first.getKey()));
     }
+
+    // upgrade to new EH scheme
+    upgradeExceptionHandling(m);
 
     // Look for intrinsic functions and CallInst that need to be upgraded
     // for (Function f : m.getFunctionList())

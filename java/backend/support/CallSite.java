@@ -13,9 +13,6 @@ import tools.Util;
  * @version 0.4
  */
 public class CallSite {
-  // Returns the operand number of the first argument
-  private static int ArgumentOffset;
-
   private Instruction inst;
   private boolean isInvoke;
 
@@ -26,13 +23,11 @@ public class CallSite {
   public CallSite(CallInst ii) {
     inst = ii;
     isInvoke = false;
-    ArgumentOffset = 1;
   }
 
   public CallSite(InvokeInst ii) {
     inst = ii;
     isInvoke = true;
-    ArgumentOffset = 3;
   }
 
   public static CallSite get(Value v) {
@@ -79,7 +74,7 @@ public class CallSite {
    */
   public Value getCalledValue() {
     Util.assertion(inst != null, "Not a call instruction!");
-    return inst.operand(0);
+    return isCall() ? getCallInst().getCalledValue() : getInvokeInst().getCalledValue();
   }
 
   /**
@@ -97,25 +92,25 @@ public class CallSite {
 
   public void setCalledFunction(Value v) {
     Util.assertion(inst != null, "Not a call inst");
-    inst.setOperand(0, v, inst);
+    if (isCall())
+      getCallInst().setCalledFunction(v);
+    else
+      getInvokeInst().setCalledFunction(v);
   }
 
-  public Value getArgument(int idx) {
-    int nums = isCall() ? getCallInst().getNumsOfArgs() : getInvokeInst().getNumOfOperands();
-    Util.assertion(idx >= 0 && idx < nums,
-        String.format("Argument #%d out of range!", idx));
-    return inst.operand(ArgumentOffset + idx);
+  public Value getArgOperand(int idx) {
+    return isCall() ? getCallInst().getArgOperand(idx) : getInvokeInst().getArgOperand(idx);
   }
 
-  public void setArgument(int idx, Value newVal) {
-    Util.assertion(inst != null, "Not a call inst");
-    int nums = isCall() ? getCallInst().getNumsOfArgs() : getInvokeInst().getNumsOfArgs();
-    Util.assertion(idx >= 0 && idx + ArgumentOffset < nums, "Argument # out of range!");
-    inst.setOperand(idx + ArgumentOffset, newVal, inst);
+  public void setArgOperand(int idx, Value newVal) {
+    if (isCall())
+      getCallInst().setArgOperand(idx, newVal);
+    else
+      getInvokeInst().setArgOperand(idx, newVal);
   }
 
-  public int getNumOfArguments() {
-    return inst.getNumOfOperands() - ArgumentOffset;
+  public int getNumOfOperands() {
+    return isCall() ? getCallInst().getNumOfOperands() : getInvokeInst().getNumsOfArgs();
   }
 
   public boolean doesNotAccessMemory() {

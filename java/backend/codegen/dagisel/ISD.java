@@ -104,9 +104,18 @@ public class ISD {
   // exception. The general meaning is: adjust stack by OFFSET and pass
   // execution to HANDLER. Many platform-related details also :)
   public static final int EH_RETURN = EHSELECTION + 1;
+
+  // RESULT, OUTCHAIN = EH_SJLJ_SETJMP(INCHAIN, buffer)
+  // This node operator corresponds to the eh.sjlj.setjmp intrinsic.
+  public static final int EH_SJLJ_SETJMP = EH_RETURN + 1;
+
+  // OUTCHAIN = EH_SJLJ_LONGJMP(INCHAIN, buffer)
+  // This node operator corresponds to the eh.sjlj.longjmp intrinsic.
+  public static final int EH_SJLJ_LONGJMP = EH_SJLJ_SETJMP + 1;
+
   // TargetConstant* - Like Constant*, but the DAG does not do any folding or
   // simplification of the constant.
-  public static final int TargetConstant = EH_RETURN + 1;
+  public static final int TargetConstant = EH_SJLJ_LONGJMP + 1;
   public static final int TargetConstantFP = TargetConstant + 1;
   // TargetGlobalAddress - Like GlobalAddress, but the DAG does no folding or
   // anything else with this node, and this is valid in the target-specific

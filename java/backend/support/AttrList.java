@@ -31,7 +31,7 @@ public final class AttrList {
   public static final int FirstArgIndex = 1;
 
   private ArrayList<AttributeWithIndex> attrs;
-
+  public AttrList() { attrs = null; }
   public AttrList(List<AttributeWithIndex> indices) {
     attrs = new ArrayList<>();
     if (indices != null && !indices.isEmpty())

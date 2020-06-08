@@ -6,6 +6,7 @@ import backend.utils.BackwardIterator;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
 import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.LandingPadInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
 import tools.Util;
@@ -176,7 +177,16 @@ public final class BasicBlock extends Value implements Iterable<Instruction> {
     return false;
   }
 
-  public enum BlockFlag {
+  /**
+   * Return true if the basic block is a landing pad block starting with a
+   * {@linkplain LandingPadInst} instruction.
+   * @return
+   */
+  public boolean isLandingPad() {
+    return !isEmpty() && getInstAt(getFirstNonPhi()) instanceof LandingPadInst;
+  }
+
+    public enum BlockFlag {
     LinearScanLoopHeader,
     LinearScanLoopEnd,
     BackwardBrachTarget,
