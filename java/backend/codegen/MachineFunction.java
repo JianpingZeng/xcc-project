@@ -285,7 +285,9 @@ public class MachineFunction {
    * @return
    */
   public int addLiveIn(int locReg, MCRegisterClass rc) {
-    Util.assertion(rc.contains(locReg), "Not the current regclass!");
+    // we can't check the following condition when float point is passed via
+    // an integer register on ARM platform.
+    //Util.assertion(rc.contains(locReg), "Not the current regclass!");
     int virReg = getMachineRegisterInfo().createVirtualRegister(rc);
     getMachineRegisterInfo().addLiveIn(locReg, virReg);
     return virReg;

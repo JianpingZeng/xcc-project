@@ -1106,27 +1106,27 @@ public abstract class TargetLowering {
     numRegistersForVT[MVT.isVoid] = 0;
 
     // Find the largest integer register class.
-    int largetestIntReg = MVT.LAST_INTEGER_VALUETYPE;
-    for (; registerClassForVT[largetestIntReg] == null; --largetestIntReg)
-      Util.assertion(largetestIntReg != MVT.i1, "No integer register defined");
+    int largestIntReg = MVT.LAST_INTEGER_VALUETYPE;
+    for (; registerClassForVT[largestIntReg] == null; --largestIntReg)
+      Util.assertion(largestIntReg != MVT.i1, "No integer register defined");
 
     // Every integer value type larger than this largest register takes twice as
     // many registers to represent as the previous ValueType.
-    for (int expandedReg = largetestIntReg + 1; ; ++expandedReg) {
+    for (int expandedReg = largestIntReg + 1; ; ++expandedReg) {
       EVT vt = new EVT(new MVT(expandedReg));
       if (!vt.isInteger())
         break;
 
       numRegistersForVT[expandedReg] = 2 * numRegistersForVT[expandedReg - 1];
-      registerTypeForVT[expandedReg] = new EVT(new MVT(largetestIntReg));
+      registerTypeForVT[expandedReg] = new EVT(new MVT(largestIntReg));
       transformToType[expandedReg] = new EVT(new MVT(expandedReg - 1));
       valueTypeAction.setTypeAction(vt, Expand);
     }
 
     // Inspect all of the ValueType's smaller than the largest integer
     // register to see which ones need promotion.
-    int legalIntReg = largetestIntReg;
-    for (int intReg = largetestIntReg - 1; intReg >= MVT.i1; --intReg) {
+    int legalIntReg = largestIntReg;
+    for (int intReg = largestIntReg - 1; intReg >= MVT.i1; --intReg) {
       EVT ivt = new EVT(new MVT(intReg));
       if (isTypeLegal(ivt)) {
         legalIntReg = intReg;

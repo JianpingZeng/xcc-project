@@ -155,7 +155,7 @@ public class CCState {
       ArgFlagsTy argFlags = arg.flags;
       EVT argVT = arg.vt;
       if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this)) {
-        Util.shouldNotReachHere();
+        Util.shouldNotReachHere(String.format("Unsupported return type '%s', it should be lowered by DAGTypeLegalizer", argVT.toString()));
       }
     }
   }

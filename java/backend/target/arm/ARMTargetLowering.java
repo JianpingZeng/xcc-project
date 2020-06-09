@@ -793,14 +793,21 @@ public class ARMTargetLowering extends TargetLowering {
         EVT regVT = va.getLocVT();
         if (va.needsCustom()) {
           // f64 and vector types are split up into multiple registers or combinations of registers and stack slots.
-          regVT = new EVT(MVT.i32);
           if (va.getLocVT().equals(new EVT(MVT.v2f64))) {
             // get the first f64
             SDValue op0 = getF64FormalArgument(va, argLocs.get(++i), chain, dag, dl);
 
             // get the second f64.
             va = argLocs.get(++i);
-            SDValue op1 = getF64FormalArgument(va, argLocs.get(++i), chain, dag, dl);
+            SDValue op1;
+            if (va.isMemLoc()) {
+              int fi = mfi.createFixedObject(8, va.getLocMemOffset(), true);
+              SDValue fin = dag.getFrameIndex(fi, new EVT(getPointerTy()), false);
+              op1 = dag.getLoad(new EVT(MVT.f64), chain, fin,
+                      PseudoSourceValue.getFixedStack(fi), 0);
+            }
+            else
+              op1 = getF64FormalArgument(va, argLocs.get(++i), chain, dag, dl);
 
             // create vector with both f64.
             SDValue vec = dag.getNode(ISD.UNDEF, new EVT(MVT.v2f64));
@@ -1279,8 +1286,35 @@ public class ARMTargetLowering extends TargetLowering {
           arg = dag.getNode(ISD.BIT_CONVERT, va.getLocVT(), arg);
           break;
       }
-      Util.assertion(!va.needsCustom(), "custom is not supported yet!");
-      chain = dag.getCopyToReg(chain, va.getLocReg(), arg, flag);
+      if (va.needsCustom()) {
+        if (va.getLocVT().equals(new EVT(MVT.v2f64))) {
+          // extract the first half and return it into two registers.
+          SDValue half = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f64),
+                  arg, dag.getConstant(0, new EVT(MVT.i32), false));
+          SDValue halfGPRs = dag.getNode(ARMISD.VMOVRRD,
+                  dag.getVTList(new EVT(MVT.i32), new EVT(MVT.i32)), half);
+          chain = dag.getCopyToReg(chain, va.getLocReg(), halfGPRs, flag);
+          flag = chain.getValue(1);
+          va = retLocs.get(++i);
+          chain = dag.getCopyToReg(chain, va.getLocReg(), halfGPRs.getValue(1), flag);
+          flag = chain.getValue(1);
+          va = retLocs.get(++i);
+          // Extract the 2nd half and fall through to handle it as an f64 value.
+          arg = dag.getNode(ISD.EXTRACT_VECTOR_ELT, new EVT(MVT.f64), arg,
+                  dag.getConstant(1, new EVT(MVT.i32), false));
+        }
+        // Legalize ret f64 -> ret 2 x i32.  We always have fmrrd if f64 is
+        // available.
+        SDValue fmmrrd = dag.getNode(ARMISD.VMOVRRD,
+                dag.getVTList(new EVT(MVT.i32), new EVT(MVT.i32)), arg);
+        chain = dag.getCopyToReg(chain, va.getLocReg(), fmmrrd, flag);
+        flag = chain.getValue(1);
+        va = retLocs.get(++i);
+        chain = dag.getCopyToReg(chain, va.getLocReg(), fmmrrd.getValue(1),
+                flag);
+      }
+      else
+        chain = dag.getCopyToReg(chain, va.getLocReg(), arg, flag);
       flag = chain.getValue(1);
     }
     SDValue result;

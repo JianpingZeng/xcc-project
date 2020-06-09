@@ -93,7 +93,8 @@ public class CallingConvEmitter extends TableGenBackend {
 
       // Emit each calling convention description in full.
       for (String dept : dependency) {
-        Util.assertion(recNameToRec.containsKey(dept), "No cc action have namespace " + dept);
+        if (!recNameToRec.containsKey(dept)) continue;
+        //Util.assertion(recNameToRec.containsKey(dept), "No cc action have namespace " + dept);
         emitCallingConv(recNameToRec.get(dept), os);
       }
       os.println("}");
@@ -143,6 +144,7 @@ public class CallingConvEmitter extends TableGenBackend {
   private ArrayList<String> topologicalSortOfAction(ArrayList<Record> ccs) {
     for (Record cc : ccs) {
       ListInit ccActions = cc.getValueAsListInit("Actions");
+      if (ccActions == null) continue;
       for (int i = 0, e = ccActions.getSize(); i != e; i++) {
         Record action = ccActions.getElementAsRecord(i);
         createTopGraph(cc, action);
