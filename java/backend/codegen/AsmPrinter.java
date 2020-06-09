@@ -494,7 +494,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     emitFunctionBodyEnd();
 
     if (mai.hasDotTypeDotSizeDirective()) {
-      os.printf("\t.size\t");
+      os.print("\t.size\t");
       curFuncSym.print(os);
       os.print(", .-");
       curFuncSym.print(os);
@@ -561,7 +561,6 @@ public abstract class AsmPrinter extends MachineFunctionPass {
         outStreamer.emitLabel(getJTISymbol(jti, true));
       }
 
-      outStreamer.emitLabel(getJTISymbol(jti, false));
       for (MachineBasicBlock mbb : mbbs) {
         emitJumpTableEntry(jumpTableInfo, mbb, jti);
       }
@@ -901,7 +900,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
    * @param inBits
    * @return
    */
-  private static int getGVAlignmentLog2(GlobalValue gv,
+  protected static int getGVAlignmentLog2(GlobalValue gv,
                                         TargetData td,
                                         int inBits) {
     int numBits = 0;
@@ -938,7 +937,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       outStreamer.emitValueToAlignment(1 << numBits, 0, 1, 0);
   }
 
-  private MCSection getCurrentSection() {
+  protected MCSection getCurrentSection() {
     return outStreamer.getCurrentSection();
   }
 

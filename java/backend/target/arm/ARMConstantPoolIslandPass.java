@@ -32,13 +32,16 @@ import backend.debug.DebugLoc;
 import backend.pass.FunctionPass;
 import backend.support.MachineFunctionPass;
 import backend.target.TargetData;
+import gnu.trove.map.hash.TIntIntHashMap;
 import tools.OutRef;
+import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.target.arm.ARMGenInstrNames.*;
 
 /**
  * Due to the limited pc-relative displacement, ARM requires constant pool entries
@@ -133,6 +136,12 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
    */
   private ArrayList<ArrayList<CPEntry>> cpEntries;
 
+  /**
+   * Maps a JT index to the offset in {@linkplain this#cpEntries} containing
+   * copies of that table.
+   */
+  private TIntIntHashMap jumpTableEntryIndices;
+
   private static class ImmBranch {
     MachineInstr mi;
     int maxDisp;
@@ -164,6 +173,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
   private boolean isThumb;
   private boolean isThumb1;
   private boolean isThumb2;
+  private MachineFunction mf;
 
   private ARMConstantPoolIslandPass() {
     bbSizes = new ArrayList<>();
@@ -174,6 +184,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     cpEntries = new ArrayList<>();
     immBranches = new ArrayList<>();
     pushPopMIs = new ArrayList<>();
+    jumpTableEntryIndices = new TIntIntHashMap();
   }
 
   public static FunctionPass createARMConstantIslandPass() {
@@ -182,6 +193,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
+    this.mf = mf;
     MachineConstantPool mcp = mf.getConstantPool();
     tii = (ARMInstrInfo) mf.getSubtarget().getInstrInfo();
     afi = (ARMFunctionInfo) mf.getInfo();
@@ -204,6 +216,9 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     if (!mcp.isEmpty()) {
       doInitialPlacement(mf, cpemis);
     }
+
+    if (mf.getJumpTableInfo() != null)
+      doInitialJumpTablePlacement(cpemis);
 
     // set the next available PIC uid.
     afi.initPICLabelUId(cpemis.size());
@@ -268,6 +283,61 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     return madeChange;
   }
 
+  /**
+   * We also need to place the jump table info closed to the user of jt.
+   * Otherwise, it generates assembler fixup error for 401.gcc of CPU2006.
+   * @param cpemis
+   */
+  private void doInitialJumpTablePlacement(ArrayList<MachineInstr> cpemis) {
+    int i = cpemis.size();
+    MachineJumpTableInfo mjti = mf.getJumpTableInfo();
+    ArrayList<MachineJumpTableEntry> jt = mjti.getJumpTables();
+
+    MachineBasicBlock lastCorrectNumberedBB = null;
+    ArrayList<MachineBasicBlock> worklist = new ArrayList<>(mf.getBasicBlocks());
+    for (MachineBasicBlock mbb : worklist) {
+      MachineInstr mi = mbb.getLastInst();
+      if (mi == null) continue;
+      int jtOpcode;
+      switch (mi.getOpcode()) {
+        default: continue;
+        case BR_JTadd:
+        case BR_JTr:
+        case tBR_JTr:
+        case BR_JTm:
+          jtOpcode = JUMPTABLE_ADDRS;
+          break;
+        case t2BR_JT:
+          jtOpcode = JUMPTABLE_INSTS;
+          break;
+        case t2TBB_JT:
+          jtOpcode = JUMPTABLE_TBB;
+          break;
+        case t2TBH_JT:
+          jtOpcode = JUMPTABLE_TBH;
+          break;
+      }
+
+      int numOps = mi.getDesc().getNumOperands();
+      MachineOperand jtOp = mi.getOperand(1);
+      int jti = jtOp.getIndex();
+      int size = jt.get(jti).mbbs.size() * 4;
+      MachineBasicBlock jumpTableMBB = mf.createMachineBasicBlock();
+      mf.insert(mbb.getIndexToMF()+1, jumpTableMBB);
+      MachineInstr cpemi = buildMI(jumpTableMBB, 0, new DebugLoc(),
+              tii.get(jtOpcode)).addImm(i++).addJumpTableIndex(jti, 0).addImm(size).getMInstr();
+      cpemis.add(cpemi);
+      ArrayList<CPEntry> entries = new ArrayList<>();
+      entries.add(new CPEntry(cpemi, jti));
+      cpEntries.add(entries);
+      jumpTableEntryIndices.put(jti, cpEntries.size() - 1);
+      if (lastCorrectNumberedBB == null)
+        lastCorrectNumberedBB = mbb;
+    }
+    if (lastCorrectNumberedBB != null)
+      mf.renumberBlocks(lastCorrectNumberedBB);
+  }
+
   private void verify(MachineFunction mf) {
 
   }
@@ -309,7 +379,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
       Util.assertion("fixUpUnconditionalBr is Thumb1 only!");
 
     br.maxDisp = (1 << 21) * 2;
-    mi.setDesc(tii.get(ARMGenInstrNames.tBfar));
+    mi.setDesc(tii.get(tBfar));
     bbSizes.set(mbb.getNumber(), bbSizes.get(mbb.getNumber()) + 2);
     adjustBBOffsetsAfter(mbb, 2);
     hasFarJump = true;
@@ -391,9 +461,9 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
   private static int getUnconditionalBrDisp(int opc) {
     switch (opc) {
-      case ARMGenInstrNames.tB:
+      case tB:
         return ((1 << 10) -1 ) * 2;
-      case ARMGenInstrNames.t2B:
+      case t2B:
         return ((1 << 23) -1 ) * 2;
       default:
         break;
@@ -448,8 +518,8 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     updateForInsertedWaterBlock(newIsland);
     decrementOldEntry(cpi, cpeMI);
     user.highWaterMark = newIsland;
-    user.cpemi = buildMI(newIsland, new DebugLoc(), tii.get(ARMGenInstrNames.CONSTPOOL_ENTRY))
-        .addImm(id).addConstantPoolIndex(cpi, 0, 0).addImm(size).getMInstr();
+    user.cpemi = buildMI(newIsland, new DebugLoc(), cpeMI.getDesc())
+        .addImm(id).addOperand(cpeMI.getOperand(1)).addImm(size).getMInstr();
     cpEntries.get(cpi).add(new CPEntry(user.cpemi, id, 1));
 
     bbOffets.set(newIsland.getNumber(), bbOffets.get(newMBB.getNumber()));
@@ -496,8 +566,8 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
         Util.assertion(hasFallThrough(userMBB), "expected a fallthrough mbb!");
 
       newMBB = mf.getMBBAt(mf.getIndexOfMBB(userMBB) + 1);
-      int uncondBr = isThumb ? (isThumb2 ? ARMGenInstrNames.t2B : ARMGenInstrNames.tB) :
-          ARMGenInstrNames.B;
+      int uncondBr = isThumb ? (isThumb2 ? t2B : tB) :
+          B;
       if (!isThumb)
         buildMI(userMBB, new DebugLoc(), tii.get(uncondBr)).addMBB(newMBB);
       else
@@ -553,7 +623,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
           endInsertOffset = (int) (endInsertOffset + cpUsers.get(cpuIndex).cpemi.getOperand(2).getImm());
           cpuIndex++;
         }
-        if (mi.getOpcode() == ARMGenInstrNames.t2IT)
+        if (mi.getOpcode() == t2IT)
           lastIT = mi;
 
         mi = userMBB.getInstAt(++idx);
@@ -579,7 +649,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
     newMBB.splice(0, origMBB, origMBB.getIndexOf(mi), origMBB.size());
 
-    int opc = isThumb ? (isThumb2 ? ARMGenInstrNames.t2B : ARMGenInstrNames.tB) : ARMGenInstrNames.B;
+    int opc = isThumb ? (isThumb2 ? t2B : tB) : B;
     if (!isThumb)
       buildMI(origMBB, new DebugLoc(), tii.get(opc)).addMBB(newMBB);
     else
@@ -633,7 +703,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
     bbSizes.set(newMBBNum, newMBBSize);
 
-    if (newMBB.getLastInst().getOpcode() == ARMGenInstrNames.tBR_JTr) {
+    if (newMBB.getLastInst().getOpcode() == tBR_JTr) {
       int origOffset = bbOffets.get(origMBBNum) + bbSizes.get(origMBBNum) - delta;
       if (origOffset % 4 == 0)
         delta = 0;
@@ -651,7 +721,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
   private ARMCC.CondCodes getITInstrPredicate(MachineInstr mi, OutRef<Integer> predReg) {
     int opc = mi.getOpcode();
     predReg.set(0);
-    if (opc == ARMGenInstrNames.tBcc || opc == ARMGenInstrNames.t2Bcc)
+    if (opc == tBcc || opc == t2Bcc)
       return ARMCC.CondCodes.AL;
     return ARMRegisterInfo.getInstrPredicate(mi, predReg);
   }
@@ -839,7 +909,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
       int size = (int) td.getTypeAllocSize(mcpe.getType());
       Util.assertion((size & 3) == 0, "CP entry not multiple of 4 bytes!");
 
-      MachineInstr cpeMI = buildMI(mbb, new DebugLoc(), tii.get(ARMGenInstrNames.CONSTPOOL_ENTRY))
+      MachineInstr cpeMI = buildMI(mbb, new DebugLoc(), tii.get(CONSTPOOL_ENTRY))
           .addImm(i).addConstantPoolIndex(i, 0, 0).addImm(size).getMInstr();
       cpemis.add(cpeMI);
 
@@ -902,39 +972,39 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
           switch (opc) {
             default:
               continue;
-            case ARMGenInstrNames.tBR_JTr:
+            case tBR_JTr:
               mf.ensureAlignment(2);
               if ((offset + mbbSize)%4 != 0 || hasInlineAsm)
                 mbbSize += 2; // padding.
               continue;
-            case ARMGenInstrNames.t2BR_JT:
+            case t2BR_JT:
               // TODO
               continue;
-            case ARMGenInstrNames.Bcc:
+            case Bcc:
               isCond = true;
-              uOpc = ARMGenInstrNames.B;
+              uOpc = B;
               // fall through.
-            case ARMGenInstrNames.B:
+            case B:
               bits = 24;
               scale = 4;
               break;
-            case ARMGenInstrNames.tBcc:
+            case tBcc:
               isCond = true;
-              uOpc = ARMGenInstrNames.tB;
+              uOpc = tB;
               bits = 8;
               scale = 2;
               break;
-            case ARMGenInstrNames.tB:
+            case tB:
               bits = 11;
               scale = 2;
               break;
-            case ARMGenInstrNames.t2Bcc:
+            case t2Bcc:
               isCond = true;
-              uOpc = ARMGenInstrNames.t2B;
+              uOpc = t2B;
               bits = 20;
               scale = 2;
               break;
-            case ARMGenInstrNames.t2B:
+            case t2B:
               bits = 24;
               scale = 2;
               break;
@@ -945,15 +1015,20 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
           immBranches.add(new ImmBranch(mi, maxOffsets, isCond, uOpc));
         }
 
-        if (opc == ARMGenInstrNames.tPUSH || opc == ARMGenInstrNames.tPOP_RET)
+        if (opc == tPUSH || opc == tPOP_RET)
           pushPopMIs.add(mi);
 
-        if (opc == ARMGenInstrNames.CONSTPOOL_ENTRY)
+        if (opc == CONSTPOOL_ENTRY ||
+            opc == JUMPTABLE_ADDRS ||
+            opc == JUMPTABLE_INSTS ||
+            opc == JUMPTABLE_TBB ||
+            opc == JUMPTABLE_TBH)
           continue;
 
         // scan the instruction for constant pool operands.
         for (int op = 0, e = mi.getNumOperands(); op != e; ++op) {
-          if (mi.getOperand(op).isConstantPoolIndex()) {
+          if (mi.getOperand(op).isConstantPoolIndex() ||
+                  mi.getOperand(op).isJumpTableIndex()) {
             // we found a constant pool entry index constant.
             int bits = 0;
             int scale = 1;
@@ -961,32 +1036,29 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
             boolean isSoImm = false;
 
             switch (opc) {
-              case ARMGenInstrNames.LEApcrel:
+              case LEApcrel:
+              case LEApcrelJT:
                 bits = 8;
                 scale = 4;
                 negOk = true;
                 isSoImm = true;
                 break;
-              case ARMGenInstrNames.t2LEApcrel:
+              case t2LEApcrel:
+              case t2LEApcrelJT:
+              case LDRi12:
+              case LDRcp:
+              case t2LDRpci:
                 bits = 12;
                 negOk = true;
                 break;
-              case ARMGenInstrNames.tLEApcrel:
+              case tLEApcrel:
+              case tLEApcrelJT:
+              case tLDRpci:
                 bits = 8;
                 scale = 4;
                 break;
-              case ARMGenInstrNames.LDRi12:
-              case ARMGenInstrNames.LDRcp:
-              case ARMGenInstrNames.t2LDRpci:
-                bits = 12;
-                negOk = true;
-                break;
-              case ARMGenInstrNames.tLDRpci:
-                bits = 8;
-                scale = 4;
-                break;
-              case ARMGenInstrNames.VLDRD:
-              case ARMGenInstrNames.VLDRS:
+              case VLDRD:
+              case VLDRS:
                 bits = 8;
                 scale = 4;
                 negOk = true;
@@ -995,6 +1067,11 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
             // remember this user of a CP entry.
             int cpi = mi.getOperand(op).getIndex();
+            if (mi.getOperand(op).isJumpTableIndex()) {
+              jumpTableEntryIndices.put(cpi, cpUsers.size());
+              cpi = jumpTableEntryIndices.get(cpi);
+            }
+
             MachineInstr cpeMI = cpemis.get(cpi);
             int maxOffets = ((1 << bits) - 1)* scale;
             cpUsers.add(new CPUser(mi, cpeMI, maxOffets, negOk, isSoImm));
@@ -1014,7 +1091,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
       // in thumb mode, if this block is a constant pool island, we might need padding
       // so it is aligned on 4 bytes boundary.
       if (isThumb && !mbb.isEmpty() &&
-          mbb.getFirstInst().getOpcode() == ARMGenInstrNames.CONSTPOOL_ENTRY &&
+          mbb.getFirstInst().getOpcode() == CONSTPOOL_ENTRY &&
           (offset % 4) != 0 || hasInlineAsm)
         mbbSize += 2;
 
@@ -1080,7 +1157,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
       mbb = mf.getMBBAt(i);
       if (!mbb.isEmpty() && !hasInlineAsm) {
-        if (mbb.getFirstInst().getOpcode() == ARMGenInstrNames.CONSTPOOL_ENTRY) {
+        if (mbb.getFirstInst().getOpcode() == CONSTPOOL_ENTRY) {
           int oldOffset = bbOffets.get(i) - delta;
           if ((oldOffset % 4) == 0 && bbOffets.get(i)%4 != 0) {
             bbSizes.set(i, bbSizes.get(i) + 2);
@@ -1099,7 +1176,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
         // is aligned; if it is, the offset of the jump table following the
         // instruction will not be aligned, and we need padding.
         MachineInstr thumbJTMI = mbb.getLastInst();
-        if (thumbJTMI.getOpcode() == ARMGenInstrNames.tBR_JTr) {
+        if (thumbJTMI.getOpcode() == tBR_JTr) {
           int newMIOffset = getOffsetOf(thumbJTMI);
           int oldMIOffset = newMIOffset - delta;
           if (oldMIOffset % 4 == 0 && newMIOffset % 4 != 0) {
@@ -1122,7 +1199,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     MachineBasicBlock mbb = mi.getParent();
 
     int offset = bbOffets.get(mbb.getNumber());
-    if (isThumb && mi.getOpcode() == ARMGenInstrNames.CONSTPOOL_ENTRY &&
+    if (isThumb && mi.getOpcode() == CONSTPOOL_ENTRY &&
       (offset % 4 != 0 || hasInlineAsm))
       offset += 2;
 

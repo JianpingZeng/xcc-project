@@ -690,6 +690,10 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
       case ARMGenInstrNames.t2MOVi32imm:
         return 8;
       case ARMGenInstrNames.CONSTPOOL_ENTRY:
+      case ARMGenInstrNames.JUMPTABLE_ADDRS:
+      case ARMGenInstrNames.JUMPTABLE_INSTS:
+      case ARMGenInstrNames.JUMPTABLE_TBB:
+      case ARMGenInstrNames.JUMPTABLE_TBH:
         // If this machine instr is a constant pool entry, its size is recorded as
         // operand #2.
         return (int) mi.getOperand(2).getImm();

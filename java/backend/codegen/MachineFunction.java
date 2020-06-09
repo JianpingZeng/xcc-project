@@ -169,7 +169,7 @@ public class MachineFunction {
     renumberBlocks(getEntryBlock());
   }
 
-  private void renumberBlocks(MachineBasicBlock start) {
+  public void renumberBlocks(MachineBasicBlock start) {
     int blockNo = 0;
     int i = mbbNumber.indexOf(start);
     if (i != 0)

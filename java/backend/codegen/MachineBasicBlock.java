@@ -524,4 +524,5 @@ public class MachineBasicBlock {
         return i;
     return i;
   }
+  public int getIndexToMF() { return getParent().getIndexOfMBB(this); }
 }

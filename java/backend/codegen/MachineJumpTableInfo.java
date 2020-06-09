@@ -135,11 +135,15 @@ public class MachineJumpTableInfo {
   }
 
   public void print(PrintStream os) {
+    if (jumpTables.isEmpty()) return;
     int i = 0;
+    os.println("Jump Tables:");
     for (MachineJumpTableEntry jt : jumpTables) {
-      os.printf("  <jt#%d> has %d entries%n", i, jt.mbbs.size());
-      ++i;
+      os.printf("  jt#%d: ", i++);
+      for (int j = 0, e = jt.mbbs.size(); j < e; ++j)
+        os.printf(" BB#%d", jt.mbbs.get(j).getNumber());
     }
+    os.println();
   }
 
   public void dump() {

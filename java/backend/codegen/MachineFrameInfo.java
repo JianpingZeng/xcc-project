@@ -367,27 +367,29 @@ public class MachineFrameInfo {
   private boolean isCalleeSavedInfoValid() { return csiValid; }
 
   public void print(MachineFunction mf, PrintStream os) {
+    if (objects.isEmpty()) return;
     TargetFrameLowering tfi = mf.getTarget().getSubtarget().getFrameLowering();
     int valueOffset = tfi != null ? tfi.getLocalAreaOffset() : 0;
 
+    os.println("Frame Objects:");
     for (int i = 0, e = objects.size(); i < e; i++) {
       StackObject obj = objects.get(i);
-      os.printf(" <fi#%d>: ", i - numFixedObjects);
+      os.printf("  fi#%d: ", i - numFixedObjects);
       if (obj.size == ~0L) {
         os.printf("dead%n");
         continue;
       }
       if (obj.size == 0)
-        os.printf("variable dead");
+        os.print("variable dead");
       else {
         os.printf("size is %d byte%s,", obj.size, obj.size != 1 ? "s" : "");
       }
       os.printf(" alignent is %d byte%s", obj.alignment, obj.alignment != 1 ? "s," : ",");
       if (i < numFixedObjects)
-        os.printf(" fixed");
+        os.print(" fixed");
       if (i < numFixedObjects || obj.spOffset != -1) {
         long offset = obj.spOffset - valueOffset;
-        os.printf(" at location [SP");
+        os.print(" at location [SP");
         if (offset > 0)
           os.printf("+%d", offset);
         else if (offset < 0)

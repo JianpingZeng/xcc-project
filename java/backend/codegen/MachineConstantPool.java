@@ -84,15 +84,16 @@ public final class MachineConstantPool {
   public void print(PrintStream os) {
     if (constants == null || constants.isEmpty())
       return;
-
+    os.println("Constant Pool:");
     for (int i = 0, e = constants.size(); i < e; i++) {
-      os.printf(" <cp#%d> is", i);
+      os.printf("  cp#%d: ", i);
       if (constants.get(i).isMachineConstantPoolEntry())
         constants.get(i).getValueAsCPV().print(os);
       else {
         constants.get(i).getValueAsConstant().print(os);
       }
       os.printf(" , alignment=%d\n", constants.get(i).getAlignment());
+      os.println();
     }
   }
 }

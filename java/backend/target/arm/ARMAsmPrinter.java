@@ -33,6 +33,7 @@ import backend.target.FloatABI;
 import backend.target.TargetMachine;
 import backend.value.BlockAddress;
 import backend.value.GlobalValue;
+import backend.value.GlobalVariable;
 import backend.value.Module;
 import tools.Util;
 
@@ -111,8 +112,7 @@ public class ARMAsmPrinter extends AsmPrinter {
             : (mi.getOpcode() == ARMGenInstrNames.tLEApcrelJT ? ARMGenInstrNames.tADR
             : ARMGenInstrNames.ADR));
         populateADROperands(tmpInst, mi.getOperand(0).getReg(),
-            getARMJTIPICJumpTableLabel2(mi.getOperand(1).getIndex(),
-                mi.getOperand(2).getImm()),
+            getARMJTIPICJumpTableLabel(mi.getOperand(1).getIndex()),
             mi.getOperand(3).getImm(), mi.getOperand(4).getReg(),
             outContext);
         outStreamer.emitInstruction(tmpInst);
@@ -385,14 +385,15 @@ public class ARMAsmPrinter extends AsmPrinter {
         /// second is the index into the MachineConstantPool that this is, the third
         /// is the size in bytes of this constant pool entry.
         int LabelId = (int) mi.getOperand(0).getImm();
-        int cpIdx = (int) mi.getOperand(1).getIndex();
+        int cpIdx = mi.getOperand(1).getIndex();
         emitAlignment(2);
 
         // Mark the constant pool entry as data if we're not already in a data
         // region.
-        outStreamer.emitDataRegion();
+        outStreamer.emitDataRegion(MCStreamer.MCDataRegionType.MCDR_DataRegion);
         outStreamer.emitLabel(getCPISymbol(LabelId));
         MachineConstantPool mcp = mf.getConstantPool();
+        Util.assertion(!mcp.isEmpty(), "CONSTPOOL_ENTRY when constant pool is empty?");
         MachineConstantPoolEntry mcpe = mcp.getConstants().get(cpIdx);
 
         if (mcpe.isMachineConstantPoolEntry())
@@ -401,6 +402,16 @@ public class ARMAsmPrinter extends AsmPrinter {
           emitGlobalConstant(mcpe.getValueAsConstant(), 0);
         return;
       }
+      case ARMGenInstrNames.JUMPTABLE_ADDRS:
+        emitJumpTableAddrs(mi);
+        return;
+      case ARMGenInstrNames.JUMPTABLE_INSTS:
+        emitJumpTableInsts(mi);
+        return;
+      case ARMGenInstrNames.JUMPTABLE_TBB:
+      case ARMGenInstrNames.JUMPTABLE_TBH:
+        emitJumpTableTBInst(mi, mi.getOpcode() == ARMGenInstrNames.JUMPTABLE_TBB ? 1 : 2);
+        return;
       case ARMGenInstrNames.t2BR_JT: {
         // Lower and emit the instruction itself, then the jump table following it.
         MCInst tmpInst = new MCInst();
@@ -411,8 +422,6 @@ public class ARMAsmPrinter extends AsmPrinter {
         tmpInst.addOperand(MCOperand.createImm(ARMCC.CondCodes.AL.ordinal()));
         tmpInst.addOperand(MCOperand.createReg(0));
         outStreamer.emitInstruction(tmpInst);
-        // Output the data for the jump table itself
-        emitJump2Table(mi);
         return;
       }
       case ARMGenInstrNames.t2TBB_JT: {
@@ -425,8 +434,6 @@ public class ARMAsmPrinter extends AsmPrinter {
         tmpInst.addOperand(MCOperand.createImm(ARMCC.CondCodes.AL.ordinal()));
         tmpInst.addOperand(MCOperand.createReg(0));
         outStreamer.emitInstruction(tmpInst);
-        // Output the data for the jump table itself
-        emitJump2Table(mi);
         // Make sure the next instruction is 2-byte aligned.
         emitAlignment(1);
         return;
@@ -442,8 +449,6 @@ public class ARMAsmPrinter extends AsmPrinter {
         tmpInst.addOperand(MCOperand.createImm(ARMCC.CondCodes.AL.ordinal()));
         tmpInst.addOperand(MCOperand.createReg(0));
         outStreamer.emitInstruction(tmpInst);
-        // Output the data for the jump table itself
-        emitJump2Table(mi);
         return;
       }
       case ARMGenInstrNames.tBR_JTr:
@@ -468,8 +473,6 @@ public class ARMAsmPrinter extends AsmPrinter {
         if (newOpc == ARMGenInstrNames.tMOVr)
           emitAlignment(2);
 
-        // Output the data for the jump table itself
-        emitJumpTable(mi);
         return;
       }
       case ARMGenInstrNames.BR_JTm: {
@@ -493,9 +496,6 @@ public class ARMAsmPrinter extends AsmPrinter {
         tmpInst.addOperand(MCOperand.createImm(ARMCC.CondCodes.AL.ordinal()));
         tmpInst.addOperand(MCOperand.createReg(0));
         outStreamer.emitInstruction(tmpInst);
-
-        // Output the data for the jump table itself
-        emitJumpTable(mi);
         return;
       }
       case ARMGenInstrNames.BR_JTadd: {
@@ -512,9 +512,6 @@ public class ARMAsmPrinter extends AsmPrinter {
         // Add 's' bit operand (always reg0 for this)
         tmpInst.addOperand(MCOperand.createReg(0));
         outStreamer.emitInstruction(tmpInst);
-
-        // Output the data for the jump table itself
-        emitJumpTable(mi);
         return;
       }
       case ARMGenInstrNames.TRAP: {
@@ -825,32 +822,95 @@ public class ARMAsmPrinter extends AsmPrinter {
     outStreamer.emitInstruction(inst);
   }
 
-  private void emitJumpTable(MachineInstr mi) {
-    int opcode = mi.getOpcode();
-    int opNum = 1;
-    if (opcode == ARMGenInstrNames.BR_JTadd)
-      opNum = 2;
-    else if (opcode == ARMGenInstrNames.BR_JTm)
-      opNum = 3;
+  private void emitJumpTableTBInst(MachineInstr mi, int offsetWidth) {
+    Util.assertion(offsetWidth == 1 || offsetWidth == 2, "invalid/tbb/tbh width!");
+    MachineOperand mo = mi.getOperand(1);
+    int jti = mo.getIndex();
 
-    MachineOperand mo1 = mi.getOperand(opNum);
-    MachineOperand mo2 = mi.getOperand(opNum + 1);
-    int jti = mo1.getIndex();
-
-    // tag the jump table
-    outStreamer.emitJumpTable32Region();
-
-    // emit a label for the jump table.
-    MCSymbol jtiSymbol = getARMJTIPICJumpTableLabel2(jti, mo2.getImm());
+    MCSymbol jtiSymbol = getARMJTIPICJumpTableLabel(jti);
     outStreamer.emitLabel(jtiSymbol);
 
-    // emit each entry of the table.
+    // Mark the jump table as data-in-code.
+    outStreamer.emitDataRegion( offsetWidth == 1 ?
+            MCStreamer.MCDataRegionType.MCDR_DataRegionJT8 :
+            MCStreamer.MCDataRegionType.MCDR_DataRegionJT16);
+
+    // emit entry of the table.
     MachineJumpTableInfo mjti = mf.getJumpTableInfo();
     ArrayList<MachineJumpTableEntry> jt = mjti.getJumpTables();
-    ArrayList<MachineBasicBlock> jtMBBs = jt.get(jti).getMBBs();
+    ArrayList<MachineBasicBlock> jtBBs = jt.get(jti).mbbs;
+
+    for (int i = 0, e = jtBBs.size(); i < e; ++i) {
+      MachineBasicBlock mbb = jtBBs.get(i);
+      MCExpr mbbSymExpr = MCSymbolRefExpr.create(mbb.getSymbol(outContext));
+
+      // Otherwise it's an offset from the dispatch instruction. Construct an
+      // MCExpr for the entry. We want a value of the form:
+      // (BasicBlockAddr - TBBInstAddr + 4) / 2
+      //
+      // For example, a TBB table with entries jumping to basic blocks BB0 and BB1
+      // would look like:
+      // LJTI_0_0:
+      //    .byte (LBB0 - (LCPI0_0 + 4)) / 2
+      //    .byte (LBB1 - (LCPI0_0 + 4)) / 2
+      // where LCPI0_0 is a label defined just before the TBB instruction using
+      // this table.
+      MCSymbol tbInstPC = getCPISymbol((int) mi.getOperand(0).getImm());
+      MCExpr expr = MCBinaryExpr.createAdd(
+              MCSymbolRefExpr.create(tbInstPC),
+              MCConstantExpr.create(4, outContext),
+              outContext);
+      expr = MCBinaryExpr.createSub(mbbSymExpr, expr, outContext);
+      expr = MCBinaryExpr.createDiv(expr, MCConstantExpr.create(2, outContext), outContext);
+      outStreamer.emitValue(expr, offsetWidth, 0);
+    }
+    // mark the end of jump table data-in-code region.
+    outStreamer.emitDataRegion(MCStreamer.MCDataRegionType.MCDR_DataRegionEnd);
+    emitAlignment(1);
+  }
+
+  private void emitJumpTableInsts(MachineInstr mi) {
+    MachineOperand mo = mi.getOperand(1);
+    int jti = mo.getIndex();
+    MCSymbol jtiSymbol = getARMJTIPICJumpTableLabel(jti);
+    outStreamer.emitLabel(jtiSymbol);
+
+    // emit each entry of jt table.
+    MachineJumpTableInfo mjti = mf.getJumpTableInfo();
+    ArrayList<MachineJumpTableEntry> jt = mjti.getJumpTables();
+    ArrayList<MachineBasicBlock> jtBBs = jt.get(jti).mbbs;
+
+    for (int i = 0, e = jtBBs.size(); i < e; ++i) {
+      MachineBasicBlock mbb = jtBBs.get(i);
+      MCExpr mbbSymExpr = MCSymbolRefExpr.create(mbb.getSymbol(outContext));
+      MCInst inst = new MCInst();
+      inst.setOpcode(ARMGenInstrNames.t2B);
+      inst.addOperand(MCOperand.createExpr(mbbSymExpr));
+      inst.addOperand(MCOperand.createImm(ARMCC.CondCodes.AL.ordinal()));
+      inst.addOperand(MCOperand.createReg(0));
+      outStreamer.emitInstruction(inst);
+    }
+  }
+
+  private void emitJumpTableAddrs(MachineInstr mi) {
+    MachineOperand mo = mi.getOperand(1);
+    int jti = mo.getIndex();
     ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
 
-    for (MachineBasicBlock mbb : jtMBBs) {
+    emitAlignment(2);
+    MCSymbol jtiSymbol = getARMJTIPICJumpTableLabel(jti);
+    outStreamer.emitLabel(jtiSymbol);
+
+    // Mark the jump table as data-in-code.
+    outStreamer.emitDataRegion(MCStreamer.MCDataRegionType.MCDR_DataRegionJT32);
+
+    // emit entry of the table.
+    MachineJumpTableInfo mjti = mf.getJumpTableInfo();
+    ArrayList<MachineJumpTableEntry> jt = mjti.getJumpTables();
+    ArrayList<MachineBasicBlock> jtBBs = jt.get(jti).mbbs;
+
+    for (int i = 0, e = jtBBs.size(); i < e; ++i) {
+      MachineBasicBlock mbb = jtBBs.get(i);
       // Construct an MCExpr for the entry. We want a value of the form:
       // (BasicBlockAddr - TableBeginAddr)
       //
@@ -864,68 +924,10 @@ public class ARMAsmPrinter extends AsmPrinter {
         expr = MCBinaryExpr.createSub(expr, MCSymbolRefExpr.create(jtiSymbol), outContext);
       else if (afi.isThumbFunction())
         expr = MCBinaryExpr.createAdd(expr, MCConstantExpr.create(1, outContext), outContext);
-
       outStreamer.emitValue(expr, 4, 0);
     }
-  }
-
-  private void emitJump2Table(MachineInstr mi) {
-    int opcode = mi.getOpcode();
-    int opNum = opcode == ARMGenInstrNames.t2BR_JT ? 2 : 1;
-    MachineOperand mo1 = mi.getOperand(opNum);
-    MachineOperand mo2 = mi.getOperand(opNum + 1);
-    int jti = mo1.getIndex();
-
-    // tag the jump table
-    if (opcode == ARMGenInstrNames.t2TBB_JT) {
-      outStreamer.emitJumpTable8Region();
-    } else if (opcode == ARMGenInstrNames.t2TBH_JT) {
-      outStreamer.emitJumpTable16Region();
-    } else
-      outStreamer.emitJumpTable32Region();
-
-    // emit a label for the jump table.
-    MCSymbol jtiSymbol = getARMJTIPICJumpTableLabel2(jti, mo2.getImm());
-    outStreamer.emitLabel(jtiSymbol);
-
-    // emit each entry of the table.
-    MachineJumpTableInfo mjti = mf.getJumpTableInfo();
-    ArrayList<MachineJumpTableEntry> jt = mjti.getJumpTables();
-    ArrayList<MachineBasicBlock> jtMBBs = jt.get(jti).getMBBs();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
-    int offsetWidth = 4;
-    if (opcode == ARMGenInstrNames.t2TBB_JT)
-      offsetWidth = 1;
-    else if (opcode == ARMGenInstrNames.t2TBH_JT)
-      offsetWidth = 2;
-
-    for (MachineBasicBlock mbb : jtMBBs) {
-      MCExpr expr = MCSymbolRefExpr.create(mbb.getSymbol(outContext));
-      // If this isn't a TBB or TBH, the entries are direct branch instructions.
-      if (offsetWidth == 4) {
-        MCInst brInst = new MCInst();
-        brInst.setOpcode(ARMGenInstrNames.t2B);
-        brInst.addOperand(MCOperand.createExpr(expr));
-        brInst.addOperand(MCOperand.createImm(ARMCC.CondCodes.AL.ordinal()));
-        brInst.addOperand(MCOperand.createReg(0));
-        outStreamer.emitInstruction(brInst);
-        continue;
-      }
-
-      // Otherwise it's an offset from the dispatch instruction. Construct an
-      // MCExpr for the entry. We want a value of the form:
-      // (BasicBlockAddr - TableBeginAddr) / 2
-      //
-      // For example, a TBB table with entries jumping to basic blocks BB0 and BB1
-      // would look like:
-      // LJTI_0_0:
-      //    .byte (LBB0 - LJTI_0_0) / 2
-      //    .byte (LBB1 - LJTI_0_0) / 2
-      expr = MCBinaryExpr.createSub(expr, MCSymbolRefExpr.create(jtiSymbol), outContext);
-      expr = MCBinaryExpr.createDiv(expr, MCConstantExpr.create(2, outContext), outContext);
-
-      outStreamer.emitValue(expr, offsetWidth, 0);
-    }
+    // mark the end of jump table data-in-code region.
+    outStreamer.emitDataRegion(MCStreamer.MCDataRegionType.MCDR_DataRegionEnd);
   }
 
   private MCSymbol getARMSJLJEHLabel() {
@@ -945,9 +947,9 @@ public class ARMAsmPrinter extends AsmPrinter {
     return null;
   }
 
-  private MCSymbol getARMJTIPICJumpTableLabel2(int uid1, long uid2) {
+  private MCSymbol getARMJTIPICJumpTableLabel(int uid) {
     return outContext.getOrCreateSymbol(mai.getPrivateGlobalPrefix() +
-        "JTI" + getFunctionNumber() + "_" + uid1 + "_" + uid2);
+            "JTI" + getFunctionNumber() + "_" + uid);
   }
 
   @Override

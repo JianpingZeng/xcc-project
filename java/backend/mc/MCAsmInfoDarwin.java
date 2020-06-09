@@ -47,12 +47,7 @@ public class MCAsmInfoDarwin extends MCAsmInfo {
     HasMachoZeroFillDirective = true;  // Uses .zerofill
     HasStaticCtorDtorReferenceInStaticMode = true;
 
-    CodeBegin = "L$start$code$";
-    DataBegin = "L$start$data$";
-    JT8Begin  = "L$start$jt8$";
-    JT16Begin = "L$start$jt16$";
-    JT32Begin = "L$start$jt32$";
-    SupportsDataRegions = true;
+    supportsDataRegions = true;
 
     HiddenVisibilityAttr = MCSA_PrivateExtern;
     // Doesn't support protected visibility.

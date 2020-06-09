@@ -557,4 +557,18 @@ public class MCAsmStreamer extends MCStreamer {
     }
     emitEOL();
   }
+
+  @Override
+  public void emitDataRegion(MCDataRegionType kind) {
+    if (!mai.doesSupportDataRegionDirectives())
+      return;
+    switch (kind) {
+      case MCDR_DataRegion:            os.print("\t.data_region"); break;
+      case MCDR_DataRegionJT8:         os.print("\t.data_region jt8"); break;
+      case MCDR_DataRegionJT16:        os.print("\t.data_region jt16"); break;
+      case MCDR_DataRegionJT32:        os.print("\t.data_region jt32"); break;
+      case MCDR_DataRegionEnd:         os.print("\t.end_data_region"); break;
+    }
+    emitEOL();
+  }
 }
