@@ -318,7 +318,7 @@ public class MachineBasicBlock {
   }
 
   public MachineInstr getLastInst() {
-    Util.assertion(!insts.isEmpty());
+    if (isEmpty()) return null;
     return insts.getLast();
   }
 

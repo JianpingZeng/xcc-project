@@ -288,6 +288,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     MachineBasicBlock lastCorrectNumberedBB = null;
     ArrayList<MachineBasicBlock> worklist = new ArrayList<>(mf.getBasicBlocks());
     for (MachineBasicBlock mbb : worklist) {
+      if (mbb.isEmpty()) continue;;
       MachineInstr mi = mbb.getLastInst();
       if (mi == null) continue;
       int jtOpcode;
@@ -310,7 +311,6 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
           break;
       }
 
-      int numOps = mi.getDesc().getNumOperands();
       MachineOperand jtOp = mi.getOperand(1);
       int jti = jtOp.getIndex();
       int size = jt.get(jti).mbbs.size() * 4;
@@ -320,7 +320,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
               tii.get(jtOpcode)).addImm(i++).addJumpTableIndex(jti, 0).addImm(size).getMInstr();
       cpemis.add(cpemi);
       ArrayList<CPEntry> entries = new ArrayList<>();
-      entries.add(new CPEntry(cpemi, jti));
+      entries.add(new CPEntry(cpemi, jti, 1));
       cpEntries.add(entries);
       jumpTableEntryIndices.put(jti, cpEntries.size() - 1);
       if (lastCorrectNumberedBB == null)
@@ -1060,7 +1060,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
             // remember this user of a CP entry.
             int cpi = mi.getOperand(op).getIndex();
             if (mi.getOperand(op).isJumpTableIndex()) {
-              jumpTableEntryIndices.put(cpi, cpUsers.size());
+              Util.assertion(jumpTableEntryIndices.containsKey(cpi));
               cpi = jumpTableEntryIndices.get(cpi);
             }
 
