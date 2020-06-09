@@ -263,14 +263,6 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
 
     verify(mf);
 
-    // save the mapping between original and cloned constant pool entires.
-    for (int i = 0, e = cpEntries.size(); i != e; ++i) {
-      for (int j = 0, sz = cpEntries.get(i).size(); j != sz; ++j) {
-        CPEntry cpe = cpEntries.get(i).get(j);
-        afi.recordCPEClone(i, cpe.cpi);
-      }
-    }
-
     bbSizes.clear();
     bbOffets.clear();
     waterLists.clear();

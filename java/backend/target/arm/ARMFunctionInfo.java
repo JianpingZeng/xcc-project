@@ -106,10 +106,6 @@ public class ARMFunctionInfo implements MachineFunctionInfo {
   /// HasITBlocks - True if IT blocks have been inserted.
   private boolean HasITBlocks;
 
-  /// CPEClones - Track constant pool entries clones created by Constant Island
-  /// pass.
-  private TreeMap<Integer, Integer> CPEClones;
-
   public ARMFunctionInfo() {}
 
   public ARMFunctionInfo(MachineFunction MF) {
@@ -133,7 +129,6 @@ public class ARMFunctionInfo implements MachineFunctionInfo {
     PICLabelUId = 0;
     VarArgsFrameIndex = 0;
     HasITBlocks = false;
-    CPEClones = new TreeMap<>();
   }
 
   public boolean isThumbFunction() { return isThumb; }
@@ -228,14 +223,4 @@ public class ARMFunctionInfo implements MachineFunctionInfo {
 
   public boolean hasITBlocks() { return HasITBlocks; }
   public void setHasITBlocks(boolean h) { HasITBlocks = h; }
-
-  public void recordCPEClone(int cpIdx, int cpCloneIdx) {
-    if (CPEClones.containsKey(cpCloneIdx))
-      Util.assertion("Duplicate entries!");
-    CPEClones.put(cpCloneIdx, cpIdx);
-  }
-
-  public int getOriginalCPIdx(int cloneIdx) {
-    return CPEClones.getOrDefault(cloneIdx, -1);
-  }
 }

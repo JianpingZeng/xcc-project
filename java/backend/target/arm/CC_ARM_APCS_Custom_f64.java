@@ -34,7 +34,7 @@ class CC_ARM_APCS_Custom_f64 {
         // get first register
         int reg = state.allocateReg(regList);
         if (reg != 0) {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+            state.addLoc(CCValAssign.getCustomReg(valNo, valVT, reg, locVT, locInfo));
         } else {
             if (canFail) return false;
             // put whole thing into local stack slot.
@@ -45,7 +45,7 @@ class CC_ARM_APCS_Custom_f64 {
         // get second register
         reg = state.allocateReg(regList);
         if (reg != 0) {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+            state.addLoc(CCValAssign.getCustomReg(valNo, valVT, reg, locVT, locInfo));
         } else {
             // put second part into local stack slot.
             state.addLoc(CCValAssign.getCustomMem(valNo, valVT, state.allocateStack(4, 4),

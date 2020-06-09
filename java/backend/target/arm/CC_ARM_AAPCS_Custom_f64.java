@@ -48,8 +48,8 @@ class CC_ARM_AAPCS_Custom_f64 {
 
         int t = state.allocateReg(loRegList[i]);
         Util.assertion(t == loRegList[i], "couldn't allocate register");
-        state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-        state.addLoc(CCValAssign.getReg(valNo, valVT, loRegList[i], locVT, locInfo));
+        state.addLoc(CCValAssign.getCustomReg(valNo, valVT, reg, locVT, locInfo));
+        state.addLoc(CCValAssign.getCustomReg(valNo, valVT, loRegList[i], locVT, locInfo));
         return true;
     }
 }
