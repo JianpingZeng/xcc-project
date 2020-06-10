@@ -20,6 +20,7 @@ import backend.analysis.DomTreeNodeBase;
 import backend.codegen.MachineBasicBlock;
 import backend.utils.SuccIterator;
 import backend.value.BasicBlock;
+import tools.Pair;
 
 import java.util.*;
 
@@ -36,8 +37,7 @@ public final class DepthFirstOrder {
    * @return
    */
   public static ArrayList<BasicBlock> reversePostOrder(BasicBlock start) {
-    ArrayList<BasicBlock> visited = new ArrayList<>();
-    visited.addAll(postOrder(start));
+    ArrayList<BasicBlock> visited = new ArrayList<>(postOrder(start));
     Collections.reverse(visited);
     return visited;
   }
@@ -51,45 +51,78 @@ public final class DepthFirstOrder {
    */
   public static ArrayList<MachineBasicBlock> reversePostOrder(
       MachineBasicBlock start) {
-    ArrayList<MachineBasicBlock> visited = new ArrayList<>();
-    visited.addAll(postOrder(start));
+    ArrayList<MachineBasicBlock> visited = new ArrayList<>(postOrder(start));
     Collections.reverse(visited);
     return visited;
   }
 
   public static LinkedList<BasicBlock> postOrder(BasicBlock startBlock) {
     LinkedList<BasicBlock> res = new LinkedList<>();
-    HashSet<BasicBlock> visited = new HashSet<>();
-    visit(startBlock, res, visited);
+    visit(startBlock, res);
     return res;
   }
 
-  private static void visit(BasicBlock bb, LinkedList<BasicBlock> res,
-                            HashSet<BasicBlock> visited) {
+  private static void visit(BasicBlock bb, LinkedList<BasicBlock> res) {
     if (bb == null)
       return;
 
-    if (visited.add(bb)) {
-      for (SuccIterator itr = bb.succIterator(); itr.hasNext(); )
-        visit(itr.next(), res, visited);
-
-      res.add(bb);
+    HashSet<BasicBlock> visited = new HashSet<>();
+    // the second part of pair represents if the node is visited twice,
+    // we need to visit it's child nodes first then visit the node itself.
+    // if the second part is true, the node has been visited before.
+    Stack<Pair<BasicBlock, Boolean>> worklist = new Stack<>();
+    worklist.push(Pair.get(bb, false));
+    visited.add(bb);
+    while (!worklist.isEmpty()) {
+      Pair<BasicBlock, Boolean> cur = worklist.peek();
+      if (!cur.second) {
+        // visit it first time.
+        for (SuccIterator itr = cur.first.succIterator(); itr.hasNext(); ) {
+          BasicBlock succ = itr.next();
+          if (visited.add(succ))
+            worklist.push(Pair.get(succ, false));
+        }
+        cur.second = true;
+      } else  {
+        // we visit it second time.
+        res.add(cur.first);
+        worklist.pop();
+      }
     }
   }
 
   public static List<MachineBasicBlock> postOrder(MachineBasicBlock start) {
     ArrayList<MachineBasicBlock> res = new ArrayList<>();
-    HashSet<MachineBasicBlock> visited = new HashSet<>();
-    visit(start, res, visited);
+    visit(start, res);
     return res;
   }
 
-  private static void visit(MachineBasicBlock start,
-                            ArrayList<MachineBasicBlock> result,
-                            HashSet<MachineBasicBlock> visited) {
-    if (visited.add(start)) {
-      start.getSuccessors().forEach(succ -> visit(succ, result, visited));
-      result.add(start);
+  private static void visit(MachineBasicBlock bb,
+                            ArrayList<MachineBasicBlock> result) {
+    if (bb == null)
+      return;
+
+    HashSet<MachineBasicBlock> visited = new HashSet<>();
+    // the second part of pair represents if the node is visited twice,
+    // we need to visit it's child nodes first then visit the node itself.
+    // if the second part is true, the node has been visited before.
+    Stack<Pair<MachineBasicBlock, Boolean>> worklist = new Stack<>();
+    worklist.push(Pair.get(bb, false));
+    while (!worklist.isEmpty()) {
+      Pair<MachineBasicBlock, Boolean> cur = worklist.peek();
+      if (!cur.second) {
+        // visit it first time.
+        for (int i = 0, e = cur.first.getNumSuccessors(); i < e; ++i) {
+          MachineBasicBlock succ = cur.first.suxAt(i);
+          if (visited.add(succ))
+            worklist.push(Pair.get(succ, false));
+        }
+        cur.second = true;
+      } else  {
+        // we visit it second time.
+        result.add(cur.first);
+        worklist.pop();
+      }
     }
   }
 
