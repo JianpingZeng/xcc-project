@@ -320,7 +320,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
               tii.get(jtOpcode)).addImm(i++).addJumpTableIndex(jti, 0).addImm(size).getMInstr();
       cpemis.add(cpemi);
       ArrayList<CPEntry> entries = new ArrayList<>();
-      entries.add(new CPEntry(cpemi, jti, 1));
+      entries.add(new CPEntry(cpemi, jti));
       cpEntries.add(entries);
       jumpTableEntryIndices.put(jti, cpEntries.size() - 1);
       if (lastCorrectNumberedBB == null)
@@ -467,7 +467,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     CPUser user = cpUsers.get(cpIdx);
     MachineInstr userMI = user.mi;
     MachineInstr cpeMI = user.cpemi;
-    int cpi = cpeMI.getOperand(1).getIndex();
+    int cpi = getCombinedIndex(cpeMI);
     int size = (int) cpeMI.getOperand(2).getImm();
 
     // get the value of PC which always points to the next instruction.
@@ -783,6 +783,16 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     return offsetIsInRange(userOffset, cpeOffset, maxDisp, user.negOk);
   }
 
+  private int getCombinedIndex(MachineInstr mi) {
+    int cpi = mi.getOperand(1).getIndex();
+    if (mi.getOperand(1).isJumpTableIndex()) {
+      Util.assertion(jumpTableEntryIndices.containsKey(cpi),
+              String.format("there must be an entry for key '%d' in jumpTableEntryIndices", cpi));
+      cpi = jumpTableEntryIndices.get(cpi);
+    }
+    return cpi;
+  }
+
   private int lookForExistingCPEntry(CPUser user, int userOffset) {
     MachineInstr userMI = user.mi;
     MachineInstr cpeMI = user.cpemi;
@@ -792,12 +802,10 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     }
 
     // No.  Look for previously created clones of the CPE that are in range.
-    int cpi = cpeMI.getOperand(1).getIndex();
+    int cpi = getCombinedIndex(cpeMI);
     ArrayList<CPEntry> cpes = cpEntries.get(cpi);
     for (int i = 0, e = cpes.size(); i != e; ++i) {
-      if (cpes.get(i).cpemi == null)
-        continue;
-      if (cpes.get(i).cpemi.equals(cpeMI))
+      if (cpes.get(i).cpemi == null || cpes.get(i).cpemi.equals(cpeMI))
         continue;
 
       if (cpeIsInRange(userMI, userOffset, cpes.get(i).cpemi, user.maxDisp, user.negOk, false)) {
@@ -1058,12 +1066,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
             }
 
             // remember this user of a CP entry.
-            int cpi = mi.getOperand(op).getIndex();
-            if (mi.getOperand(op).isJumpTableIndex()) {
-              Util.assertion(jumpTableEntryIndices.containsKey(cpi));
-              cpi = jumpTableEntryIndices.get(cpi);
-            }
-
+            int cpi = getCombinedIndex(mi);
             MachineInstr cpeMI = cpemis.get(cpi);
             int maxOffets = ((1 << bits) - 1)* scale;
             cpUsers.add(new CPUser(mi, cpeMI, maxOffets, negOk, isSoImm));
