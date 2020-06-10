@@ -1490,9 +1490,21 @@ public class SelectionDAG {
   public void removeDeadNodes() {
     HandleSDNode dummy = new HandleSDNode(getRoot());
 
-    ArrayList<SDNode> deadNodes = new ArrayList<>();
+    LinkedList<SDNode> deadNodes = new LinkedList<>();
     for (SDNode node : allNodes) {
       if (node.isUseEmpty())
+        deadNodes.add(node);
+    }
+    collectDeadNodes(deadNodes);
+    // Hack, some dead nodes have not been removed due to some bugs!
+    for (SDNode node : allNodes) {
+      boolean allUseDead = true;
+      for (SDUse u : node.getUseList())
+        if (!u.getUser().isDeleted()) {
+          allUseDead = false;
+          break;
+        }
+      if (allUseDead)
         deadNodes.add(node);
     }
     collectDeadNodes(deadNodes);
@@ -1502,7 +1514,7 @@ public class SelectionDAG {
   }
 
   public void collectDeadNode(SDNode node) {
-    ArrayList<SDNode> nodes = new ArrayList<>();
+    LinkedList<SDNode> nodes = new LinkedList<>();
     nodes.add(node);
     collectDeadNodes(nodes);
   }
@@ -1521,12 +1533,9 @@ public class SelectionDAG {
    * nodes from allNodes list
    * @param deadNodes
    */
-  public void collectDeadNodes(ArrayList<SDNode> deadNodes) {
-    for (int i = 0, e = deadNodes.size(); i < e; i++) {
-      SDNode node = deadNodes.get(0);
-      deadNodes.remove(i);
-      --e;
-      --i;
+  public void collectDeadNodes(LinkedList<SDNode> deadNodes) {
+    while (!deadNodes.isEmpty()) {
+      SDNode node = deadNodes.removeFirst();
       if (node == null) continue;
 
       // Erase the specified SDNode and replace all uses of it with null.
@@ -1537,8 +1546,7 @@ public class SelectionDAG {
           use.set(new SDValue());
 
           if (operand != null && operand.isUseEmpty()) {
-            deadNodes.add(operand);
-            ++e;
+            deadNodes.addLast(operand);
           }
         }
       }
@@ -2949,7 +2957,7 @@ public class SelectionDAG {
       n.operandList[i].setInitial(ops[i]);
     }
 
-    ArrayList<SDNode> deadNodes = new ArrayList<>();
+    LinkedList<SDNode> deadNodes = new LinkedList<>();
     for (SDNode node : deadNodeSet) {
       if (node.isUseEmpty())
         deadNodes.add(node);

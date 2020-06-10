@@ -867,7 +867,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
                                     SDValue inputFlag,
                                     ArrayList<SDNode> flagResultNodesMatched,
                                     boolean isMorphNodeTo) {
-    ArrayList<SDNode> deadNodes = new ArrayList<>();
+    LinkedList<SDNode> deadNodes = new LinkedList<>();
 
     // Now that all the normal results are replaced, we replace the chain and
     // flag results if present.

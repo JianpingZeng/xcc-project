@@ -128,8 +128,10 @@ public class SelectionDAGDotGraphTraits extends DefaultDotGraphTrait<SDNode> {
   @Override
   public void writeNodes(GraphWriter writer) {
     this.os = writer.getOut();
-    for (SDNode node : dag.allNodes)
-      writeNode(node);
+    for (SDNode node : dag.allNodes) {
+      if (!node.isDeleted())
+        writeNode(node);
+    }
   }
 
   private void writeNode(SDNode node) {

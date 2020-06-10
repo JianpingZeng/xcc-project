@@ -80,6 +80,7 @@ public class SelectionDAGLegalizer {
   public void legalizeDAG() {
     lastCALLSEQ_END = dag.getEntryNode();
     isLegalizingCall = false;
+    dag.removeDeadNodes();
 
     dag.assignTopologicalOrder();
     for (int i = 0, e = dag.allNodes.size(); i < e; i++) {
