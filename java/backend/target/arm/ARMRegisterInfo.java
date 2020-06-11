@@ -219,19 +219,6 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
     int offset = tfi.resolveFrameIndexReference(mf, frameIndex, frameRegRef, spAdj);
     int frameReg = frameRegRef.get();
 
-    // Modify MI as necessary to handle as much of 'Offset' as possible
-    if (afi.isGPRCalleeSavedArea1Frame(frameIndex))
-      offset -= afi.getGPRCalleeSavedArea1Offset();
-    else if (afi.isGPRCalleeSavedArea2Frame(frameIndex))
-      offset -= afi.getGPRCalleeSavedArea2Offset();
-    else if (afi.isDPRCalleeSavedAreaFrame(frameIndex))
-      offset -= afi.getDPRCalleeSavedAreaOffset();
-    else if (tfi.hasFP(mf) && afi.hasStackFrame()) {
-      Util.assertion(spAdj == 0, "Unexpected stack offset");
-      frameReg = getFrameRegister(mf);
-      offset -= afi.getFramePtrSpillOffset();
-    }
-
     // modify MI as necessary to handle as much of 'Offset' as possible
     boolean done;
     if (!afi.isThumbFunction()) {
