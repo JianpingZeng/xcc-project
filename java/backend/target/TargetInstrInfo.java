@@ -362,12 +362,12 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
    * so by issuing a series of store instructions via
    * storeRegToStackSlot(). Returns false otherwise.
    * @param mbb
-   * @param pos
+   * @param insertPos
    * @param csi
    * @return
    */
   public boolean spillCalleeSavedRegisters(MachineBasicBlock mbb,
-                                           int pos,
+                                           OutRef<Integer> insertPos,
                                            ArrayList<CalleeSavedInfo> csi) {
     return true;
   }

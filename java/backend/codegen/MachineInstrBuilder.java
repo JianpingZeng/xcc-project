@@ -199,6 +199,10 @@ public final class MachineInstrBuilder {
     return addExternalSymbol(symName, 0, 0);
   }
 
+  public MachineInstrBuilder addExternalSymbol(String synName, int targetFlags) {
+    return addExternalSymbol(synName, 0, targetFlags);
+  }
+
   public MachineInstrBuilder addExternalSymbol(String symName,
                                                long offset,
                                                int targetFlags) {

@@ -632,7 +632,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
   }
 
   @Override
-  public boolean spillCalleeSavedRegisters(MachineBasicBlock mbb, int pos, ArrayList<CalleeSavedInfo> csi) {
+  public boolean spillCalleeSavedRegisters(MachineBasicBlock mbb, OutRef<Integer> insertPos, ArrayList<CalleeSavedInfo> csi) {
     if (csi.isEmpty()) return true;
 
     MachineFunction mf = mbb.getParent();
@@ -642,6 +642,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     int fltOpc = ARMGenInstrNames.VSTMDDB_UPD;
     List<CalleeSavedInfo> tmp;
 
+    int pos = insertPos.get();
     // push integer callee saved register area 1.
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea1Register(calleeSavedInfo.getReg(),
         subtarget.isTargetDarwin())).collect(Collectors.toList());
@@ -656,6 +657,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     tmp = csi.stream().filter(calleeSavedInfo -> isARMArea3Register(calleeSavedInfo.getReg(),
         subtarget.isTargetDarwin())).collect(Collectors.toList());
     pos = emitPushInst(mbb, pos, tmp, fltOpc, 0, true, 0);
+    insertPos.set(pos);
     return true;
   }
 

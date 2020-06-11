@@ -158,7 +158,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     if (!f.hasFnAttr(Attribute.Naked))
       insertCSRSpillsAndRestores(mf);
 
-    // ALlow target machine to make final modification to the function
+    // Allow target machine to make final modification to the function
     // before the frame layout is finalized.
     tfl.processFunctionBeforeFrameFinalized(mf);
 
@@ -1067,15 +1067,19 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     int idx;
     MachineBasicBlock mbb;
     if (!shrinkWrapThisFunction) {
-      idx = 0;
-      if (!tii.spillCalleeSavedRegisters(entryBlock, idx, csi)) {
+      OutRef<Integer> insertPos = new OutRef<>(0);
+      boolean succeed = tii.spillCalleeSavedRegisters(entryBlock, insertPos, csi);
+      idx = insertPos.get();
+      if (!succeed) {
+        // if the target doesn't support special stack frame setup instruction,
+        // just use normal store to save register to the stack.
         for (CalleeSavedInfo info : csi) {
           // Add the callee-saved register as live-in.
           // It's killed at the spill.
           entryBlock.addLiveIn(info.getReg());
 
           // Insert the spill to the stack frame.
-          tii.storeRegToStackSlot(entryBlock, idx, info.getReg(), true,
+          tii.storeRegToStackSlot(entryBlock, idx++, info.getReg(), true,
               info.getFrameIdx(), info.getRegisterClass());
         }
       }
@@ -1102,12 +1106,8 @@ public class PrologEpilogInserter extends MachineFunctionPass {
                 info.getFrameIdx(),
                 info.getRegisterClass());
             Util.assertion(idx != 0, "loadRegFromStackSlot didn't insert any code!");
-            if (atStart)
-              idx = 0;
-            else {
-              idx = beforeIdx;
-              ++idx;
-            }
+            idx = beforeIdx;
+            ++idx;
           }
         }
       }

@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.codegen.MachineInstrBuilder.getKillRegState;
 import static backend.target.TargetOptions.DisableFPElim;
 import static backend.target.arm.ARMRegisterInfo.*;
 
@@ -305,6 +306,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
     int numBytes = mfi.getStackSize();
     ARMInstrInfo tii = subtarget.getInstrInfo();
     int mbbi = mbb.size() - 1;
+    int retOpcode = mbb.getInstAt(mbbi).getOpcode();
 
     DebugLoc dl = mbbi == mbb.size() ? new DebugLoc() : mbb.getInstAt(mbbi).getDebugLoc();
     if (varRegSaveSize != 0)
@@ -313,69 +315,103 @@ public class ARMFrameLowering extends TargetFrameLowering {
     if (!afi.hasStackFrame()) {
       if (numBytes != 0)
         emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes);
-      return;
-    }
+    } else {
+      // move the mbbi to point to the first LDR/VLD
+      ARMRegisterInfo tri = subtarget.getRegisterInfo();
+      int[] csRegs = tri.getCalleeSavedRegs(mf);
+      if (csRegs != null && csRegs.length > 0) {
+        if (mbbi != 0) {
+          do {
+            --mbbi;
+          } while (mbbi != 0 && isCSRestore(mbb.getInstAt(mbbi), csRegs));
+          if (!isCSRestore(mbb.getInstAt(mbbi), csRegs))
+            ++mbbi;
+        }
+      }
 
-    // move the mbbi to point to the first LDR/VLD
-    ARMRegisterInfo tri = subtarget.getRegisterInfo();
-    int[] csRegs = tri.getCalleeSavedRegs(mf);
-    if (csRegs != null && csRegs.length > 0) {
-      if (mbbi != 0) {
-        do {
-          --mbbi;
-        }while (mbbi != 0 && isCSRestore(mbb.getInstAt(mbbi), csRegs));
-        if (!isCSRestore(mbb.getInstAt(mbbi), csRegs))
+      // move SP to the start of FP callee save spill area.
+      numBytes -= afi.getGPRCalleeSavedArea2Size() +
+              afi.getGPRCalleeSavedArea2Size() +
+              afi.getDPRCalleeSavedAreaSize();
+
+      if ((subtarget.isTargetDarwin() && numBytes != 0) || hasFP(mf)) {
+        // Reset SP based on frame pointer only if the stack frame extends beyond
+        // frame pointer stack slot or target is ELF and the function has FP.
+        if (hasFP(mf) || afi.getGPRCalleeSavedArea2Size() != 0 ||
+                afi.getDPRCalleeSavedAreaSize() != 0 ||
+                afi.getDPRCalleeSavedAreaOffset() != 0) {
+          if (numBytes != 0) {
+            if (isARM)
+              mbbi = emitARMRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP, framePtr, -numBytes,
+                      ARMCC.CondCodes.AL, 0, tii);
+            else
+              mbbi = emitT2RegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP, framePtr, -numBytes,
+                      ARMCC.CondCodes.AL, 0, tii);
+          } else {
+            if (isARM)
+              buildMI(mbb, mbbi, dl, tii.get(ARMGenInstrNames.MOVr), ARMGenRegisterNames.SP)
+                      .addReg(framePtr)
+                      .addImm(ARMCC.CondCodes.AL.ordinal())
+                      .addReg(0)
+                      .addReg(0);
+            else
+              buildMI(mbb, mbbi, dl, tii.get(ARMGenInstrNames.t2MOVr), ARMGenRegisterNames.SP)
+                      .addReg(framePtr);
+          }
+        }
+      } else if (numBytes != 0) {
+        mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes);
+      }
+      if (afi.getDPRCalleeSavedAreaSize() != 0) {
+        ++mbbi;
+        while (mbb.getInstAt(mbbi).getOpcode() == ARMGenInstrNames.VLDMDIA_UPD)
           ++mbbi;
       }
+      if (afi.getGPRCalleeSavedArea2Size() != 0) ++mbbi;
+      if (afi.getGPRCalleeSavedArea1Size() != 0) ++mbbi;
     }
 
-    // move SP to the start of FP callee save spill area.
-    numBytes -= afi.getGPRCalleeSavedArea2Size() +
-        afi.getGPRCalleeSavedArea2Size() +
-        afi.getDPRCalleeSavedAreaSize();
-
-    if ((subtarget.isTargetDarwin() && numBytes != 0) || hasFP(mf)) {
-      // Reset SP based on frame pointer only if the stack frame extends beyond
-      // frame pointer stack slot or target is ELF and the function has FP.
-      if (hasFP(mf) || afi.getGPRCalleeSavedArea2Size() != 0 ||
-          afi.getDPRCalleeSavedAreaSize() != 0 ||
-          afi.getDPRCalleeSavedAreaOffset() != 0) {
-        if (numBytes != 0) {
-          if (isARM)
-            mbbi = emitARMRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP, framePtr, -numBytes,
-                ARMCC.CondCodes.AL, 0, tii);
-          else
-            mbbi = emitT2RegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP, framePtr, -numBytes,
-                ARMCC.CondCodes.AL, 0, tii);
-        }
+    // Handle tail call return instruction.
+    if (retOpcode == ARMGenInstrNames.TCRETURNdi || retOpcode == ARMGenInstrNames.TCRETURNdiND ||
+        retOpcode == ARMGenInstrNames.TCRETURNri || retOpcode == ARMGenInstrNames.TCRETURNriND) {
+      // adjust stack pointer and jump back to the caller.
+      mbbi = mbb.getLastInst().getIndexInMBB();
+      MachineInstr retInst = mbb.getLastInst();
+      MachineOperand jumpTarget = retInst.getOperand(0);
+      // jump to label or value in register.
+      boolean isThumb = subtarget.isThumb();
+      if (retOpcode == ARMGenInstrNames.TCRETURNdi || retOpcode == ARMGenInstrNames.TCRETURNdiND) {
+        int tcOpcode = retOpcode == ARMGenInstrNames.TCRETURNdi ? (isThumb ? ARMGenInstrNames.tTAILJMPd : ARMGenInstrNames.TAILJMPd)
+                : (isThumb ? ARMGenInstrNames.tTAILJMPdND : ARMGenInstrNames.TAILJMPdND);
+        MachineInstrBuilder mib = buildMI(mbb, mbbi, dl, tii.get(tcOpcode));
+        if (jumpTarget.isGlobalAddress())
+          mib.addGlobalAddress(jumpTarget.getGlobal(), jumpTarget.getOffset(), jumpTarget.getTargetFlags());
         else {
-          if (isARM)
-            buildMI(mbb, mbbi, dl, tii.get(ARMGenInstrNames.MOVr), ARMGenRegisterNames.SP)
-                .addReg(framePtr)
-                .addImm(ARMCC.CondCodes.AL.ordinal())
-                .addReg(0)
-                .addReg(0);
-          else
-            buildMI(mbb, mbbi, dl, tii.get(ARMGenInstrNames.t2MOVr), ARMGenRegisterNames.SP)
-                .addReg(framePtr);
+          Util.assertion(jumpTarget.isExternalSymbol());
+          mib.addExternalSymbol(jumpTarget.getSymbolName(), jumpTarget.getTargetFlags());
         }
+
+        // add default predicate in Thumb mode.
+        if (isThumb) mib.addImm(ARMCC.CondCodes.AL.ordinal()).addReg(0);
       }
+      else if (retOpcode == ARMGenInstrNames.TCRETURNri) {
+        buildMI(mbb,mbbi, dl, tii.get(isThumb ? ARMGenInstrNames.tTAILJMPr : ARMGenInstrNames.TAILJMPr))
+                .addReg(jumpTarget.getReg(), getKillRegState(true));
+      }
+      else {
+        buildMI(mbb, mbbi, dl, tii.get(isThumb ? ARMGenInstrNames.tTAILJMPrND : ARMGenInstrNames.TAILJMPrND))
+                .addReg(jumpTarget.getReg(), getKillRegState(true));
+      }
+
+      MachineInstr newMI = mbb.getInstAt(mbbi);
+      for (int i = 1, e = retInst.getNumOperands(); i < e; ++i)
+        newMI.addOperand(retInst.getOperand(i));
+
+      // delete the pseudo instruction TCRETURN
+      retInst.removeFromParent();
     }
-    else if (numBytes != 0) {
-      mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes);
-    }
-
-    // Move SP to start of integer callee save spill area 2.
-    mbbi = movePastCSLoadStoreOps(mbb, mbbi, ARMGenInstrNames.VLDRD, 0, 3, subtarget);
-    mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, afi.getDPRCalleeSavedAreaSize());
-
-    // move SP to start of integer callee save spill area 1.
-    mbbi = movePastCSLoadStoreOps(mbb, mbbi, ARMGenInstrNames.LDRi12, ARMGenInstrNames.t2LDRi12, 2, subtarget);
-    mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, afi.getGPRCalleeSavedArea2Size());
-
-    // Move SP to SP upon entry to the function.
-    mbbi = movePastCSLoadStoreOps(mbb, mbbi, ARMGenInstrNames.LDRi12, ARMGenInstrNames.t2LDRi12, 1, subtarget);
-    emitSPUpdate(isARM, mbb, mbbi, dl, tii, afi.getGPRCalleeSavedArea1Size());
+    if (varRegSaveSize != 0)
+      emitSPUpdate(isARM, mbb, mbbi, dl, tii, varRegSaveSize);
   }
 
   /**
@@ -465,69 +501,70 @@ public class ARMFrameLowering extends TargetFrameLowering {
     // Don't spill FP if the frame can be eliminated. This is determined
     // by scanning the callee-save registers to see if any is used.
     int[] csregs = regInfo.getCalleeSavedRegs(mf);
-    if (csregs != null && csregs.length > 0)
-    for (int i = 0; i != csregs.length; ++i) {
-      int reg = csregs[i];
-      boolean spilled = false;
-      if (mf.getMachineRegisterInfo().isPhysicalReg(reg)) {
-        spilled = true;
-        canEliminateFrame = false;
-      } else {
-        // check alias register.
-        int[] alias = regInfo.getAliasSet(reg);
-        if (alias != null && alias.length > 0) {
-          for (int ar : alias) {
-            if (mf.getMachineRegisterInfo().isPhysicalReg(ar)) {
-              spilled = true;
-              canEliminateFrame = false;
+    if (csregs != null && csregs.length > 0) {
+      for (int i = 0; i != csregs.length; ++i) {
+        int reg = csregs[i];
+        boolean spilled = false;
+        if (mf.getMachineRegisterInfo().isPhysicalReg(reg)) {
+          spilled = true;
+          canEliminateFrame = false;
+        } else {
+          // check alias register.
+          int[] alias = regInfo.getAliasSet(reg);
+          if (alias != null && alias.length > 0) {
+            for (int ar : alias) {
+              if (mf.getMachineRegisterInfo().isPhysicalReg(ar)) {
+                spilled = true;
+                canEliminateFrame = false;
+              }
             }
           }
         }
-      }
 
-      if (!ARMGenRegisterInfo.GPRRegisterClass.contains(reg))
-        continue;
-
-      if (spilled) {
-        ++numGPRSpills;
-        if (!subtarget.isTargetDarwin()) {
-          if (reg == ARMGenRegisterNames.LR)
-            lrSpilled = true;
-          cs1Spilled = true;
+        if (!ARMGenRegisterInfo.GPRRegisterClass.contains(reg))
           continue;
-        }
 
-        // keep track if LR and any of R4, R5, R6, R7 is spilled.
-        switch (reg) {
-          case ARMGenRegisterNames.LR:
-            lrSpilled = true;
-            // fall through
-          case ARMGenRegisterNames.R4:
-          case ARMGenRegisterNames.R5:
-          case ARMGenRegisterNames.R6:
-          case ARMGenRegisterNames.R7:
+        if (spilled) {
+          ++numGPRSpills;
+          if (!subtarget.isTargetDarwin()) {
+            if (reg == ARMGenRegisterNames.LR)
+              lrSpilled = true;
             cs1Spilled = true;
-            break;
-          default:
-            break;
-        }
-      } else {
-        if (!subtarget.isTargetDarwin()) {
-          unspilledCS1GPRs.add(reg);
-          continue;
-        }
+            continue;
+          }
 
-        switch (reg) {
-          case ARMGenRegisterNames.LR:
-          case ARMGenRegisterNames.R4:
-          case ARMGenRegisterNames.R5:
-          case ARMGenRegisterNames.R6:
-          case ARMGenRegisterNames.R7:
+          // keep track if LR and any of R4, R5, R6, R7 is spilled.
+          switch (reg) {
+            case ARMGenRegisterNames.LR:
+              lrSpilled = true;
+              // fall through
+            case ARMGenRegisterNames.R4:
+            case ARMGenRegisterNames.R5:
+            case ARMGenRegisterNames.R6:
+            case ARMGenRegisterNames.R7:
+              cs1Spilled = true;
+              break;
+            default:
+              break;
+          }
+        } else {
+          if (!subtarget.isTargetDarwin()) {
             unspilledCS1GPRs.add(reg);
-            break;
-          default:
-            unspilledCS2GPRs.add(reg);
-            break;
+            continue;
+          }
+
+          switch (reg) {
+            case ARMGenRegisterNames.LR:
+            case ARMGenRegisterNames.R4:
+            case ARMGenRegisterNames.R5:
+            case ARMGenRegisterNames.R6:
+            case ARMGenRegisterNames.R7:
+              unspilledCS1GPRs.add(reg);
+              break;
+            default:
+              unspilledCS2GPRs.add(reg);
+              break;
+          }
         }
       }
     }

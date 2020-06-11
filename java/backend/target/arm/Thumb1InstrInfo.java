@@ -33,6 +33,7 @@ import backend.mc.MCRegisterClass;
 import backend.target.TargetFrameLowering;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetSubtarget;
+import tools.OutRef;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -51,17 +52,18 @@ class Thumb1InstrInfo extends ARMGenInstrInfo {
 
   @Override
   public boolean spillCalleeSavedRegisters(MachineBasicBlock mbb,
-                                           int pos,
+                                           OutRef<Integer> insertPos,
                                            ArrayList<CalleeSavedInfo> csi) {
     if (csi.isEmpty())
       return false;
 
     DebugLoc dl = new DebugLoc();
     MachineFunction mf = mbb.getParent();
+    int pos = insertPos.get();
     if (pos != mbb.size())
       dl = mbb.getInstAt(pos).getDebugLoc();
 
-    MachineInstrBuilder mib = MachineInstrBuilder.buildMI(mbb, pos, dl, get(ARMGenInstrNames.tPUSH));
+    MachineInstrBuilder mib = MachineInstrBuilder.buildMI(mbb, pos++, dl, get(ARMGenInstrNames.tPUSH));
     addDefaultPred(mib);
     for (int i = csi.size(); i != 0; --i) {
       int reg = csi.get(i-1).getReg();
@@ -70,6 +72,7 @@ class Thumb1InstrInfo extends ARMGenInstrInfo {
     }
 
     mib.setMIFlags(MachineInstr.FrameSetup);
+    insertPos.set(pos);
     return true;
   }
 

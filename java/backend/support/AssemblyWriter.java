@@ -233,7 +233,6 @@ public class AssemblyWriter {
       out.printf(", align %d", align);
     }
     printInfoComment(gv);
-    out.println();
   }
 
   private void printInfoComment(Value val) {
