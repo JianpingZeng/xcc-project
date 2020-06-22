@@ -142,8 +142,8 @@ public class MachineJumpTableInfo {
       os.printf("  jt#%d: ", i++);
       for (int j = 0, e = jt.mbbs.size(); j < e; ++j)
         os.printf(" BB#%d", jt.mbbs.get(j).getNumber());
+      os.println();
     }
-    os.println();
   }
 
   public void dump() {

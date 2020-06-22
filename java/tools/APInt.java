@@ -3491,4 +3491,9 @@ public class APInt implements Cloneable {
   public boolean isUnsigned() {
     return !isSigned();
   }
+
+  @Override
+  public String toString() {
+    return toString(10);
+  }
 }

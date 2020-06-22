@@ -525,4 +525,9 @@ public class MachineBasicBlock {
     return i;
   }
   public int getIndexToMF() { return getParent().getIndexOfMBB(this); }
+
+  @Override
+  public String toString() {
+    return "MBB#"+getNumber();
+  }
 }

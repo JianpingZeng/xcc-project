@@ -92,8 +92,7 @@ public final class MachineConstantPool {
       else {
         constants.get(i).getValueAsConstant().print(os);
       }
-      os.printf(" , alignment=%d\n", constants.get(i).getAlignment());
-      os.println();
+      os.printf(", alignment=%d\n", constants.get(i).getAlignment());
     }
   }
 }

@@ -1165,6 +1165,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     return null;
   }
 
+  private void dumpCaseRec(ArrayList<Case> cases) {
+    for (Case c : cases) {
+      System.err.printf("[%d, %d] -> MBB#%d\n", c.low.getSExtValue(), c.high.getSExtValue(), c.mbb.getNumber());
+    }
+  }
+
   private int clusterify(ArrayList<Case> cases, SwitchInst si) {
     int numCmps = 0;
 
@@ -1199,19 +1205,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
       cases.set(j+1, c);
     }
-
-    // FIXME, the Java built-in sort function will result in an incorrect result. I don't know why?
-    /*Collections.sort(cases, new Comparator<Case>() {
-      @Override
-      public int compare(Case c1, Case c2) {
-        if (c1.low.getValue().slt(c2.high.getValue()))
-          return 1;
-        else if (c1.low.getValue().eq(c2.high.getValue()))
-          return 0;
-        else
-          return -1;
-      }
-    });*/
 
     // merge case into cluster.
     if (cases.size() >= 2) {
@@ -1411,7 +1404,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     for (Case c : cr.caseRanges)
       tsize += c.size();
 
-    if (!areJTsAllowed(tli) || tsize <= 3)
+    if (!areJTsAllowed(tli) || tsize <= 4)
       return false;
 
     APInt range = computeRange(first, last);
@@ -1515,14 +1508,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         index.getValue(1), table, index));
   }
 
-  private boolean handleBTSplitSwitchCase(CaseRec cr, Stack<CaseRec> worklist,
+  private void handleBTSplitSwitchCase(CaseRec cr, Stack<CaseRec> worklist,
                                           Value val, MachineBasicBlock defaultMBB) {
     MachineFunction mf = funcInfo.mf;
-
-    MachineBasicBlock nextBB = null;
     int itr = mf.getIndexOfMBB(cr.mbb);
-    if (++itr < mf.size())
-      nextBB = mf.getMBBAt(itr);
+    ++itr;
 
     int frontCaseIdx = 0;
     int backCaseIdx = cr.caseRanges.size();
@@ -1570,7 +1560,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     ArrayList<Case> rhsr = new ArrayList<>(cr.caseRanges.subList(pivot, cr.caseRanges.size()));
 
     ConstantInt c = cr.caseRanges.get(pivot).low;
-    MachineBasicBlock falseBB = null, trueBB = null;
+    MachineBasicBlock falseBB, trueBB;
 
     if (lhsr.size() == 1 && Objects.equals(lhsr.get(0).high, cr.high)
         && c.getValue().eq(cr.high.getValue().add(1))) {
@@ -1578,7 +1568,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     } else {
       trueBB = mf.createMachineBasicBlock(llvmBB);
       mf.insert(itr, trueBB);
-      worklist.add(new CaseRec(trueBB, c, cr.high, lhsr));
+      worklist.add(new CaseRec(trueBB, cr.low, c, lhsr));
 
       exportFromCurrentBlock(val);
     }
@@ -1589,7 +1579,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     } else {
       falseBB = mf.createMachineBasicBlock(llvmBB);
       mf.insert(itr, falseBB);
-      worklist.add(new CaseRec(falseBB, cr.low, c, rhsr));
+      worklist.add(new CaseRec(falseBB, c, cr.high, rhsr));
 
       exportFromCurrentBlock(val);
     }
@@ -1600,8 +1590,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       visitSwitchCase(cb);
     else
       switchCases.add(cb);
-
-    return true;
   }
 
   private static boolean areJTsAllowed(TargetLowering tli) {

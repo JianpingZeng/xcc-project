@@ -230,7 +230,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     cpemis.clear();
 
     // remove unused constant pool entries.
-    madeChange |= removeUnusedCPEntries();
+    madeChange = removeUnusedCPEntries();
 
     // we try to place a constant pool entry as a special CONST_ENTRY instruction
     // after the user of constant as close as possible. However, this procedure must
