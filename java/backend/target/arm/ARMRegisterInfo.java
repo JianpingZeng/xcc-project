@@ -33,6 +33,7 @@ import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
 import backend.support.LLVMContext;
 import backend.target.TargetFrameLowering;
+import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import backend.value.Constant;
@@ -205,7 +206,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
     MachineBasicBlock mbb = mi.getParent();
     MachineFrameInfo mfi = mf.getFrameInfo();
     ARMFrameLowering tfi = subtarget.getFrameLowering();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     Util.assertion(!afi.isThumb1OnlyFunction(), "This eliminateFrameIndex doesn't support Thumb1!");
 
     int i = 0;
@@ -258,6 +259,44 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
       // Update the original instruction to use the scratch register.
       mi.getOperand(i).changeToRegister(scratchReg, false, false, true, false, false);
     }
+  }
+
+  @Override
+  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr mi) {
+    TargetFrameLowering tfl = mf.getSubtarget().getFrameLowering();
+    ARMInstrInfo tii = ((ARMSubtarget)mf.getSubtarget()).getInstrInfo();
+    if (!tfl.hasReservedCallFrame(mf)) {
+      // convert to that as follows:
+      // ADJCALLSTACKDOWN -> sub, sp, sp, amount
+      // ADJCALLSTACKUP   -> add, sp, sp, amount
+      DebugLoc dl = mi.getDebugLoc();
+      long amount = mi.getOperand(0).getImm();
+      if (amount != 0) {
+        // we need to keep stack alignment.
+        int align = tfl.getStackAlignment();
+        amount = (amount + align - 1)/align * align;
+        ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
+        Util.assertion(!afi.isThumb1OnlyFunction(), "This method doesn't support Thumb1!");
+        boolean isARM = !afi.isThumbFunction();
+        int opc = mi.getOpcode();
+        int predOpIdx = mi.findFirstPredOperandIdx();
+        ARMCC.CondCodes pred = predOpIdx == -1 ? ARMCC.CondCodes.AL :
+                ARMCC.getCondCodes((int) mi.getOperand(predOpIdx).getImm());
+        int predReg;
+        if (opc == ARMGenInstrNames.ADJCALLSTACKDOWN || opc == ARMGenInstrNames.tADJCALLSTACKDOWN) {
+          // Note: PredReg is operand 2 for ADJCALLSTACKDOWN.
+          predReg = mi.getOperand(2).getReg();
+        }
+        else {
+          // Note: PredReg is operand 3 for ADJCALLSTACKUP.
+          predReg = mi.getOperand(3).getReg();
+          Util.assertion(opc == ARMGenInstrNames.ADJCALLSTACKUP || opc == ARMGenInstrNames.tADJCALLSTACKUP);
+        }
+        ARMFrameLowering.emitSPUpdate(isARM, mi.getParent(), mi.getIndexInMBB(),
+                dl, tii, (int) amount, pred, predReg);
+      }
+    }
+    mi.removeFromParent();
   }
 
   private boolean rewriteT2FrameIndex(MachineInstr mi,
@@ -1217,7 +1256,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
 
   public boolean hasBasePointer(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
 
     if (!EnableBasePointer.value) return false;
 
@@ -1427,7 +1466,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
    */
   public boolean canRealignStack(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
-    ARMFunctionInfo funcInfo = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo funcInfo = (ARMFunctionInfo) mf.getFunctionInfo();
     return EnableRealignStack.value && !funcInfo.isThumb1OnlyFunction() &&
         (!mfi.hasVarSizedObjects() || EnableBasePointer.value);
   }

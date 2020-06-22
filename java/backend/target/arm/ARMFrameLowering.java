@@ -28,7 +28,6 @@ package backend.target.arm;
  */
 
 import backend.codegen.*;
-import backend.codegen.dagisel.SelectionDAGISel;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
@@ -65,7 +64,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
   public boolean hasReservedCallFrame(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
     long frameSize = mfi.getMaxCallFrameSize();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     // It is not always good to include the call frame as a part of the current
     // function stack frame. Because a large call frames might cause poor codegen
     // and may even makes it impossible to scavenge a register.
@@ -82,22 +81,22 @@ public class ARMFrameLowering extends TargetFrameLowering {
     return super.hasReservedCallFrame(mf);
   }
 
-  private static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
-                                   int mbbi, DebugLoc dl, ARMInstrInfo tii,
-                                   int numBytes) {
+  static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
+                          int mbbi, DebugLoc dl, ARMInstrInfo tii,
+                          int numBytes) {
     return emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes, ARMCC.CondCodes.AL);
   }
 
-  private static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
-                                   int mbbi, DebugLoc dl, ARMInstrInfo tii,
-                                   int numBytes, ARMCC.CondCodes pred) {
+  static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
+                          int mbbi, DebugLoc dl, ARMInstrInfo tii,
+                          int numBytes, ARMCC.CondCodes pred) {
     return emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes, pred, 0);
   }
 
   static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
-                            int mbbi, DebugLoc dl, ARMInstrInfo tii,
-                            int numBytes, ARMCC.CondCodes pred,
-                            int predReg) {
+                          int mbbi, DebugLoc dl, ARMInstrInfo tii,
+                          int numBytes, ARMCC.CondCodes pred,
+                          int predReg) {
     if (isARM)
       return ARMRegisterInfo.emitARMRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP,
           ARMGenRegisterNames.SP, numBytes, pred, predReg, tii);
@@ -107,7 +106,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
   }
   @Override
   public void emitPrologue(MachineFunction mf) {
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     Util.assertion(!afi.isThumb1OnlyFunction(), "this emitPrologue dosen't support Thumb1");
     MachineFrameInfo mfi = mf.getFrameInfo();
     boolean isARM = !afi.isThumbFunction();
@@ -298,7 +297,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
 
   @Override
   public void emitEpilogue(MachineFunction mf, MachineBasicBlock mbb) {
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     Util.assertion(!afi.isThumb1OnlyFunction(), "this emitPrologue dosen't support Thumb1");
     MachineFrameInfo mfi = mf.getFrameInfo();
     boolean isARM = !afi.isThumbFunction();
@@ -466,7 +465,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
 
   @Override
   public void processFunctionBeforeCalleeSavedScan(MachineFunction mf, RegScavenger scavenger) {
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
     ARMRegisterInfo regInfo = subtarget.getRegisterInfo();
     boolean canEliminateFrame = true;
@@ -738,7 +737,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
                                  OutRef<Integer> frameReg, int spAdj) {
     MachineFrameInfo mfi = mf.getFrameInfo();
     ARMRegisterInfo regInfo = subtarget.getRegisterInfo();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     int offset = mfi.getObjectOffset(frameIndex) + mfi.getStackSize();
     int fpOffset = offset - afi.getFramePtrSpillOffset();
     boolean isFixed = mfi.isFixedObjectIndex(frameIndex);

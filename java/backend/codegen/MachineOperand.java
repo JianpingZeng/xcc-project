@@ -862,37 +862,36 @@ public abstract class MachineOperand {
     MachineRegisterInfo regInfo = parentMI.getRegInfo();
     RegisterMO regMO = ((RegisterMO)this);
     MachineOperand head = regInfo.getRegUseDefListHead(regMO.reg.regNo);
+    MachineOperand tail = regInfo.getRegUseDefListTail(regMO.reg.regNo);
     if (head.equals(this)) {
-      if (((RegisterMO)head).reg.next != null) {
-        ((RegisterMO)(((RegisterMO)head).reg.next)).reg.prev = ((RegisterMO)head).reg.prev;
-        if (((RegisterMO)head).reg.prev != null)
-          ((RegisterMO)((RegisterMO)head).reg.prev).reg.next = ((RegisterMO)head).reg.next;
-
-        regInfo.updateRegUseDefListHead(getReg(), ((RegisterMO)head).reg.next);
-        ((RegisterMO)head).reg.next = null;
+      // the register operand being deleted is head node
+      if (head == tail) {
+        // only one node in the def-use chain
+        regInfo.updateRegUseDefListHead(regMO.reg.regNo, null);
+        regInfo.updateRegUseDefListTail(regMO.reg.regNo, null);
       }
-      else if (((RegisterMO)head).reg.prev != null) {
-        regInfo.updateRegUseDefListHead(getReg(), ((RegisterMO)head).reg.prev);
-        ((RegisterMO)((RegisterMO)head).reg.prev).reg.next = ((RegisterMO)head).reg.next;
-        ((RegisterMO)head).reg.prev = null;
+      else {
+        // there are multiple nodes
+        MachineOperand next = ((RegisterMO)head).reg.next;
+        Util.assertion(next != null, "head must has a next pointer when there are multiple nodes in def-use chain");
+        ((RegisterMO)next).reg.prev = null;
+        ((RegisterMO)this).reg.next = null;
+        regInfo.updateRegUseDefListHead(regMO.reg.regNo, next);
       }
-      else
-        regInfo.updateRegUseDefListHead(getReg(), null);
-
+    } else if (this.equals(tail)) {
+      // the node being deleted is tail node and def-use chain has at least two nodes.
+      MachineOperand prev = ((RegisterMO)tail).reg.prev;
+      ((RegisterMO)prev).reg.next = null;
+      ((RegisterMO)tail).reg.prev = null;
+      regInfo.updateRegUseDefListTail(getReg(), prev);
     } else {
-      if (regMO.reg.prev != null) {
-        Util.assertion(regMO.reg.prev.getReg() == getReg(), "Corrupt reg use/def chain!");
-
-        ((RegisterMO)regMO.reg.prev).reg.next = regMO.reg.next;
-      }
-      if (regMO.reg.next != null) {
-        Util.assertion(regMO.reg.next.getReg() == getReg(), "Corrupt reg use/def chain!");
-
-        ((RegisterMO)regMO.reg.next).reg.prev = regMO.reg.prev;
-      }
+      MachineOperand prev = regMO.reg.prev;
+      MachineOperand next = regMO.reg.next;
+      regMO.reg.prev = null;
+      regMO.reg.next = null;
+      ((RegisterMO)prev).reg.next = next;
+      ((RegisterMO)next).reg.prev = prev;
     }
-    regMO.reg.prev = null;
-    regMO.reg.next = null;
   }
 
   /**
@@ -913,8 +912,7 @@ public abstract class MachineOperand {
     return false;
   }
 
-  public void changeToRegister(int reg,
-                                         boolean isDef) {
+  public void changeToRegister(int reg, boolean isDef) {
     changeToRegister(reg, isDef, false, false, false, false);
   }
 
@@ -969,7 +967,6 @@ public abstract class MachineOperand {
    * @param regInfo
    */
   public void addRegOperandToRegInfo(MachineRegisterInfo regInfo) {
-    // FIXME 2017/11/18, this method works inproperly.
     Util.assertion(isRegister(), "Can only add reg operand to use lists");
 
     // If the reginfo pointer is null, just explicitly null out or next/prev
@@ -986,6 +983,7 @@ public abstract class MachineOperand {
       ((RegisterMO)this).reg.prev = null;
       ((RegisterMO)this).reg.next = null;
       regInfo.updateRegUseDefListHead(getReg(), this);
+      regInfo.updateRegUseDefListTail(getReg(), this);
       return;
     }
 
@@ -999,20 +997,14 @@ public abstract class MachineOperand {
         return;
       }
     }
-    // Insert this machine operand into where immediately after head node.
-    //  [    ] ---> [] -------->NULL
-    //  [head] <--- []
-    //  |    }      []
-    //              ^ (prev)  ^  insert here (cur)
-    MachineOperand cur = head, prev = head;
-    while (cur != null) {
-      prev = cur;
-      cur = ((RegisterMO)cur).reg.next;
-    }
 
-    ((RegisterMO)prev).reg.next = this;
-    ((RegisterMO)this).reg.prev = prev;
+    // insert the MO to the end of def-use chain
+    MachineOperand tail = regInfo.getRegUseDefListTail(getReg());
+    Util.assertion(tail != null, "Tail node must not be null!");
+    ((RegisterMO)tail).reg.next = this;
+    ((RegisterMO)this).reg.prev = tail;
     ((RegisterMO)this).reg.next = null;
+    regInfo.updateRegUseDefListTail(getReg(), this);
   }
 
   public static MachineOperand createImm(long val) {

@@ -34,7 +34,6 @@ import backend.support.MachineFunctionPass;
 import backend.target.TargetData;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.OutRef;
-import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -196,7 +195,7 @@ public class ARMConstantPoolIslandPass extends MachineFunctionPass {
     this.mf = mf;
     MachineConstantPool mcp = mf.getConstantPool();
     tii = (ARMInstrInfo) mf.getSubtarget().getInstrInfo();
-    afi = (ARMFunctionInfo) mf.getInfo();
+    afi = (ARMFunctionInfo) mf.getFunctionInfo();
     subtarget = (ARMSubtarget) mf.getSubtarget();
 
     hasFarJump = false;

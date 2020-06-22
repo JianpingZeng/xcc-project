@@ -33,7 +33,6 @@ import backend.target.FloatABI;
 import backend.target.TargetMachine;
 import backend.value.BlockAddress;
 import backend.value.GlobalValue;
-import backend.value.GlobalVariable;
 import backend.value.Module;
 import tools.Util;
 
@@ -895,7 +894,7 @@ public class ARMAsmPrinter extends AsmPrinter {
   private void emitJumpTableAddrs(MachineInstr mi) {
     MachineOperand mo = mi.getOperand(1);
     int jti = mo.getIndex();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
 
     emitAlignment(2);
     MCSymbol jtiSymbol = getARMJTIPICJumpTableLabel(jti);
@@ -1175,7 +1174,7 @@ public class ARMAsmPrinter extends AsmPrinter {
 
   @Override
   protected void emitFunctionEntryLabel() {
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     if (afi.isThumbFunction()) {
       outStreamer.emitAssemblerFlag(MCAsmInfo.MCAssemblerFlag.MCAF_Code16);
       outStreamer.emitThumbFunc(curFuncSym);

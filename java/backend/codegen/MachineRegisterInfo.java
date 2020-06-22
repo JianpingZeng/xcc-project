@@ -67,17 +67,17 @@ public final class MachineRegisterInfo {
     }
 
     public MachineOperand getOpearnd() {
-      Util.assertion(op != null, "Can not derefence end iterator!");
+      Util.assertion(op != null, "Can not dereference end iterator!");
       return op;
     }
 
     public int getOperandNo() {
-      Util.assertion(op != null, "Can not derefence end iterator!");
+      Util.assertion(op != null, "Can not dereference end iterator!");
       return getMachineInstr().getIndexOf(op);
     }
 
     public MachineInstr getMachineInstr() {
-      Util.assertion(op != null, "Can not derefence end iterator!");
+      Util.assertion(op != null, "Can not dereference end iterator!");
       return op.getParent();
     }
 
@@ -87,10 +87,41 @@ public final class MachineRegisterInfo {
   }
 
   /**
+   * This class represents the node of def-use chain of register operand of
+   * {@linkplain MachineOperand}. It consists of three items. MCRegisterClass
+   * of register, the head node of that def-use chain, the tail node.
+   */
+  static class MORegDUChainNode {
+    MachineOperand head;
+    MachineOperand tail;
+    MORegDUChainNode() {
+      this(null, null);
+    }
+
+    MORegDUChainNode(MachineOperand head, MachineOperand tail) {
+      this.head = head;
+      this.tail = tail;
+    }
+  }
+
+  static class VirtRegDUChainNode extends MORegDUChainNode {
+    MCRegisterClass rc;
+    VirtRegDUChainNode(MCRegisterClass rc) {
+      super();
+      this.rc = rc;
+    }
+
+    VirtRegDUChainNode(MCRegisterClass rc, MachineOperand head, MachineOperand tail) {
+      super(head, tail);
+      this.rc = rc;
+    }
+  }
+
+  /**
    * Mapping from virtual register number to its attached register class and
    * define machine operand.
    */
-  private ArrayList<Pair<MCRegisterClass, MachineOperand>> vregInfo;
+  private ArrayList<VirtRegDUChainNode> vregInfo;
 
   private TreeMap<Integer, TIntArrayList> regClass2VRegMap;
 
@@ -100,7 +131,7 @@ public final class MachineRegisterInfo {
    * This is an array of the head of the use/def list for
    * physical registers.
    */
-  private MachineOperand[] physRegUseDefLists;
+  private MORegDUChainNode[] physRegUseDefLists;
 
   private BitMap usedPhysRegs;
 
@@ -124,7 +155,7 @@ public final class MachineRegisterInfo {
     regAllocHints = new ArrayList<>();
 
     // create physical register def/use chain.
-    physRegUseDefLists = new MachineOperand[tri.getNumRegs()];
+    physRegUseDefLists = new MORegDUChainNode[tri.getNumRegs()];
 
     usedPhysRegs = new BitMap();
     liveIns = new ArrayList<>();
@@ -144,13 +175,13 @@ public final class MachineRegisterInfo {
   public MCRegisterClass getRegClass(int reg) {
     int actualReg = rescale(reg);
     Util.assertion(actualReg < vregInfo.size(), "Register out of bound!");
-    return vregInfo.get(actualReg).first;
+    return vregInfo.get(actualReg).rc;
   }
 
   public void setRegClass(int reg, MCRegisterClass rc) {
     int actualReg = rescale(reg);
     Util.assertion(actualReg < vregInfo.size() && rc != null, "Register out of bound!");
-    vregInfo.get(actualReg).first = rc;
+    vregInfo.get(actualReg).rc = rc;
   }
 
   /**
@@ -161,7 +192,7 @@ public final class MachineRegisterInfo {
    * @return
    */
   public int createVirtualRegister(MCRegisterClass regClass) {
-    vregInfo.add(new Pair<>(regClass, null));
+    vregInfo.add(new VirtRegDUChainNode(regClass));
     return vregInfo.size() - 1 + FirstVirtualRegister;
   }
 
@@ -180,7 +211,7 @@ public final class MachineRegisterInfo {
 
     int actualReg = rescale(regNo);
     Util.assertion(actualReg < vregInfo.size(), "Register out of bound!");
-    return vregInfo.get(actualReg).second;
+    return vregInfo.get(actualReg).head;
   }
 
   public MachineInstr getDefMI(int regNo) {
@@ -192,7 +223,7 @@ public final class MachineRegisterInfo {
 
     int actualReg = rescale(regNo);
     Util.assertion(actualReg < vregInfo.size(), "Register out of bound!");
-    vregInfo.get(regNo).second = mo;
+    vregInfo.get(regNo).head = mo;
 
   }
 
@@ -228,10 +259,23 @@ public final class MachineRegisterInfo {
    * @return
    */
   public MachineOperand getRegUseDefListHead(int regNo) {
-    if (regNo < FirstVirtualRegister)
-      return physRegUseDefLists[regNo];
+    if (regNo < FirstVirtualRegister) {
+      if (physRegUseDefLists[regNo] == null)
+        physRegUseDefLists[regNo] = new MORegDUChainNode();
+      return physRegUseDefLists[regNo].head;
+    }
     regNo -= FirstVirtualRegister;
-    return vregInfo.get(regNo).second;
+    return vregInfo.get(regNo).head;
+  }
+
+  public MachineOperand getRegUseDefListTail(int regNo) {
+    if (regNo < FirstVirtualRegister) {
+      if (physRegUseDefLists[regNo] == null)
+        physRegUseDefLists[regNo] = new MORegDUChainNode();
+      return physRegUseDefLists[regNo].tail;
+    }
+    regNo -= FirstVirtualRegister;
+    return vregInfo.get(regNo).tail;
   }
 
   /**
@@ -243,10 +287,19 @@ public final class MachineRegisterInfo {
    */
   public void updateRegUseDefListHead(int regNo, MachineOperand head) {
     if (regNo < FirstVirtualRegister)
-      physRegUseDefLists[regNo] = head;
+      physRegUseDefLists[regNo].head = head;
     else {
       regNo -= FirstVirtualRegister;
-      vregInfo.get(regNo).second = head;
+      vregInfo.get(regNo).head = head;
+    }
+  }
+
+  public void updateRegUseDefListTail(int regNo, MachineOperand tail) {
+    if (regNo < FirstVirtualRegister)
+      physRegUseDefLists[regNo].tail = tail;
+    else {
+      regNo -= FirstVirtualRegister;
+      vregInfo.get(regNo).tail = tail;
     }
   }
 

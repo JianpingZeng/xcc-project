@@ -29,6 +29,8 @@ import backend.target.TargetOpcode;
 import backend.target.TargetRegisterInfo;
 import tools.Util;
 
+import java.util.LinkedList;
+
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.codegen.MachineOperand.createReg;
 
@@ -45,7 +47,6 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     super.getAnalysisUsage(au);
   }
 
-  private int curPos;
   private TargetRegisterInfo tri;
   private TargetInstrInfo tii;
 
@@ -59,10 +60,11 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     tii = mf.getSubtarget().getInstrInfo();
 
     boolean madeChange = false;
+    LinkedList<MachineInstr> worklist = new LinkedList<>();
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
-      for (int i = 0; i < mbb.size(); i++) {
-        curPos = i;
-        MachineInstr mi = mbb.getInstAt(i);
+      worklist.addAll(mbb.getInsts());
+      while (!worklist.isEmpty()) {
+        MachineInstr mi = worklist.removeFirst();
         switch (mi.getOpcode()) {
           case TargetOpcode.EXTRACT_SUBREG:
             madeChange |= lowerExtract(mi);
@@ -77,7 +79,6 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
             madeChange |= lowerCopy(mi);
             break;
         }
-        i = curPos;
       }
     }
     return madeChange;
@@ -119,7 +120,6 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
           return true;
         }
       }
-      --curPos;
       if (Util.DEBUG)
         System.err.print("subreg: eliminated!");
     } else {
@@ -133,7 +133,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     }
     if (Util.DEBUG)
       System.err.println();
-    mbb.remove(mi);
+    mi.removeFromParent();
     return true;
   }
 
@@ -148,10 +148,10 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
         mo2 = mi.getOperand(2),
         mo3 = mi.getOperand(3);
 
-    Util.assertion(mo0.isRegister() && mo0.isDef() && mo1.isRegister() && mo1.isUse() &&
-        mo2.isRegister() && mo2.isUse() &&
-        mo3.isImm(), "Malformed insert_subreg");
-
+    Util.assertion(mo0.isRegister() &&
+            mo0.isDef() && mo1.isRegister() &&
+            mo1.isUse() && mo2.isRegister() &&
+            mo2.isUse() && mo3.isImm(), "Malformed insert_subreg");
 
     int destReg = mo0.getReg();
     int srcReg = mo1.getReg();
@@ -162,10 +162,10 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     Util.assertion(subIdx > 0, "Invalid index for insert_subreg");
     int destSubReg = tri.getSubReg(srcReg, subIdx);
     Util.assertion(destSubReg > 0, "Invalid subregister!");
-    Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg), "insert superreg source must be a physical register");
-
-    Util.assertion(TargetRegisterInfo.isPhysicalRegister(insReg), "inserted value must be a physical register");
-
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg),
+            "insert superreg source must be a physical register");
+    Util.assertion(TargetRegisterInfo.isPhysicalRegister(insReg),
+            "inserted value must be a physical register");
 
     if (destSubReg == insReg) {
       // No need to insert an identity copy instruction. If the SrcReg was
@@ -181,8 +181,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
       } else {
         if (Util.DEBUG)
           System.err.print("subreg: eliminated!");
-        --curPos;
-        mbb.remove(mi);
+        mi.removeFromParent();
         return true;
       }
     } else {
@@ -211,7 +210,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
 
     if (Util.DEBUG)
       System.err.println();
-    mbb.remove(mi);
+    mi.removeFromParent();
     return true;
   }
 
@@ -243,7 +242,6 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
       // %RAX<def> = SUBREG_TO_REG 0, %EAX:4<kill>, 4
       // The first def is defining RAX, not EAX so the top bits were not
       // zero extended.
-      --curPos;
       if (Util.DEBUG)
         System.err.print("subreg: eliminated!");
     } else {
@@ -255,7 +253,7 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     }
 
     if (Util.DEBUG) System.err.println();
-    mbb.remove(mi);
+    mi.removeFromParent();
     return true;
   }
 
@@ -309,7 +307,6 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     if (srcMO.getReg() == destMO.getReg()) {
       // eliminate identical copy.
       mi.removeFromParent();
-      --curPos;
       return true;
     }
 
@@ -322,7 +319,6 @@ public class ExpandPostRAPseduos extends MachineFunctionPass {
     if (mi.getNumOperands() > 2)
       transferImplicitDefs(mi);
     mi.removeFromParent();
-    --curPos;
     return true;
   }
 

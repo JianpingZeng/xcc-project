@@ -167,10 +167,10 @@ public class RegScavenger {
       tracking = true;
     }
     else {
-      Util.assertion(mbbi != mbb.size(), "already past the end of mbb");
+      Util.assertion(mbbi < mbb.size(), "already past the end of mbb");
       ++mbbi;
     }
-    Util.assertion(mbbi != mbb.size(), "already past the end of mbb");
+    Util.assertion(mbbi < mbb.size(), "already past the end of mbb");
 
     MachineInstr mi = mbb.getInstAt(mbbi);
     if (mi == scavengeRestore) {
@@ -219,7 +219,7 @@ public class RegScavenger {
   public void forward(int itr) {
     if (!tracking && itr != 0)
       forward();
-    while (mbbi != itr)
+    while (mbbi < itr)
       forward();
   }
 

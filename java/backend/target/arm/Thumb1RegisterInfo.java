@@ -31,6 +31,7 @@ import backend.codegen.*;
 import backend.debug.DebugLoc;
 import backend.mc.MCInstrDesc;
 import backend.mc.MCRegisterClass;
+import backend.target.TargetFrameLowering;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
@@ -92,7 +93,7 @@ class Thumb1RegisterInfo extends ARMGenRegisterInfo {
                                   int spAdj, MachineInstr mi,
                                   RegScavenger rs) {
     MachineBasicBlock mbb = mi.getParent();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     DebugLoc dl = mi.getDebugLoc();
     MachineFrameInfo mfi = mf.getFrameInfo();
     int ii = mi.getIndexInMBB();
@@ -198,6 +199,31 @@ class Thumb1RegisterInfo extends ARMGenRegisterInfo {
       MachineInstrBuilder mib = new MachineInstrBuilder(mi);
       addDefaultPred(mib);
     }
+  }
+
+  @Override
+  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr mi) {
+    TargetFrameLowering tfl = mf.getSubtarget().getFrameLowering();
+    ARMInstrInfo tii = ((ARMSubtarget)mf.getSubtarget()).getInstrInfo();
+    if (!tfl.hasReservedCallFrame(mf)) {
+      // convert to that as follows:
+      // ADJCALLSTACKDOWN -> sub, sp, sp, amount
+      // ADJCALLSTACKUP   -> add, sp, sp, amount
+      DebugLoc dl = mi.getDebugLoc();
+      long amount = mi.getOperand(0).getImm();
+      if (amount != 0) {
+        // we need to keep stack alignment.
+        int align = tfl.getStackAlignment();
+        amount = (amount + align - 1)/align * align;
+        int opc = mi.getOpcode();
+        if (opc == ARMGenInstrNames.ADJCALLSTACKDOWN || opc == ARMGenInstrNames.tADJCALLSTACKDOWN) {
+          amount = -amount;
+        }
+        ARMFrameLowering.emitSPUpdate(false, mi.getParent(), mi.getIndexInMBB(),
+                dl, tii, (int) amount);
+      }
+    }
+    mi.removeFromParent();
   }
 
   private static void removeOperands(MachineInstr mi, int idx) {

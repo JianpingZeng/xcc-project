@@ -60,7 +60,7 @@ public class ARMExpandPseudoInsts extends MachineFunctionPass {
   @Override
   public boolean runOnMachineFunction(MachineFunction mf) {
     boolean changed = false;
-    afi = (ARMFunctionInfo) mf.getInfo();
+    afi = (ARMFunctionInfo) mf.getFunctionInfo();
     tii = mf.getSubtarget().getInstrInfo();
     tri = mf.getSubtarget().getRegisterInfo();
     subtarget = (ARMSubtarget) mf.getTarget().getSubtarget();

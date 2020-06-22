@@ -416,7 +416,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
       // get the immediate.
       int imm = (int) old.getOperand(0).getImm();
       if (imm != 0) {
-        ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+        ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
         Util.assertion(!afi.isThumb1OnlyFunction());
         boolean isARM = !afi.isThumbFunction();
 
@@ -445,7 +445,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     MachineFunction mf = mbb.getParent();
     MachineInstr mi = mbb.getInstAt(mbbi);
     int retOpcode = mi.getOpcode();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     DebugLoc dl = mbbi != mbb.size() ? mi.getDebugLoc() : new DebugLoc();
     boolean isTailCall = retOpcode == ARMGenInstrNames.TCRETURNdi ||
         mi.getOpcode() == ARMGenInstrNames.TCRETURNdiND ||
@@ -509,7 +509,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     if (csi.isEmpty()) return true;
 
     MachineFunction mf = mbb.getParent();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     int ldmOpc = afi.isThumbFunction() ? ARMGenInstrNames.t2LDMIA_UPD : ARMGenInstrNames.LDMIA_UPD;
     int ldrOpc = afi.isThumbFunction() ? ARMGenInstrNames.t2LDR_POST : ARMGenInstrNames.LDR_POST_IMM;
     int fltOpc = ARMGenInstrNames.VLDMDIA_UPD;
@@ -636,7 +636,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     if (csi.isEmpty()) return true;
 
     MachineFunction mf = mbb.getParent();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     int pushOpc = afi.isThumbFunction() ? ARMGenInstrNames.t2STMDB_UPD : ARMGenInstrNames.STMDB_UPD;
     int pushOneOpc = afi.isThumbFunction() ? ARMGenInstrNames.t2STR_PRE : ARMGenInstrNames.STR_PRE_IMM;
     int fltOpc = ARMGenInstrNames.VSTMDDB_UPD;
@@ -766,7 +766,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
   @Override
   public int insertBranch(MachineBasicBlock mbb, MachineBasicBlock tbb,
                           MachineBasicBlock fbb, ArrayList<MachineOperand> cond, DebugLoc dl) {
-    ARMFunctionInfo afi = (ARMFunctionInfo) mbb.getParent().getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mbb.getParent().getFunctionInfo();
     int bOpc = !afi.isThumbFunction() ? ARMGenInstrNames.B :
         afi.isThumb2Function() ? ARMGenInstrNames.t2B : ARMGenInstrNames.tB;
     int bccOpc = !afi.isThumbFunction() ? ARMGenInstrNames.Bcc :
@@ -950,7 +950,7 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
 
   static int duplicateCPV(MachineFunction mf, OutRef<Integer> cpi) {
     MachineConstantPool mcp = mf.getConstantPool();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
 
     MachineConstantPoolEntry mcpe = mcp.getConstants().get(cpi.get());
     Util.assertion(mcpe.isMachineConstantPoolEntry(), "expecting a machine constantpool entry!");

@@ -742,7 +742,7 @@ public class ARMTargetLowering extends TargetLowering {
   private SDValue getF64FormalArgument(CCValAssign va, CCValAssign nextVA,
                                        SDValue root, SelectionDAG dag,
                                        DebugLoc dl) {
-    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getFunctionInfo();
     MachineFunction mf = dag.getMachineFunction();
     MCRegisterClass rc;
     if (afi.isThumb1OnlyFunction())
@@ -779,7 +779,7 @@ public class ARMTargetLowering extends TargetLowering {
     MachineFunction mf = dag.getMachineFunction();
     MachineFrameInfo mfi = mf.getFrameInfo();
     ArrayList<CCValAssign> argLocs = new ArrayList<>();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     DebugLoc dl = new DebugLoc();
     ARMCCState ccInfo = new ARMCCState(callingConv, varArg, getTargetMachine(),
         argLocs, dag.getContext(), CCState.ParmContext.Prologue);
@@ -1489,7 +1489,7 @@ public class ARMTargetLowering extends TargetLowering {
     BlockAddress ba = ban.getBlockAddress();
     EVT ptrVT = new EVT(getPointerTy());
     TargetMachine.RelocModel rm = tm.getRelocationModel();
-    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getFunctionInfo();
 
     SDValue cpAddr;
     if (rm == TargetMachine.RelocModel.Static)
@@ -1580,7 +1580,7 @@ public class ARMTargetLowering extends TargetLowering {
 
     EVT ptrTy = new EVT(getPointerTy());
     SDNode.JumpTableSDNode jt = (SDNode.JumpTableSDNode) table.getNode();
-    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) dag.getMachineFunction().getFunctionInfo();
     SDValue uid = dag.getConstant(afi.createJumpTableUId(), ptrTy, false);
     SDValue jti = dag.getTargetJumpTable(jt.getJumpTableIndex(), ptrTy, 0);
     table = dag.getNode(ARMISD.WrapperJT, new EVT(MVT.i32), jti, uid);
@@ -1976,7 +1976,7 @@ public class ARMTargetLowering extends TargetLowering {
     SDValue pointer = op.getOperand(1);
     Value srcValue = ((SDNode.SrcValueSDNode)op.getOperand(2).getNode()).getValue();
     MachineFunction mf = dag.getMachineFunction();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     int fi = afi.getVarArgsFrameIndex();
     SDValue fin = dag.getFrameIndex(fi, new EVT(getPointerTy()), false);
     return dag.getStore(chain, fin, pointer, srcValue, 0, false, 0);

@@ -75,7 +75,7 @@ class Thumb1FrameLowering extends ARMFrameLowering {
     Thumb1InstrInfo tii = (Thumb1InstrInfo) subtarget.getInstrInfo();
     Thumb1RegisterInfo tri = (Thumb1RegisterInfo) subtarget.getRegisterInfo();
 
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     int vaRegSaveSize = afi.getVarArgsRegSaveSize();
     MachineFrameInfo mfi = mf.getFrameInfo();
     int numBytes = mfi.getStackSize();
@@ -223,7 +223,7 @@ class Thumb1FrameLowering extends ARMFrameLowering {
 
   @Override
   public void emitEpilogue(MachineFunction mf, MachineBasicBlock mbb) {
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     int vaRegSaveSize = afi.getVarArgsRegSaveSize();
     MachineFrameInfo mfi = mf.getFrameInfo();
     int numBytes = mfi.getStackSize();

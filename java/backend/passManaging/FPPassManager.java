@@ -66,6 +66,7 @@ public final class FPPassManager extends PMDataManager implements ModulePass {
       initializeAnalysisImpl(fp);
       {
         PassManagerPrettyStackEntry x = new PassManagerPrettyStackEntry(fp, f);
+        //System.err.printf("Pass '%s' on '%s'\n", fp.getPassName(), f.getName());
         changed |= fp.runOnFunction(f);
         x.unregister();
       }

@@ -183,7 +183,7 @@ public class MachineFunction {
     mbbNumber.ensureCapacity(blockNo);
   }
 
-  public MachineFunctionInfo getInfo() {
+  public MachineFunctionInfo getFunctionInfo() {
     if (mfInfo == null)
       mfInfo = target.getSubtarget().getTargetLowering().createMachineFunctionInfo(this);
     return mfInfo;

@@ -1463,41 +1463,39 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     int frameSetupOpcode = tii.getCallFrameSetupOpcode();
     int frameDestroyOpcode = tii.getCallFrameDestroyOpcode();
 
+    LinkedList<MachineInstr> worklist = new LinkedList<>() ;
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
       int spAdj = 0;
       if (rs != null && frameIndexVirtualScavenging)
         rs.enterBasicBlock(mbb);
 
-      for (int i = 0; i < mbb.size(); ) {
-        MachineInstr mi = mbb.getInstAt(i);
+      // We use a worklist maintain all original machine insts
+      // because the action of eliminating frame index will generate
+      // other instructions so that the index of machine instruction
+      // will change as well.
+      worklist.addAll(mbb.getInsts());
+      while (!worklist.isEmpty()) {
+        MachineInstr mi = worklist.removeFirst();
+        int i = mi.getIndexInMBB();
         if (mi.getOpcode() == frameSetupOpcode || mi.getOpcode() == frameDestroyOpcode) {
           int size = (int) mi.getOperand(0).getImm();
           if ((!stackGrowsDown && mi.getOpcode() == frameSetupOpcode) ||
-              (stackGrowsDown && mi.getOpcode() == frameDestroyOpcode))
+                  (stackGrowsDown && mi.getOpcode() == frameDestroyOpcode))
             size = -size;
 
           spAdj += size;
-          // FIXME tri.eliminateCallFramePseudoInstr(mf, mbb, i);
+          tri.eliminateCallFramePseudoInstr(mf, mi);
+          continue;
         }
-
-        boolean doIncr = true;
         for (int j = 0; j < mi.getNumOperands(); j++) {
           if (mi.getOperand(j).isFrameIndex()) {
-            boolean atBeginning = i == 0;
-            if (!atBeginning) --i;
             // if this instruction has a frame index operand, we have to use that
             // target machine register info object to eliminate it.
             regInfo.eliminateFrameIndex(mf, spAdj, mi, frameIndexVirtualScavenging ? null : rs);
-            // reset the iterator if we are at the beginning of the machine basic block.
-            if (atBeginning) {
-              i = 0;
-              doIncr = false;
-            }
             break;
           }
         }
-        if (doIncr && i != mbb.size()) ++i;
-        if (rs != null && !frameIndexVirtualScavenging && mi != null)
+        if (rs != null && !frameIndexVirtualScavenging)
           rs.forward(i);
       }
     }

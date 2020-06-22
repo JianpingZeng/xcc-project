@@ -84,7 +84,7 @@ class Thumb1InstrInfo extends ARMGenInstrInfo {
       return false;
 
     MachineFunction mf = mbb.getParent();
-    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getInfo();
+    ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     boolean isVarArg = afi.getVarArgsRegSaveSize() > 0;
     DebugLoc dl = mbb.getInstAt(pos).getDebugLoc();
     MachineInstrBuilder mib = MachineInstrBuilder.buildMI(get(ARMGenInstrNames.tPOP), dl);

@@ -256,11 +256,23 @@ public class MachineBasicBlock {
     return successors.iterator();
   }
 
+  /**
+   * Returns the index to the first terminator instruction of {@linkplain MachineBasicBlock}.
+   * In some cases, there are multiple terminator instructions in the end of
+   * {@linkplain MachineBasicBlock}
+   * @return  The index to the first terminator instruction of this block. Return the
+   * size of this block if this block is empty or doesn't have a terminator instruction.
+   */
   public int getFirstTerminator() {
-    int i = 0;
-    int size = size();
-    while (i < size && !getInstAt(i).getDesc().isTerminator()) ++i;
-    return i;
+    if (isEmpty()) return 0;
+    int i = size() - 1;
+    // no terminator? fall through basic block.
+    if (!getInstAt(i).getDesc().isTerminator()) return i+1;
+
+    while (i >= 0 && getInstAt(i).getDesc().isTerminator()) --i;
+    // In some cases, there are two branches instruction in the block.
+    // Thus, i becomes negative.
+    return i < 0 ? 0 : i+1;
   }
 
   /**
