@@ -224,5 +224,15 @@ public class ARMISD {
 	public static final int ATOMSWAP64_DAG = ATOMNAND64_DAG + 1;
 	public static final int ATOMCMPXCHG64_DAG = ATOMSWAP64_DAG + 1;
 
-	public static boolean isBitFieldInvertedMask(long i) { return false; }
+	public static boolean isBitFieldInvertedMask(long v) {
+		if (v == 0xffffffff) return false;
+
+		int lsb = 0, msb = 31;
+		while ((v & (1 << msb)) != 0) --msb;
+		while ((v & (1 << lsb)) != 0) ++lsb;
+		for (int i = lsb; i <= msb; ++i)
+			if ((v & (1 << i)) != 0)
+				return false;
+		return true;
+	}
 }

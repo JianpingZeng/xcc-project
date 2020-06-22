@@ -96,7 +96,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public boolean isUseEmpty() {
-    return useList == null || useList.isEmpty();
+    if (useList == null || useList.isEmpty()) return true;
+    for (int i = 0, e = getUseSize(); i < e; ++i) {
+      if (!getUse(i).getUser().isDeleted())
+        return false;
+    }
+    return true;
   }
 
   public boolean hasOneUse() {
@@ -108,7 +113,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public SDUse getUse(int idx) {
-    Util.assertion(!isUseEmpty() && idx >= 0 && idx < getUseSize());
+    Util.assertion(idx >= 0 && idx < getUseSize(), "index to use list out of range!");
     return useList.get(idx);
   }
 
