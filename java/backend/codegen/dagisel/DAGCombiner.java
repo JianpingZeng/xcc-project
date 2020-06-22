@@ -1164,12 +1164,13 @@ public class DAGCombiner {
     if (simplify.getNode() != null)
       addToWorkList(simplify.getNode());
 
-    if (simplify.getNode() instanceof ConstantSDNode &&
-        !((ConstantSDNode) simplify.getNode()).isNullValue()) {
+    if (simplify.getNode() instanceof ConstantSDNode) {
       if (!((ConstantSDNode) simplify.getNode()).isNullValue())
         return dag.getNode(ISD.BR, new EVT(MVT.Other), n.getOperand(0), n.getOperand(4));
-      else
-        return dag.getNode(ISD.BR, new EVT(MVT.Other), n.getOperand(0));
+      else {
+        // if we can make sure the condition is false, we don't need this BR_CC at all.
+        return n.getOperand(0);
+      }
     }
     if (simplify.getNode() != null && simplify.getOpcode() == ISD.SETCC) {
       // to setcc
