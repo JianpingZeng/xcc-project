@@ -889,16 +889,16 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
     return emitARMRegPlusImmediate(mbb, mi, dl, destReg, baseReg, numBytes, cc, predReg, tii, 0);
   }
 
-  private static int emitARMRegPlusImmediate(MachineBasicBlock mbb,
-                                             int mi,
-                                             DebugLoc dl,
-                                             int destReg,
-                                             int baseReg,
-                                             int numBytes,
-                                             ARMCC.CondCodes pred,
-                                             int predReg,
-                                             ARMInstrInfo tii,
-                                             int miFlags) {
+  static int emitARMRegPlusImmediate(MachineBasicBlock mbb,
+                                     int mi,
+                                     DebugLoc dl,
+                                     int destReg,
+                                     int baseReg,
+                                     int numBytes,
+                                     ARMCC.CondCodes pred,
+                                     int predReg,
+                                     ARMInstrInfo tii,
+                                     int miFlags) {
     boolean isSub = numBytes < 0;
     if (isSub) numBytes = -numBytes;
 

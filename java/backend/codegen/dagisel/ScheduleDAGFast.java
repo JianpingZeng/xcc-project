@@ -76,7 +76,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
 
     if (predSU.numSuccsLeft == 0 && !Objects.equals(predSU, entrySU)) {
       predSU.isAvailable = true;
-      availableQueue.push(predSU);
+      availableQueue.addLast(predSU);
     }
   }
 
@@ -382,7 +382,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
       SUnit rootSU = sunits.get(dag.getRoot().getNode().getNodeID());
       Util.assertion(rootSU.succs.isEmpty());
       rootSU.isAvailable = true;
-      availableQueue.push(rootSU);
+      availableQueue.addLast(rootSU);
     }
 
     ArrayList<SUnit> notReady = new ArrayList<>();
@@ -390,7 +390,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
     while (!availableQueue.isEmpty()) {
       boolean delayed = false;
       lregsMap.clear();
-      SUnit curSU = availableQueue.pop();
+      SUnit curSU = availableQueue.removeFirst();
       while (curSU != null) {
         TIntArrayList lregs = new TIntArrayList();
         if (!delayForLiveRegsBottemUp(curSU, lregs))
@@ -400,7 +400,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
 
         curSU.isPending = true;
         notReady.add(curSU);
-        curSU = availableQueue.pop();
+        curSU = availableQueue.removeFirst();
       }
 
       if (delayed && curSU == null) {
@@ -437,7 +437,7 @@ public class ScheduleDAGFast extends ScheduleDAGSDNodes {
       for (int i = 0, e = notReady.size(); i < e; i++) {
         notReady.get(i).isPending = false;
         if (notReady.get(i).isAvailable)
-          availableQueue.push(notReady.get(i));
+          availableQueue.addLast(notReady.get(i));
       }
 
       notReady.clear();

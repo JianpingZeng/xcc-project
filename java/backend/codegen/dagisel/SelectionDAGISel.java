@@ -141,6 +141,24 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     for (Pair<Integer, Integer> reg : regInfo.getLiveIns()) {
       mf.getEntryBlock().addLiveIn(reg.first);
     }
+
+    // check if there is function call inside the function.
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    finished:
+    if (!mfi.hasCalls()) {
+      for (int i = 0, e = mf.getNumBlocks(); i < e; ++i) {
+        MachineBasicBlock mbb = mf.getMBBAt(i);
+        for (int j = 0, sz = mbb.size(); j < sz; ++j) {
+          MachineInstr mi = mbb.getInstAt(j);
+          MCInstrDesc mcid = mi.getDesc();
+          if ((mcid.isCall() && !mcid.isReturn())) {
+            mfi.setHasCalls(true);
+            break finished;
+          }
+        }
+      }
+    }
+
     funcInfo.clear();
     sdl.clear();
     curDAG.clear();

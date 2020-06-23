@@ -121,6 +121,7 @@ public class MachineFrameInfo {
 
   private TargetFrameLowering tfi;
   private TargetRegisterInfo tri;
+  private boolean adjustsStack;
 
   public MachineFrameInfo(TargetFrameLowering tfi,
                           TargetRegisterInfo tri) {
@@ -259,6 +260,14 @@ public class MachineFrameInfo {
     stackSize = size;
   }
 
+  /**
+   * Return ture this function adjust the stack, e.g., when calling another function,
+   * this is only valid during and after prolog/epilog insertion pass.
+   * @return
+   */
+  public boolean adjustsStack() { return adjustsStack; }
+
+  public void setAdjustsStack(boolean val) { adjustsStack = val; }
   /**
    * hasCalls - Return true if the current function has no function calls.
    * This is only valid during or after prolog/epilog code emission.

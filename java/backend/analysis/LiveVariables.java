@@ -236,7 +236,7 @@ public final class LiveVariables extends MachineFunctionPass {
         // process all uses.
         for (int i = 0; i < useRegs.size(); i++) {
           int reg = useRegs.get(i);
-          if (machineRegInfo.isPhysicalReg(reg)
+          if (machineRegInfo.isPhysRegUsed(reg)
               && allocatablePhyRegs.get(reg)) {
             handlePhyRegUse(reg, inst);
           } else if (machineRegInfo.isVirtualReg(reg)) {
@@ -246,7 +246,7 @@ public final class LiveVariables extends MachineFunctionPass {
         // process all defs.
         for (int i = 0; i < defRegs.size(); i++) {
           int reg = defRegs.get(i);
-          if (machineRegInfo.isPhysicalReg(reg)
+          if (machineRegInfo.isPhysRegUsed(reg)
               && allocatablePhyRegs.get(reg))
             handlePhyRegDef(reg, inst);
           else if (machineRegInfo.isVirtualReg(reg)) {

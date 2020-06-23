@@ -294,6 +294,10 @@ public abstract class MCRegisterInfo {
 
   public abstract BitMap getReservedRegs(MachineFunction mf);
 
+  public boolean isReservedReg(MachineFunction mf, int reg) {
+    return isPhysicalRegister(reg) && getReservedRegs(mf).get(reg);
+  }
+
   /**
    * Returns the physical register number of sub-register "Index"
    * for physical register RegNo. Return zero if the sub-register does not

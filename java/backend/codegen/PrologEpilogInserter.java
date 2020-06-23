@@ -200,6 +200,9 @@ public class PrologEpilogInserter extends MachineFunctionPass {
     if (frameSetupOpcode == -1 && frameDestroyOpcode == -1)
       return;
 
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    boolean adjustsStack = mfi.adjustsStack();
+
     // A list for keeping track of frame setup/destroy operation.
     ArrayList<MachineInstr> frameSDOps = new ArrayList<>();
     for (MachineBasicBlock mbb : mf.getBasicBlocks()) {
@@ -212,14 +215,15 @@ public class PrologEpilogInserter extends MachineFunctionPass {
           long size = mi.getOperand(0).getImm();
           if (size > maxCallFrameSize)
             maxCallFrameSize = size;
-          hasCalls = true;
+          adjustsStack = true;
           frameSDOps.add(mi);
+        } else if (mi.isInlineAsm()) {
+          // TODO about InlineAsm.
         }
       }
     }
 
-    MachineFrameInfo mfi = mf.getFrameInfo();
-    mfi.setHasCalls(hasCalls);
+    mfi.setAdjustsStack(adjustsStack);
     mfi.setMaxCallFrameSize(maxCallFrameSize);
 
     for (MachineInstr mi : frameSDOps) {

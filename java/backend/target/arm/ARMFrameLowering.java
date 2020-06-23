@@ -84,7 +84,18 @@ public class ARMFrameLowering extends TargetFrameLowering {
   static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
                           int mbbi, DebugLoc dl, ARMInstrInfo tii,
                           int numBytes) {
-    return emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes, ARMCC.CondCodes.AL);
+    return emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes, MachineInstr.NoFlags);
+  }
+
+  static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
+                          int mbbi, DebugLoc dl, ARMInstrInfo tii,
+                          int numBytes, int miFlags) {
+    if (isARM)
+      return emitARMRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP,
+              ARMGenRegisterNames.SP, numBytes, ARMCC.CondCodes.AL, 0, tii, miFlags);
+    else
+      return emitT2RegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP,
+              ARMGenRegisterNames.SP, numBytes, ARMCC.CondCodes.AL, 0, tii, miFlags);
   }
 
   static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
@@ -97,13 +108,21 @@ public class ARMFrameLowering extends TargetFrameLowering {
                           int mbbi, DebugLoc dl, ARMInstrInfo tii,
                           int numBytes, ARMCC.CondCodes pred,
                           int predReg) {
+    return emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes, pred, predReg, MachineInstr.NoFlags);
+  }
+
+  static int emitSPUpdate(boolean isARM, MachineBasicBlock mbb,
+                          int mbbi, DebugLoc dl, ARMInstrInfo tii,
+                          int numBytes, ARMCC.CondCodes pred,
+                          int predReg, int miFlags) {
     if (isARM)
-      return ARMRegisterInfo.emitARMRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP,
-          ARMGenRegisterNames.SP, numBytes, pred, predReg, tii);
+      return emitARMRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP,
+              ARMGenRegisterNames.SP, numBytes, pred, predReg, tii, miFlags);
     else
       return emitT2RegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP,
-          ARMGenRegisterNames.SP, numBytes, pred, predReg, tii);
+              ARMGenRegisterNames.SP, numBytes, pred, predReg, tii, miFlags);
   }
+
   @Override
   public void emitPrologue(MachineFunction mf) {
     ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
@@ -145,6 +164,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
             framePtrSpillFI = fi;
           afi.addGPRCalleeSavedArea1Frame(fi);
           gprCS1Size += 4;
+          break;
         case ARMGenRegisterNames.R8:
         case ARMGenRegisterNames.R9:
         case ARMGenRegisterNames.R10:
@@ -163,27 +183,25 @@ public class ARMFrameLowering extends TargetFrameLowering {
         default:
           afi.addDPRCalleeSavedAreaFrame(fi);
           dprCSSize += 8;
+          break;
       }
     }
+    // Move past callee-saved-register area 1.
+    if (gprCS1Size > 0)
+      ++mbbi;
 
-    // Build teh new SUBri to adjust SP for integer callee-saved spill area 1.
-    mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, -gprCS1Size);
-    mbbi = movePastCSLoadStoreOps(mbb, mbbi, ARMGenInstrNames.STRi12, ARMGenInstrNames.t2STRi12, 1, subtarget);
-
-    // Darwin ABI requires FP to point to the stack slot that contains the previous FP.
-    if (subtarget.isTargetDarwin() || hasFP(mf)) {
-      int addRIOpc = !afi.isThumbFunction() ? ARMGenInstrNames.ADDri : ARMGenInstrNames.t2ADDri;
-      MachineInstrBuilder mib = buildMI(mbb, mbbi, dl, tii.get(addRIOpc), framePtr)
-          .addFrameIndex(framePtrSpillFI).addImm(0);
+    boolean hasFP = hasFP(mf);
+    if (hasFP) {
+      int addriOpc = !afi.isThumbFunction() ? ARMGenInstrNames.ADDri :
+              ARMGenInstrNames.t2ADDri;
+      MachineInstrBuilder mib = buildMI(mbb, mbbi++, dl, tii.get(addriOpc), framePtr)
+              .addFrameIndex(framePtrSpillFI).addImm(0)
+              .setMIFlags(MachineInstr.FrameSetup);
       addDefaultCC(addDefaultPred(mib));
     }
-
-    // Build the new SUBri to adjust SP for integer callee-saved-registers area 2.
-    mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, -gprCS2Size);
-    mbbi = movePastCSLoadStoreOps(mbb, mbbi, ARMGenInstrNames.STRi12, ARMGenInstrNames.t2STRi12, 2, subtarget);
-
-    // Build the new SUBri for double float fp callee-saved-registers.
-    mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, -dprCSSize);
+    // Move past area 2.
+    if (gprCS2Size > 0)
+      ++mbbi;
 
     // Determine starting offsets of spill areas.
     // The following is a stack layout for ARMV6&V7
@@ -203,12 +221,30 @@ public class ARMFrameLowering extends TargetFrameLowering {
     if (hasFP(mf))
       afi.setFramePtrSpillOffset(mfi.getObjectOffset(framePtrSpillFI) + numBytes);
 
+    // Move past area 3.
+    if (dprCSSize > 0) {
+      ++mbbi;
+      while (mbb.getInstAt(mbbi).getOpcode() == ARMGenInstrNames.VSTMDDB_UPD)
+        ++mbbi;
+    }
+
     numBytes = dprCSOffset;
     // if the offset of DPR callee-saved-register area is not zero, adjust SP.
     if (numBytes != 0) {
-      mbbi = movePastCSLoadStoreOps(mbb, mbbi, ARMGenInstrNames.VSTRD, 0, 3, subtarget);
-      mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, -dprCSSize);
+      mbbi = emitSPUpdate(isARM, mbb, mbbi++, dl, tii, -numBytes, MachineInstr.FrameSetup);
+      if (hasFP && isARM) {
+        // Restore from fp only in ARM mode: e.g. sub sp, r7, #24
+        // Note it's not safe to do this in Thumb2 mode because it would have
+        // taken two instructions:
+        // mov sp, r7
+        // sub sp, #24
+        // If an interrupt is taken between the two instructions, then sp is in
+        // an inconsistent state (pointing to the middle of callee-saved area).
+        // The interrupt handler can end up clobbering the registers.
+        afi.setShouldRestoreSPFromFP(true);
+      }
     }
+
     if (subtarget.isTargetELF() && hasFP(mf)) {
       mfi.setOffsetAdjustment(mfi.getOffsetAdjustment() + afi.getFramePtrSpillOffset());
     }
@@ -216,6 +252,48 @@ public class ARMFrameLowering extends TargetFrameLowering {
     afi.setGPRCalleeSavedArea1Size(gprCS1Size);
     afi.setGPRCalleeSavedArea2Size(gprCS2Size);
     afi.setDPRCalleeSavedAreaSize(dprCSSize);
+
+    ARMRegisterInfo tri = ((ARMSubtarget)mf.getSubtarget()).getRegisterInfo();
+    if (tri.needsStackRealignment(mf)) {
+      int maxAlign = mfi.getMaxAlignment();
+      Util.assertion(!afi.isThumb1OnlyFunction());
+      if (!afi.isThumbFunction()) {
+        // Emit bic sp, sp, MaxAlign
+        addDefaultCC(addDefaultPred(buildMI(mbb, mbbi++, dl, tii.get(ARMGenInstrNames.BICri),
+                ARMGenRegisterNames.SP).addReg(ARMGenRegisterNames.SP, getKillRegState(true))
+                .addImm(maxAlign-1)));
+      } else {
+        // We cannot use sp as source/dest register here, thus we're emitting the
+        // following sequence:
+        // mov r4, sp
+        // bic r4, r4, MaxAlign
+        // mov sp, r4
+        addDefaultPred(buildMI(mbb, mbbi++, dl, tii.get(ARMGenInstrNames.tMOVr), ARMGenRegisterNames.R4)
+                .addReg(ARMGenRegisterNames.SP, getKillRegState(true)));
+        addDefaultCC(addDefaultPred(buildMI(mbb, mbbi++, dl, tii.get(ARMGenInstrNames.t2BICri),
+                ARMGenRegisterNames.R4).addReg(ARMGenRegisterNames.R4, getKillRegState(true))
+                .addImm(maxAlign-1)));
+        addDefaultPred(buildMI(mbb, mbbi++, dl, tii.get(ARMGenInstrNames.tMOVr), ARMGenRegisterNames.SP)
+                .addReg(ARMGenRegisterNames.R4, getKillRegState(true)));
+      }
+      afi.setShouldRestoreSPFromFP(true);
+    }
+
+    // If we need a base pointer, set it up here. It's whatever the value
+    // of the stack pointer is at this point. Any variable size objects
+    // will be allocated after this, so we can still use the base pointer
+    // to reference locals.
+    if (tri.hasBasePointer(mf)) {
+      if (isARM)
+        buildMI(mbb, mbbi, dl, tii.get(ARMGenInstrNames.MOVr), tri.getBaseRegister())
+                .addReg(ARMGenRegisterNames.SP).addImm(ARMCC.CondCodes.AL.ordinal())
+                .addReg(0).addImm(0);
+      else
+        addDefaultPred(buildMI(mbb, mbbi, dl, tii.get(ARMGenInstrNames.tMOVr), tri.getBaseRegister())
+                .addReg(ARMGenRegisterNames.SP));
+    }
+    if (mfi.hasVarSizedObjects())
+      afi.setShouldRestoreSPFromFP(true);
   }
 
   /**
@@ -308,12 +386,9 @@ public class ARMFrameLowering extends TargetFrameLowering {
     int retOpcode = mbb.getInstAt(mbbi).getOpcode();
 
     DebugLoc dl = mbbi == mbb.size() ? new DebugLoc() : mbb.getInstAt(mbbi).getDebugLoc();
-    if (varRegSaveSize != 0)
-      mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, varRegSaveSize);
-
     if (!afi.hasStackFrame()) {
       if (numBytes != 0)
-        emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes);
+        mbbi = emitSPUpdate(isARM, mbb, mbbi, dl, tii, numBytes);
     } else {
       // move the mbbi to point to the first LDR/VLD
       ARMRegisterInfo tri = subtarget.getRegisterInfo();
@@ -329,7 +404,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
       }
 
       // move SP to the start of FP callee save spill area.
-      numBytes -= afi.getGPRCalleeSavedArea2Size() +
+      numBytes -= afi.getGPRCalleeSavedArea1Size() +
               afi.getGPRCalleeSavedArea2Size() +
               afi.getDPRCalleeSavedAreaSize();
 
@@ -382,7 +457,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
       if (retOpcode == ARMGenInstrNames.TCRETURNdi || retOpcode == ARMGenInstrNames.TCRETURNdiND) {
         int tcOpcode = retOpcode == ARMGenInstrNames.TCRETURNdi ? (isThumb ? ARMGenInstrNames.tTAILJMPd : ARMGenInstrNames.TAILJMPd)
                 : (isThumb ? ARMGenInstrNames.tTAILJMPdND : ARMGenInstrNames.TAILJMPdND);
-        MachineInstrBuilder mib = buildMI(mbb, mbbi, dl, tii.get(tcOpcode));
+        MachineInstrBuilder mib = buildMI(mbb, mbbi++, dl, tii.get(tcOpcode));
         if (jumpTarget.isGlobalAddress())
           mib.addGlobalAddress(jumpTarget.getGlobal(), jumpTarget.getOffset(), jumpTarget.getTargetFlags());
         else {
@@ -394,21 +469,22 @@ public class ARMFrameLowering extends TargetFrameLowering {
         if (isThumb) mib.addImm(ARMCC.CondCodes.AL.ordinal()).addReg(0);
       }
       else if (retOpcode == ARMGenInstrNames.TCRETURNri) {
-        buildMI(mbb,mbbi, dl, tii.get(isThumb ? ARMGenInstrNames.tTAILJMPr : ARMGenInstrNames.TAILJMPr))
+        buildMI(mbb, mbbi++, dl, tii.get(isThumb ? ARMGenInstrNames.tTAILJMPr : ARMGenInstrNames.TAILJMPr))
                 .addReg(jumpTarget.getReg(), getKillRegState(true));
       }
       else {
-        buildMI(mbb, mbbi, dl, tii.get(isThumb ? ARMGenInstrNames.tTAILJMPrND : ARMGenInstrNames.TAILJMPrND))
+        buildMI(mbb, mbbi++, dl, tii.get(isThumb ? ARMGenInstrNames.tTAILJMPrND : ARMGenInstrNames.TAILJMPrND))
                 .addReg(jumpTarget.getReg(), getKillRegState(true));
       }
 
-      MachineInstr newMI = mbb.getInstAt(mbbi);
+      MachineInstr newMI = mbb.getInstAt(mbbi-1);
       for (int i = 1, e = retInst.getNumOperands(); i < e; ++i)
         newMI.addOperand(retInst.getOperand(i));
 
       // delete the pseudo instruction TCRETURN
       retInst.removeFromParent();
     }
+
     if (varRegSaveSize != 0)
       emitSPUpdate(isARM, mbb, mbbi, dl, tii, varRegSaveSize);
   }
@@ -433,6 +509,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
 
   private static int estimateStackSize(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
+    TargetFrameLowering tfl = mf.getSubtarget().getFrameLowering();
     int maxAlign = mfi.getMaxAlignment();
     int offset = 0;
     for (int i = mfi.getObjectIndexBegin(); i != 0; ++i) {
@@ -450,10 +527,14 @@ public class ARMFrameLowering extends TargetFrameLowering {
       offset = (offset + align - 1)/align * align;
       maxAlign = Math.max(maxAlign, align);
     }
+    if (mfi.adjustsStack() && tfl.hasReservedCallFrame(mf))
+      offset += mfi.getMaxCallFrameSize();
+
     int stackAlign;
     TargetRegisterInfo tri = mf.getSubtarget().getRegisterInfo();
     TargetFrameLowering tli = mf.getSubtarget().getFrameLowering();
-    if (mfi.hasVarSizedObjects() || tri.needsStackRealignment(mf) && mfi.getObjectIndexEnd() != 0)
+    if (mfi.adjustsStack() || mfi.hasVarSizedObjects() ||
+            (tri.needsStackRealignment(mf) && mfi.getObjectIndexEnd() != 0))
       stackAlign = tli.getStackAlignment();
     else
       stackAlign = tli.getTransientAlignment();
@@ -464,7 +545,8 @@ public class ARMFrameLowering extends TargetFrameLowering {
   }
 
   @Override
-  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf, RegScavenger scavenger) {
+  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf,
+                                                   RegScavenger scavenger) {
     ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
     ARMRegisterInfo regInfo = subtarget.getRegisterInfo();
@@ -504,7 +586,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
       for (int i = 0; i != csregs.length; ++i) {
         int reg = csregs[i];
         boolean spilled = false;
-        if (mf.getMachineRegisterInfo().isPhysicalReg(reg)) {
+        if (mf.getMachineRegisterInfo().isPhysRegUsed(reg)) {
           spilled = true;
           canEliminateFrame = false;
         } else {
@@ -512,7 +594,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
           int[] alias = regInfo.getAliasSet(reg);
           if (alias != null && alias.length > 0) {
             for (int ar : alias) {
-              if (mf.getMachineRegisterInfo().isPhysicalReg(ar)) {
+              if (mf.getMachineRegisterInfo().isPhysRegUsed(ar)) {
                 spilled = true;
                 canEliminateFrame = false;
               }
@@ -591,8 +673,13 @@ public class ARMFrameLowering extends TargetFrameLowering {
     // the function adjusts the stack pointer during execution and the
     // adjustments aren't already part of our stack size estimate, our offset
     // calculations may be off, so be conservative.
+    boolean bigStack = (scavenger != null && (estimateStackSize(mf) +
+            ((hasFP(mf) && afi.hasStackFrame()) ? 4 : 0)) >=
+            estimateRSStackSizeLimit(mf)) || mfi.hasVarSizedObjects() ||
+            (mfi.adjustsStack() && !canSimplifyCallFramePseudos(mf));
+
     boolean extraCSSpill = false;
-    if (!canEliminateFrame || cannotEliminateFrame(mf)) {
+    if (bigStack || !canEliminateFrame || cannotEliminateFrame(mf)) {
       afi.setHasStackFrame(true);
 
       // If LR is not spilled, but at least one of R4, R5, R6, and R7 is spilled.
@@ -614,24 +701,22 @@ public class ARMFrameLowering extends TargetFrameLowering {
       // of GPRs, spill one extra callee save GPR so we won't have to pad between
       // the integer and double callee save areas.
       int targetAlign = getStackAlignment();
-      BitMap reservedRegs = regInfo.getReservedRegs(mf);
       if (targetAlign == 8 && (numGPRSpills & 1) != 0) {
         if (cs1Spilled && !unspilledCS1GPRs.isEmpty()) {
           for (int reg : unspilledCS1GPRs) {
             // Don't spill high register if the function is thumb1
             if (!afi.isThumb1OnlyFunction() ||
-            isARMLowRegister(reg) || reg == ARMGenRegisterNames.LR) {
+                isARMLowRegister(reg) || reg == ARMGenRegisterNames.LR) {
               mf.getMachineRegisterInfo().setPhysRegUsed(reg);
-              if (!reservedRegs.get(reg))
+              if (!regInfo.isReservedReg(mf, reg))
                 extraCSSpill = true;
               break;
             }
           }
-        }
-        else if (!unspilledCS2GPRs.isEmpty() && !afi.isThumb1OnlyFunction()) {
+        } else if (!unspilledCS2GPRs.isEmpty() && !afi.isThumb1OnlyFunction()) {
           int reg = unspilledCS2GPRs.get(0);
           mf.getMachineRegisterInfo().setPhysRegUsed(reg);
-          if (!reservedRegs.get(reg))
+          if (!regInfo.isReservedReg(mf, reg))
             extraCSSpill = true;
         }
       }
@@ -647,7 +732,9 @@ public class ARMFrameLowering extends TargetFrameLowering {
         ArrayList<Integer> extras = new ArrayList<>();
         while (numExtras != 0 && !unspilledCS1GPRs.isEmpty()) {
           int reg = unspilledCS1GPRs.removeLast();
-          if (!reservedRegs.get(reg)) {
+          if (!regInfo.isReservedReg(mf, reg) &&
+              (!afi.isThumb1OnlyFunction() || isARMLowRegister(reg) ||
+               reg == ARMGenRegisterNames.LR)) {
             extras.add(reg);
             --numExtras;
           }
@@ -656,7 +743,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
         if (!afi.isThumb1OnlyFunction()) {
           while (numExtras != 0 && !unspilledCS2GPRs.isEmpty()) {
             int reg = unspilledCS2GPRs.removeLast();
-            if (!reservedRegs.get(reg)) {
+            if (!regInfo.isReservedReg(mf, reg)) {
               extras.add(reg);
               --numExtras;
             }
@@ -681,6 +768,10 @@ public class ARMFrameLowering extends TargetFrameLowering {
       mf.getMachineRegisterInfo().setPhysRegUsed(ARMGenRegisterNames.LR);
       afi.setLRIsSpilledForFarJump(true);
     }
+  }
+
+  private boolean canSimplifyCallFramePseudos(MachineFunction mf) {
+    return hasReservedCallFrame(mf) || mf.getFrameInfo().hasVarSizedObjects();
   }
 
   private int estimateRSStackSizeLimit(MachineFunction mf) {

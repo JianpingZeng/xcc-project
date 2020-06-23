@@ -255,7 +255,7 @@ class Thumb1FrameLowering extends ARMFrameLowering {
       if (afi.shouldRestoreSPFromFP()) {
         numBytes = afi.getFramePtrSpillOffset() - numBytes;
         if (numBytes != 0) {
-          Util.assertion(mf.getMachineRegisterInfo().isPhysicalReg(ARMGenRegisterNames.R4),
+          Util.assertion(mf.getMachineRegisterInfo().isPhysRegUsed(ARMGenRegisterNames.R4),
               "No scratch register to restore SP from FP!");
           emitThumbRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.R4,
               framePtr, -numBytes, tii, regInfo);

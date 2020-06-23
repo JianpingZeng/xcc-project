@@ -228,16 +228,6 @@ public final class MachineRegisterInfo {
   }
 
   /**
-   * Checks to see if the specified register is a physical register or not.
-   *
-   * @param regNo
-   * @return
-   */
-  public boolean isPhysicalReg(int regNo) {
-    return regNo >= NoRegister && regNo < FirstVirtualRegister;
-  }
-
-  /**
    * Checks to see if the specified register is a virtual register or not.
    *
    * @param regNo
