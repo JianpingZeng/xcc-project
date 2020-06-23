@@ -123,8 +123,20 @@ public class Triple {
       arch = x86;
     else if (archName.equals("amd64") || archName.equals("x86_64"))
       arch = x86_64;
-    else
+    else if (archName.startsWith("arm")) {
+      archName = archName.substring(3);
+      if (archName.startsWith("v")) {
+        int version = Integer.parseUnsignedInt(archName.substring(1));
+        if (version >= 5 && version <= 7)
+          arch = arm;
+        else
+          arch = UnknownArch;
+      } else {
+        arch = arm;
+      }
+    } else {
       arch = UnknownArch;
+    }
 
     if (vendorName.equals("apple"))
       vendor = VendorType.Apple;
