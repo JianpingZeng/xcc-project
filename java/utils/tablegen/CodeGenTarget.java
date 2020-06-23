@@ -62,10 +62,6 @@ public final class CodeGenTarget {
 
   private void readRegisters() {
     ArrayList<Record> regs = Record.records.getAllDerivedDefinition("Register");
-    regs.sort((r1, r2) -> {
-      return r1.getName().compareTo(r2.getName());
-    });
-
     if (regs.isEmpty())
       Error.printFatalError("No 'Register' subclasses defined!");
     registers = new ArrayList<>();

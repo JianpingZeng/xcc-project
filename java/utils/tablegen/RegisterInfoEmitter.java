@@ -66,10 +66,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
       os.printf("public interface %s \n{" + "\n\tint NoRegister = %d;\n",
           className, initValue);
       initValue++;
-      registers.sort((r1, r2) ->
-      {
-        return r1.getName().compareTo(r2.getName());
-      });
       for (Record reg : registers) {
         os.printf("\tint %s = %d;", reg.getName(), initValue);
         initValue++;
@@ -476,8 +472,6 @@ public final class RegisterInfoEmitter extends TableGenBackend {
     HashMap<Record, TreeSet<Record>> registerAlias = new HashMap<>();
 
     ArrayList<CodeGenRegister> regs = target.getRegisters();
-    regs.sort((r1, r2) -> r1.getName().compareTo(r2.getName()));
-
     for (CodeGenRegister cgr : regs) {
       Record r = cgr.theDef;
       ArrayList<Record> li = r.getValueAsListOfDefs("Aliases");
