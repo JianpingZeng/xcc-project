@@ -203,7 +203,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
       funcInfo.visitedBBs.add(llvmBB);
       funcInfo.insertPtr = funcInfo.mbb.getFirstNonPHI();
 
-      int bi = 0, end = llvmBB.size();
+      int bi = llvmBB.getFirstNonPhi(), end = llvmBB.size();
 
       // set up an EH landing-pad block.
       if (funcInfo.mbb.isLandingPad())
