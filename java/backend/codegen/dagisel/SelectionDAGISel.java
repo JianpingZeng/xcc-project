@@ -225,8 +225,10 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         Instruction inst = llvmBB.getInstAt(bi);
         if (Util.DEBUG) System.err.println(inst.toString());
 
-        if (!(inst instanceof TerminatorInst))
+        if (!(inst instanceof TerminatorInst)) {
           sdl.visit(inst);
+          sdl.copyToExportRegsIfNeeds(inst);
+        }
       }
       if (!sdl.hasTailCall()) {
         handlePhiNodeInSuccessorBlocks(llvmBB);

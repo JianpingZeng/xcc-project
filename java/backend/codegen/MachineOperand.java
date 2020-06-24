@@ -887,6 +887,8 @@ public abstract class MachineOperand {
     } else {
       MachineOperand prev = regMO.reg.prev;
       MachineOperand next = regMO.reg.next;
+      Util.assertion(prev != null && next != null,
+              "a node in the middle of def-use chain of MachineOperand must has prev and next!");
       regMO.reg.prev = null;
       regMO.reg.next = null;
       ((RegisterMO)prev).reg.next = next;
