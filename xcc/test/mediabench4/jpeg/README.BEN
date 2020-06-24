@@ -1,0 +1,7 @@
+Got jpeg working.
+The MEMCOPY macros were the problem
+will check that the simplescalar implementation of 
+memcopy and bcopy are consistant with solaris
+
+run jpeg??code in ./exec
+it dumps testout.??? in ./data

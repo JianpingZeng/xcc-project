@@ -25,3 +25,10 @@ CMakeCache.txt
 *.i
 *.swp
 *.bc
+*.so
+arm-unknown-linux-gnueabi
+install
+llvm-3.0.src
+*.d
+dragonegg-3.0/TargetInfo
+

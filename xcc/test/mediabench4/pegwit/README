@@ -1,0 +1,16 @@
+===================================================
+            README
+===================================================
+1. Choose a secret key (a phrase)
+
+2. Generate a public key:
+   $ ./pegwit -i < my.sec > my.pub
+
+   NOTE: The file my.sec containing a secret key is in plain ASCII format.
+
+3. Encrypt a file:
+   $ ./pegwit -e my.pub pgptest.plain pegwit.enc < encryption_junk
+
+4. Decrypt a file:
+   $ ./pegwit -d pegwit.enc pegwit.dec < my.sec
+

@@ -1,0 +1,10 @@
+{
+  "name": "bench",
+  "version": "0.0.1",
+  "repo": "clibs/bench",
+  "description": "get wall and cpu time for benchmarking",
+  "keywords": ["bench"],
+  "license": "MIT",
+  "src": ["bench.h"]
+}
+

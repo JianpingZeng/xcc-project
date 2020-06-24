@@ -1,2 +1,0 @@
-#!/bin/sh
-rm -f dvx-gcc.mak unixansi.mak unix-cc.mak unix-gcc.mak

@@ -1,0 +1,19 @@
+RSAREF has been ported without modification (except for makefile) to
+the following platforms:
+
+     Personal Computer running DOS
+          Microsoft C v6.00a medium & large memory models
+
+     Personal Computer running OS/2
+          Microsoft C v6.00a
+
+     Macintosh running System 7
+          MPW 3.2
+
+     NeXTStation
+
+     DECStation 3100
+
+     SPARCStation1
+
+     MicroVAX II running VMS

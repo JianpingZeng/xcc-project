@@ -1,0 +1,3 @@
+/export/ramoth4/bishop/oldsim/simplesim-2.0/sim-profile -iclass -iprof -brprof ../demos/mipmap >! out1
+/export/ramoth4/bishop/oldsim/simplesim-2.0/sim-profile -iclass -iprof -brprof ../demos/osdemo >! out2
+/export/ramoth4/bishop/oldsim/simplesim-2.0/sim-profile -iclass -iprof -brprof ../demos/texgen >! out3

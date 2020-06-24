@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cp /u/gs3/leec/www/mediabench/datafiles/clinton.pcm .
+echo "copied a speech file (clinton.pcm)"
+
+/u/gs3/leec/leec/Projects/MediaBench/SPIX/SHADE/src/alu -o rawcaudio.summary -- ../bin/rawcaudio < clinton.pcm 3> out.adpcm >rawcaudio.shade
+
+cp /u/gs3/leec/www/mediabench/datafiles/clinton.adpcm .
+echo "copied an encoded speech file (clinton.adpcm)"
+
+/u/gs3/leec/leec/Projects/MediaBench/SPIX/SHADE/src/alu -o rawdaudio.summary -- ../bin/rawdaudio < clinton.adpcm 3> out.pcm >rawdaudio.shade

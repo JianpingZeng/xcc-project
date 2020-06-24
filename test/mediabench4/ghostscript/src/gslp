@@ -1,2 +1,0 @@
-#!/bin/sh
-exec gs -q -sDEVICE=epson -r180 -dNOPAUSE -- gslp.ps "$@"

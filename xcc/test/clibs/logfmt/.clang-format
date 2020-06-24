@@ -1,0 +1,11 @@
+---
+AlignEscapedNewlinesLeft: true
+AlignTrailingComments: true
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: All
+UseTab: Never
+
+...

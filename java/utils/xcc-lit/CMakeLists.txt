@@ -1,1 +1,0 @@
-configure_file(xcc-lit.in ${OUT_BIN_DIR}/xcc-lit)

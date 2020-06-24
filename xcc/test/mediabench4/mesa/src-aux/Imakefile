@@ -1,0 +1,42 @@
+#define DoNormalLib NO
+#define DoSharedLib YES
+#define DoDebugLib NO
+#define DoProfileLib NO
+#define LibName MESAAUX
+#define SoRev SOX11REV
+#define LibHeaders NO
+
+#include <Threads.tmpl>
+
+REQUIREDLIBS = $(X11ROOT)\\XFree86\\lib\\ $(TOP)\\lib\\ MesaTk MesaGL MesaGLU
+BUILDLIBDIR = $(TOP)\\lib
+
+DEFINES = -mieee-fp
+INCLUDES = -I$(TOP)\include
+
+SRCS = \
+font.c \
+glaux.c \
+image.c \
+shapes.c \
+teapot.c \
+vect3d.c \
+xform.c
+
+OBJS = \
+font.o \
+glaux.o \
+image.o \
+shapes.o \
+teapot.o \
+vect3d.o \
+xform.o
+
+
+LINTLIBS =
+
+#include <Library.tmpl>
+
+DependTarget()
+
+

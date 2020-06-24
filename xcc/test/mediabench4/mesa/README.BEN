@@ -1,0 +1,10 @@
+Generates libraries but exec is empty. No additional docs.
+Should probably check with author about what to run.
+
+Go into the demos directory and build the three programs mipmap, osdemo,
+and texgen.  That's the mesa benchmark.  It should really have an exec
+file, though.
+
+To compile: make gcc in root dir. then make gcc in demos.
+
+To run: cd to exec. execute ./run. output is produced in out?.ppm

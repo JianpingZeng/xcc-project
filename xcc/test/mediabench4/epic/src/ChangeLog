@@ -1,0 +1,53 @@
+Fri May  2 10:08:01 1997  Eero Simoncelli  <eero@chrysothemis.cims.nyu.edu>
+
+	* epic.c: Added explicit instructions for using the orthonormal
+ 	filter set.
+
+Sat Aug 31 12:41:56 1996  Eero Simoncelli  (eero@tarpon.cis.upenn.edu)
+
+	* Included collapse_pyr code from Rob Buccigrossi, modified to
+	work with (nearly) orthonormal symmetric 9-tap QMF filters.  See
+	epic.c.
+
+Fri Oct 20 19:25:20 1995  Eero Simoncelli  (eero@tarpon.cis.upenn.edu)
+
+	* Added warning for images with dimensions d that are NOT
+	multiples of 2^(floor(log2(d/15))).
+
+Sun Oct 15 13:07:04 1995  Eero Simoncelli  (eero@tarpon.cis.upenn.edu)
+
+	* Speedup to unepic:  In collapse_pyr, don't collapse zero
+	coefficients.
+
+	* changed scale_factor to 128: binsize=0 now produces something
+	closer to perfect reconstruction
+
+Tue Oct 10 15:22:13 1995  Eero Simoncelli  (eero@tarpon.cis.upenn.edu)
+
+	* Changed test_image to be a PGM file.
+	* Version 1.1 tarfile made
+
+Sun Oct  8 15:22:57 1995  Eero Simoncelli  (eero@tarpon.cis.upenn.edu)
+
+	* NON-SQUARE IMAGES ARE NOW HANDLED 
+	  (added butch@grip.cis.upenn.edu's mods to collapse_pyr).
+	* PGM FILES ARE NOW READ (BUT NOT WRITTEN)
+	  (added butch's mods for reading PGM images).
+	* Slight mods to makefile: use $*.c instead of $< for denoting target
+
+Tue Sep 19 18:40:57 1995  Eero Simoncelli  (eero@tarpon.cis.upenn.edu)
+
+	* New file "USAGE" gives usage.
+	* quantize.c: minimal binsize is now set based on the maximum abs
+	  value of pixels, rather than the range.
+
+Mon Jun  7 20:25:07 1993  Eero Simoncelli  (eero@tarpon.cis.upenn.edu)
+
+	* Minor change: fixed up some error messages.
+	* Added new internal_tranpose and internal_int_transpose that
+	perform in-place transpose on non-square matrices.  This removes
+	all dependencies on square images except for collapse_pyr, which
+	needs to be rewritten.
+	
+July 1989  Eero Simoncelli  (eero@whitechapel.media.mit.edu)
+	* Original source code released.

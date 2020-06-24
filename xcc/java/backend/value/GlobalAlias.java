@@ -1,0 +1,129 @@
+package backend.value;
+/*
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2020, Jianping Zeng.
+ * All rights reserved.
+ 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the <organization> nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+import backend.type.Type;
+import tools.Util;
+
+import java.util.HashSet;
+
+/**
+ * @author Jianping Zeng.
+ * @version 0.4
+ */
+public class GlobalAlias extends GlobalValue {
+  /**
+   * Constructs a new instruction representing the specified constant.
+   *
+   * @param ty
+   * @param linkage
+   * @param name
+   * @param aliasee
+   * @param parent
+   */
+  public GlobalAlias(Type ty,
+                     LinkageType linkage,
+                     String name,
+                     Constant aliasee,
+                     Module parent) {
+    super(ty, ValueKind.GlobalAliasVal , linkage, name);
+    if (aliasee != null)
+      Util.assertion(aliasee.getType().equals(getType()),
+          "Alias and aliasee types should match!");
+    reserve(1);
+    setOperand(0, new Use(aliasee, this));
+    if (parent != null)
+      parent.getAliasList().add(this);
+  }
+
+  @Override
+  public boolean isDeclaration() {
+    GlobalValue gv = getAliasedGlobal();
+    return gv != null && gv.isDeclaration();
+  }
+
+  @Override
+  public void eraseFromParent() {
+    getParent().getAliasList().remove(this);
+  }
+
+  public void setAliasee(Constant gv) {
+    if (gv != null)
+      Util.assertion(gv.getType().equals(getType()), "Alias and aliasee types should match!");
+    setOperand(0, gv);
+  }
+
+  public Constant getAliasee() {
+    return operand(0);
+  }
+
+  public GlobalValue getAliasedGlobal() {
+    Constant c = getAliasee();
+    if (c != null) {
+      if (c instanceof GlobalValue)
+        return (GlobalValue) c;
+      else {
+        ConstantExpr ce = c instanceof ConstantExpr ? (ConstantExpr)c : null;
+        if (ce != null &&
+            (ce.getOpcode() == Operator.BitCast ||
+             ce.getOpcode() == Operator.GetElementPtr))
+          return (GlobalValue) ce.operand(0);
+        else
+          Util.shouldNotReachHere("Unsupported aliasee");
+      }
+    }
+    return null;
+  }
+
+  public GlobalValue resolveAliasedGlobal() {
+    return resolveAliasedGlobal(true);
+  }
+
+  public GlobalValue resolveAliasedGlobal(boolean stopOnWeak) {
+    HashSet<GlobalValue> visited = new HashSet<>();
+    if (stopOnWeak && maybeOverridden())
+      return this;
+
+    GlobalValue gv = getAliasedGlobal();
+    visited.add(gv);
+
+    // Iterate over aliasing chain, stopping on weak alias if necessary.
+    if (gv instanceof GlobalAlias) {
+      do {
+        GlobalAlias ga = (GlobalAlias) gv;
+        if (stopOnWeak && ga.maybeOverridden())
+          break;
+        gv = ga.getAliasedGlobal();
+        if (!visited.add(gv))
+          return null;
+      }
+      while (gv instanceof GlobalAlias);
+    }
+    return gv;
+  }
+}

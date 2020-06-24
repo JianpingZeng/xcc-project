@@ -1,0 +1,40 @@
+! PGP.OPT - Options file for PGP/VMS
+! (c) Copyright 1991-93 by Hugh Kennedy. All rights reserved.
+!
+! The author assumes no liability for damages resulting from the use 
+! of this software, even if the damage results from defects in this 
+! software.  No warranty is expressed or implied.  
+!
+! The above notwithstanding, a license to use this software is granted
+! to anyone either in the original or modified form on condition that 
+! this notice is not removed.
+!
+! Version:	2
+!
+! Original:	00A	13-Nov-1992	Author:	Hugh A.J. Kennedy
+!
+! Modification:	02A	11-Feb-1993	Author:	Hugh A.J. Kennedy.
+!
+! Update version number. Remove MD5 logical.
+!
+! Modification:	02e	14-May-1993	Author:	Hugh A.J. Kennedy.
+!
+! Update version number. Add rsa glue stuff.
+!
+NAME=PGP
+IDENT="V2.3"
+!
+obj:more,fileio,md5,mdfile,getopt,system,mpilib,mpiio,random,crypto,rsagen,-
+idea,passwd,genprime,pgp,config,vax,language,charset,armor
+!
+! RSA Stuff
+!
+obj:rsaglue
+!
+! Key Stuff
+!
+obj:keymgmt,keymaint,keyadd
+!
+! ZIP Stuff
+!
+obj:zbits,zdeflate,zglobals,zinflate,zip,zipup,zfile_io,ztrees,zunzip

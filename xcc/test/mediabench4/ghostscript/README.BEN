@@ -1,0 +1,2 @@
+This benchmark is messy. binaries and data are in ./src. I also had
+to move data to ./exec. Run sdecode in ./exec for results.

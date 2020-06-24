@@ -1,0 +1,6 @@
+This is a modified fork of official dragonegg-3.0 for generating
+LLVM IR for ARM target.
+
+When you use a custom gcc-4.6 built by youself, maybe you will
+encounter compilation error which says,
+vxworks-dummy.h, no such 

@@ -1,0 +1,44 @@
+EPIC file format:
+
+The general scheme is to divide the file into variable-length chunks,
+with each chunk beginning with an identifying tag.  The tags are
+designed to allow future flexibility -- extra bits may be used for
+other compression formats.  We assume a standard separable QMF pyramid
+decomposition, with images at each level subsampled by a factor of 2
+in each direction.  The data is coded in blocks, where each block may
+have its own coding scheme.  The blocks do NOT necessarily correspond
+to individual of pyramid subimages.  A block may contain data from
+several pyramid subimages, but each subimage from the pyramid must be
+entirely contained in a single block.  For now, the analysis filters
+are NOT stored, and the synthesis filters are ALWAYS three-tap (121)
+filters.
+
+Unresolved issues:  
+	non-uniform bin_values (eg mean of bin), irregular pyramids, 
+	color images and image sequences.
+
+The following describes (sequentially) the contents of an EPIC file:
+
+  name         # bytes
+--------       -------
+ID_TAG           (1)             (indicates EPIC file, 121 pyramid, etc.)
+num_levels       (1)             (level<16)
+x_size           (2)             (size of original image)
+y_size           (2)
+scale_factor     (2)
+
+For each block of data:
+   For each subimage in the block: 
+      bin_info_tag/im_num   (1)  hi_bits=10, 
+      bin_size         (2)
+   The actual data block is either:
+   1) huffman_tag      (1)        hi_bit=0
+      symbol_stream_length (4)
+      packed_huffman_tree  (?)
+      huffman_data              (size determined by image/level info)
+   2) raw_tag          (1)        hi_bit=0
+      raw_data             (?)   (size determined by image/level info)
+   3) tags for other encrpytion schemes & data
+
+
+

@@ -1,0 +1,9 @@
+{
+  "name": "int",
+  "version": "0.0.1",
+  "repo": "visionmedia/int.c",
+  "description": "Binary integer representation utilities",
+  "keywords": ["int", "integer", "util", "utils"],
+  "license": "MIT",
+  "src": ["int.c", "int.h"]
+}

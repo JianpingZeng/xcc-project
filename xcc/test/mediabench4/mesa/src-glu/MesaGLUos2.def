@@ -1,0 +1,58 @@
+LIBRARY MESAGLU
+
+DESCRIPTION "X11R6 Xfree86 libMesaGLU.dll for OS/2 EMX09B VERSION=1.2.7"
+
+CODE
+   PRELOAD
+
+DATA
+   MULTIPLE NONSHARED
+
+STACKSIZE 4096
+
+EXPORTS
+    gluLookAt @1 NONAME
+    gluOrtho2D @2 NONAME
+    gluPerspective @3 NONAME
+    gluPickMatrix @4 NONAME
+    gluProject @5 NONAME
+    gluUnProject @6 NONAME
+    gluErrorString @7 NONAME
+    gluScaleImage @8 NONAME
+    gluBuild1DMipmaps @9 NONAME
+    gluBuild2DMipmaps @10 NONAME
+    gluNewQuadric @11 NONAME
+    gluDeleteQuadric @12 NONAME
+    gluQuadricDrawStyle @13 NONAME
+    gluQuadricOrientation @14 NONAME
+    gluQuadricNormals @15 NONAME
+    gluQuadricTexture @16 NONAME
+    gluQuadricCallback @17 NONAME
+    gluCylinder @18 NONAME
+    gluSphere @19 NONAME
+    gluDisk @20 NONAME
+    gluPartialDisk @21 NONAME
+    gluNewNurbsRenderer @22 NONAME
+    gluDeleteNurbsRenderer @23 NONAME
+    gluLoadSamplingMatrices @24 NONAME
+    gluNurbsProperty @25 NONAME
+    gluGetNurbsProperty @26 NONAME
+    gluBeginCurve @27 NONAME
+    gluEndCurve @28 NONAME
+    gluNurbsCurve @29 NONAME
+    gluBeginSurface @30 NONAME
+    gluEndSurface @31 NONAME
+    gluNurbsSurface @32 NONAME
+    gluBeginTrim @33 NONAME
+    gluEndTrim @34 NONAME
+    gluPwlCurve @35 NONAME
+    gluNurbsCallback @36 NONAME
+    gluNewTess @37 NONAME
+    gluTessCallback @38 NONAME
+    gluDeleteTess @39 NONAME
+    gluBeginPolygon @40 NONAME
+    gluEndPolygon @41 NONAME
+    gluNextContour @42 NONAME
+    gluTessVertex @43 NONAME
+    gluGetString @44 NONAME
+

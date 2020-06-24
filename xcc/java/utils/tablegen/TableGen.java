@@ -1,0 +1,187 @@
+package utils.tablegen;
+/*
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2020, Jianping Zeng
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+import tools.Error;
+import tools.SourceMgr;
+import tools.Util;
+import tools.commandline.*;
+
+import java.io.PrintStream;
+import java.util.ArrayList;
+
+import static tools.commandline.Desc.desc;
+import static tools.commandline.FormattingFlags.Positional;
+import static tools.commandline.FormattingFlags.Prefix;
+import static tools.commandline.Initializer.init;
+import static tools.commandline.ValueDesc.valueDesc;
+import static utils.tablegen.Record.records;
+import static utils.tablegen.TableGen.ActionType.*;
+
+/**
+ * @author Jianping Zeng
+ * @version 0.4
+ */
+public final class TableGen {
+  /**
+   * This enum contains all kind of action that user wnat to perform, includes
+   * GenRegisterNames, GenRegisterInfo, GenInstrNames, GenInstrInfo.
+   */
+  enum ActionType {
+    GenRegisterNames,
+    GenRegisterInfo,
+    GenInstrNames,
+    GenInstrInfo,
+    GenCallingConv,
+    GenAsmPrinter,
+    PrintRecords,
+    GenDAGISel,
+    GenFastISel,
+    GenSubtarget,
+    GenXCCOptions,
+    GenPseudoLowering,
+    PrintSets,
+  }
+
+  private static Opt<ActionType> action = new Opt<ActionType>(
+      new Parser<>(),
+      desc("Action to performance"),
+      init(PrintRecords),
+      new ValueClass<>(
+          new ValueClass.Entry<>(GenRegisterNames, "gen-register-names",
+              "Generates register names"),
+          new ValueClass.Entry<>(GenRegisterInfo, "gen-register-info",
+              "Generates register text file"),
+          new ValueClass.Entry<>(GenInstrNames, "gen-instr-names",
+              "Generates instruction names"),
+          new ValueClass.Entry<>(GenInstrInfo, "gen-instr-info",
+              "Generates instruction descriptions"),
+          new ValueClass.Entry<>(GenCallingConv, "gen-callingconv",
+              "Generate calling convention descriptions"),
+          new ValueClass.Entry<>(GenAsmPrinter, "gen-asm-printer",
+              "Generates assembly printer"),
+          new ValueClass.Entry<>(PrintRecords, "print-records",
+              "Print all records to stdout (default)"),
+          new ValueClass.Entry<>(GenDAGISel, "gen-dag-isel",
+              "Generate a DAG instruction selector"),
+          new ValueClass.Entry<>(GenFastISel, "gen-fast-isel",
+              "Generate a \"fast\" instruction selector"),
+          new ValueClass.Entry<>(GenSubtarget, "gen-subtarget",
+              "Generate subtarget enumerations"),
+          new ValueClass.Entry<>(GenXCCOptions, "gen-xcc-options",
+              "Generate XCC C Compiler options"),
+          new ValueClass.Entry(GenPseudoLowering, "gen-pseudo-lowering",
+              "Generate pseudo instruction lowering"),
+          new ValueClass.Entry<>(PrintSets, "print-sets",
+              "Print expanded sets for testing DAG exps")
+      ));
+
+  private static StringOpt outputFileName = new StringOpt(
+      new OptionNameApplicator("o"),
+      init("-"),
+      desc("Specify the output file namespace"),
+      valueDesc("filename"));
+
+  private static ListOpt<String> includeDirs = new ListOpt<>(
+      new ParserString(),
+      new OptionNameApplicator("I"),
+      desc("Directory of includes file"),
+      valueDesc("directory"),
+      new FormattingFlagsApplicator(Prefix));
+
+  private static StringOpt inputFilename = new StringOpt(
+      new FormattingFlagsApplicator(Positional),
+      desc("<input file>"),
+      init("-"));
+
+  // For debug, dump each def and class.
+  public static final boolean DEBUG = false;
+
+  public static void main(String[] args) {
+    try {
+      CL.parseCommandLineOptions(args);
+      if (outputFileName.value == null) {
+        outputFileName.value = "-";
+      }
+      // Initialize the global error manager.
+      Error.sgr = new SourceMgr();
+      if (TGParser.parseFile(inputFilename.value, includeDirs, Error.sgr))
+        System.exit(1);
+
+      String outputFile = outputFileName.value;
+      switch (action.value) {
+        case PrintRecords:
+          records.dump();
+          break;
+        case GenRegisterNames:
+          new RegisterInfoEmitter(records).runEnums(outputFile);
+          break;
+        case GenRegisterInfo:
+          new RegisterInfoEmitter(records).run(outputFile);
+          break;
+        case GenInstrNames:
+          new InstrInfoEmitter(records).runEnums(outputFile);
+          break;
+        case GenInstrInfo:
+          new InstrInfoEmitter(records).run(outputFile);
+          break;
+        case GenCallingConv:
+          new CallingConvEmitter(records).run(outputFile);
+          break;
+        case GenAsmPrinter:
+          new AsmWriterEmitter().run(outputFile);
+          break;
+        case GenDAGISel:
+          new DAGISelEmitter(records).run(outputFile);
+          break;
+        case GenFastISel:
+          new FastISelEmitter(records).run(outputFile);
+          break;
+        case GenSubtarget:
+          new SubtargetEmitter(records).run(outputFile);
+          break;
+        case GenXCCOptions:
+          new XCCOptionsEmitter(records).run(outputFile);
+          break;
+        case GenPseudoLowering:
+          new PseudoLoweringEmitter(records).run(outputFile);
+          break;
+        case PrintSets:
+          SetTheory sets = new SetTheory();
+          sets.addFieldExpander("Set", "Elements");
+          ArrayList<Record> recs = records.getAllDerivedDefinition("Set");
+          try (PrintStream os = outputFile.equals("-") ? System.out : new PrintStream(outputFile)) {
+            for (Record rec : recs) {
+              os.printf("%s = [", rec.getName());
+              ArrayList<Record> elts = sets.expand(rec);
+              elts.forEach(e -> {
+                os.printf(" %s", e.getName());
+              });
+              os.println(" ]");
+            }
+          }
+          break;
+        default:
+          Util.assertion(false, "Invalid action type!");
+          System.exit(1);
+      }
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      System.exit(-1);
+    }
+  }
+}

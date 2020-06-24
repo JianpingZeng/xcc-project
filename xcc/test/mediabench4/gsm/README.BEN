@@ -1,0 +1,4 @@
+Fixed syscall problem by hacking ./inc/config.h. Seems to work
+now despite sigvec warning. Run sdecode/sencode as usual in
+./exec.
+Make sure that you clean out the data files in ./data

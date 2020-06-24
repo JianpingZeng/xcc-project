@@ -1,0 +1,80 @@
+--------------------------------------------------------------------- 
+---		 EPIC (Efficient Pyramid Image Coder)             ---
+---	 Designed by Eero P. Simoncelli and Edward H. Adelson     ---
+---		    Written by Eero P. Simoncelli                 ---
+---  Developed at the Vision Science Group, The Media Laboratory  ---
+---	Copyright 1989, Massachusetts Institute of Technology     ---
+---			 All rights reserved.                     ---
+---------------------------------------------------------------------
+
+Getting/Installing EPIC:
+------------------------
+
+cd <directory-to-hold-epic-source>
+
+ftp ftp.cis.upenn.edu
+  Name: anonymous
+  Password: <your-logname>@<your-host-address>
+  cd pub/eero
+  binary
+  get epic.tar.Z
+  bye
+
+uncompress epic.tar.Z
+tar tvf epic.tar            # view contents
+tar xvf epic.tar            # unpack contents
+
+[At this point, you may need to make some modifications to the 
+ Makefile, depending on your C compiler.  Some other modifications 
+ that I'm aware of:
+	- On a PC,  you may need to change the check_fopen command 
+	  parameters to "rb" (in parse_args.c).
+	- If you want unepic to write output images as files of raw 
+	  unsigned bytes, modify the definition of WRITE_PGM_FILE in 
+	  epic.h
+]
+
+make -f Makefile all
+cp epic.1 <manual-page-location-(typically /usr/man/man1)>
+
+xv test_image      [assuming you have the xv image display program]
+epic test_image -b 25
+unepic test_image.E
+xv test_image.E.U
+
+----------------------------------------------------------------------
+
+Usage:
+------
+
+Executing "epic" gives a description of the usage of the command:
+
+  epic infile [-o outfile] [-x xdim] [-y ydim] [-l levels] [-b binsize]
+
+An example call might look like this:
+ 
+  epic my-image -o test.E -x 512 -y 512 -l 5 -b 33.45
+
+Note that:
+
+  1) the infile argument must be a file containing raw 8bit grayscale
+     image data.  Alternatively, it can be a PGM file.
+  2) if you are using a raw 8bit image and the size is different than 
+     256x256, you must specify the size on the command line.  
+  3) The dimensions of the image should be a multiple of 2^(floor(log2(d/15)))
+     for best compression.
+  4) the binsize can be any floating point number.  Larger numbers give higher
+     compression rates, smaller numbers give better image quality.  Using a
+     binsize of zero should give perfect reconstruction.
+  5) The test_image provided is a difficult image to compress: it is NOT the
+     original lena image (which is 512x512), and thus has more information 
+     content near the Nyquist sampling  frequencies.
+  6) Color images can be compressed by converting from rgb to yiq and
+     compressing each of the components separately.
+
+The decompression command "unepic" is also provided.  Typing "unepic"
+gives the usage.  Executing "unepic test.E" will create a raw 8bit data
+file called "test.E.U".  If you don't like that name, you can specify
+a different name as an optional second argument.
+
+

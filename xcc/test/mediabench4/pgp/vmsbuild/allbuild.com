@@ -1,0 +1,4 @@
+$ @rsabuild
+$ @pgpbuild
+$ @pgplink
+$ exit

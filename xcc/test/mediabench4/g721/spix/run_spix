@@ -1,0 +1,7 @@
+#!/bin/sh
+
+./encode.spix -4 -l < clinton.pcm > out.g721 3> encode.bb
+spixstats -b encode.bb ../bin/encode >encode.stats
+
+./decode.spix -4 -l < clinton.g721 > out.pcm 3> decode.bb
+spixstats -b decode.bb ../bin/decode >decode.stats

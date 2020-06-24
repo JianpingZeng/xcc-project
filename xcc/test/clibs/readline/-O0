@@ -1,0 +1,348 @@
+; ModuleID = 'readline.c'
+target datalayout = "e-p:64:64:64-S128-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-s0:64:64-f80:128:128-f128:128:128-n8:16:32:64"
+target triple = "x86_64-unknown-linux-gnu"
+
+module asm "\09.ident\09\22GCC: (GNU) 4.6.4 LLVM: \22"
+
+%struct.readline_s = type { i8*, i64, i64 }
+
+@.cst = linker_private unnamed_addr constant [19 x i8] c"rl->buffer != NULL\00", align 8
+@.cst1 = linker_private unnamed_addr constant [11 x i8] c"readline.c\00", align 8
+@__PRETTY_FUNCTION__.2996 = internal constant [14 x i8] c"readline_next\00"
+@__PRETTY_FUNCTION__.3007 = internal constant [22 x i8] c"readline_last_from_rl\00", align 16
+@__PRETTY_FUNCTION__.3019 = internal constant [14 x i8] c"readline_free\00"
+
+define noalias %struct.readline_s* @readline_new(i8* nocapture %buffer) nounwind uwtable {
+entry:
+  tail call void @llvm.dbg.value(metadata !{i8* %buffer}, i64 0, metadata !28), !dbg !33
+  %0 = tail call noalias i8* @calloc(i64 1, i64 24) nounwind, !dbg !34
+  %1 = bitcast i8* %0 to %struct.readline_s*, !dbg !34
+  %2 = icmp eq i8* %0, null, !dbg !35
+  br i1 %2, label %"7", label %"4", !dbg !35
+
+"4":                                              ; preds = %entry
+  %3 = tail call i64 @strlen(i8* %buffer) nounwind readonly, !dbg !36
+  %4 = tail call noalias i8* @malloc(i64 %3) nounwind, !dbg !37
+  %5 = bitcast i8* %0 to i8**, !dbg !37
+  store i8* %4, i8** %5, align 8, !dbg !37
+  %6 = icmp eq i8* %4, null, !dbg !38
+  br i1 %6, label %"5", label %"6", !dbg !38
+
+"5":                                              ; preds = %"4"
+  tail call void @free(i8* %0) nounwind, !dbg !39
+  br label %"7", !dbg !40
+
+"6":                                              ; preds = %"4"
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %4, i8* %buffer, i64 %3, i32 1, i1 false), !dbg !41
+  br label %"7", !dbg !42
+
+"7":                                              ; preds = %entry, %"6", %"5"
+  %7 = phi %struct.readline_s* [ %1, %"6" ], [ null, %"5" ], [ %1, %entry ], !dbg !42
+  ret %struct.readline_s* %7, !dbg !42
+}
+
+declare noalias i8* @calloc(i64, i64) nounwind
+
+declare i64 @strlen(i8* nocapture) nounwind readonly
+
+declare noalias i8* @malloc(i64) nounwind
+
+declare void @free(i8* nocapture) nounwind
+
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture, i64, i32, i1) nounwind
+
+declare void @llvm.dbg.value(metadata, i64, metadata) nounwind readnone
+
+define noalias i8* @readline_next(%struct.readline_s* nocapture %rl) nounwind uwtable {
+entry:
+  tail call void @llvm.dbg.value(metadata !{%struct.readline_s* %rl}, i64 0, metadata !29), !dbg !43
+  %0 = getelementptr inbounds %struct.readline_s* %rl, i64 0, i32 1, !dbg !44
+  %1 = getelementptr inbounds %struct.readline_s* %rl, i64 0, i32 0, !dbg !45
+  %2 = load i8** %1, align 8, !dbg !45
+  %3 = tail call i64 @strlen(i8* %2) nounwind readonly, !dbg !45
+  %4 = icmp eq i8* %2, null, !dbg !46
+  br i1 %4, label %"3", label %"4.preheader", !dbg !46
+
+"4.preheader":                                    ; preds = %entry
+  %5 = load i64* %0, align 8, !dbg !44
+  br label %"4", !dbg !47
+
+"3":                                              ; preds = %entry
+  tail call void @__assert_fail(i8* getelementptr inbounds ([19 x i8]* @.cst, i64 0, i64 0), i8* getelementptr inbounds ([11 x i8]* @.cst1, i64 0, i64 0), i32 39, i8* getelementptr inbounds ([14 x i8]* @__PRETTY_FUNCTION__.2996, i64 0, i64 0)) noreturn nounwind, !dbg !46
+  unreachable, !dbg !46
+
+"4":                                              ; preds = %"4.preheader", %"4"
+  %6 = phi i64 [ %10, %"4" ], [ %5, %"4.preheader" ], !dbg !46
+  %7 = getelementptr inbounds i8* %2, i64 %6, !dbg !47
+  %8 = load i8* %7, align 1, !dbg !47
+  %9 = icmp ne i8 %8, 10, !dbg !47
+  %10 = add i64 %6, 1, !dbg !47
+  %11 = icmp ule i64 %10, %3, !dbg !47
+  %or.cond = and i1 %9, %11, !dbg !48
+  br i1 %or.cond, label %"4", label %"6", !dbg !48
+
+"6":                                              ; preds = %"4"
+  %12 = sub i64 %10, %5, !dbg !49
+  %13 = add i64 %12, -1, !dbg !49
+  %14 = tail call noalias i8* @malloc(i64 %13) nounwind, !dbg !50
+  %15 = icmp eq i8* %14, null, !dbg !51
+  br i1 %15, label %"11", label %"8", !dbg !51
+
+"8":                                              ; preds = %"6"
+  %16 = icmp eq i64 %13, 0, !dbg !52
+  %17 = icmp ugt i64 %10, %3, !dbg !52
+  %18 = and i1 %16, %17, !dbg !52
+  br i1 %18, label %"9", label %"10", !dbg !52
+
+"9":                                              ; preds = %"8"
+  tail call void @free(i8* %14) nounwind, !dbg !53
+  br label %"11", !dbg !54
+
+"10":                                             ; preds = %"8"
+  %19 = getelementptr inbounds i8* %2, i64 %5, !dbg !55
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %14, i8* %19, i64 %13, i32 1, i1 false), !dbg !55
+  store i64 %10, i64* %0, align 8, !dbg !56
+  %20 = getelementptr inbounds %struct.readline_s* %rl, i64 0, i32 2, !dbg !57
+  %21 = load i64* %20, align 8, !dbg !57
+  %22 = add i64 %21, 1, !dbg !57
+  store i64 %22, i64* %20, align 8, !dbg !57
+  br label %"11", !dbg !58
+
+"11":                                             ; preds = %"6", %"10", %"9"
+  %23 = phi i8* [ %14, %"10" ], [ null, %"9" ], [ null, %"6" ], !dbg !58
+  ret i8* %23, !dbg !58
+}
+
+declare void @__assert_fail(i8*, i8*, i32, i8*) noreturn nounwind
+
+define noalias i8* @readline_last_from_rl(%struct.readline_s* nocapture %rl) nounwind uwtable {
+entry:
+  tail call void @llvm.dbg.value(metadata !{%struct.readline_s* %rl}, i64 0, metadata !30), !dbg !59
+  %0 = getelementptr inbounds %struct.readline_s* %rl, i64 0, i32 0, !dbg !60
+  %1 = load i8** %0, align 8, !dbg !60
+  %2 = tail call i64 @strlen(i8* %1) nounwind readonly, !dbg !60
+  %3 = add i64 %2, -1, !dbg !60
+  %4 = icmp eq i8* %1, null, !dbg !61
+  br i1 %4, label %"3", label %"6", !dbg !61
+
+"3":                                              ; preds = %entry
+  tail call void @__assert_fail(i8* getelementptr inbounds ([19 x i8]* @.cst, i64 0, i64 0), i8* getelementptr inbounds ([11 x i8]* @.cst1, i64 0, i64 0), i32 68, i8* getelementptr inbounds ([22 x i8]* @__PRETTY_FUNCTION__.3007, i64 0, i64 0)) noreturn nounwind, !dbg !61
+  unreachable, !dbg !61
+
+"4":                                              ; preds = %"6"
+  %5 = getelementptr inbounds i8* %1, i64 %10, !dbg !62
+  %6 = load i8* %5, align 1, !dbg !62
+  %7 = icmp eq i8 %6, 10, !dbg !62
+  br i1 %7, label %"7", label %"6", !dbg !62
+
+"6":                                              ; preds = %entry, %"4"
+  %8 = phi i64 [ %10, %"4" ], [ %3, %entry ], !dbg !63
+  %9 = icmp eq i64 %8, 0, !dbg !64
+  %10 = add i64 %8, -1, !dbg !64
+  br i1 %9, label %"7", label %"4", !dbg !64
+
+"7":                                              ; preds = %"4", %"6"
+  %11 = phi i64 [ %10, %"6" ], [ %8, %"4" ], !dbg !64
+  %12 = sub i64 %3, %11, !dbg !65
+  %13 = tail call noalias i8* @malloc(i64 %12) nounwind, !dbg !66
+  %14 = icmp eq i8* %13, null, !dbg !67
+  br i1 %14, label %"12", label %"11", !dbg !67
+
+"11":                                             ; preds = %"7"
+  %15 = getelementptr inbounds i8* %1, i64 %11, !dbg !68
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %13, i8* %15, i64 %12, i32 1, i1 false), !dbg !68
+  br label %"12", !dbg !69
+
+"12":                                             ; preds = %"7", %"11"
+  %16 = phi i8* [ %13, %"11" ], [ null, %"7" ], !dbg !69
+  ret i8* %16, !dbg !69
+}
+
+define void @readline_free(%struct.readline_s* %rl) nounwind uwtable {
+entry:
+  tail call void @llvm.dbg.value(metadata !{%struct.readline_s* %rl}, i64 0, metadata !31), !dbg !70
+  %0 = getelementptr inbounds %struct.readline_s* %rl, i64 0, i32 0, !dbg !71
+  %1 = load i8** %0, align 8, !dbg !71
+  %2 = icmp eq i8* %1, null, !dbg !71
+  br i1 %2, label %"3", label %"6", !dbg !71
+
+"3":                                              ; preds = %entry
+  tail call void @__assert_fail(i8* getelementptr inbounds ([19 x i8]* @.cst, i64 0, i64 0), i8* getelementptr inbounds ([11 x i8]* @.cst1, i64 0, i64 0), i32 104, i8* getelementptr inbounds ([14 x i8]* @__PRETTY_FUNCTION__.3019, i64 0, i64 0)) noreturn nounwind, !dbg !71
+  unreachable, !dbg !71
+
+"6":                                              ; preds = %entry
+  tail call void @free(i8* %1) nounwind, !dbg !72
+  %3 = bitcast %struct.readline_s* %rl to i8*, !dbg !73
+  tail call void @free(i8* %3) nounwind, !dbg !73
+  ret void, !dbg !74
+}
+
+define noalias i8* @readline_last(i8* nocapture %buffer) nounwind uwtable {
+entry:
+  tail call void @llvm.dbg.value(metadata !{i8* %buffer}, i64 0, metadata !32), !dbg !75
+  tail call void @llvm.dbg.value(metadata !{i8* %buffer}, i64 0, metadata !76) nounwind, !dbg !78
+  %0 = tail call noalias i8* @calloc(i64 1, i64 24) nounwind, !dbg !79
+  %cond = icmp eq i8* %0, null, !dbg !80
+  br i1 %cond, label %"5", label %"4.i", !dbg !80
+
+"4.i":                                            ; preds = %entry
+  %1 = tail call i64 @strlen(i8* %buffer) nounwind readonly, !dbg !81
+  %2 = tail call noalias i8* @malloc(i64 %1) nounwind, !dbg !82
+  %3 = bitcast i8* %0 to i8**, !dbg !82
+  store i8* %2, i8** %3, align 8, !dbg !82
+  %4 = icmp eq i8* %2, null, !dbg !83
+  br i1 %4, label %readline_new.exit.thread, label %"6.i2.preheader", !dbg !83
+
+readline_new.exit.thread:                         ; preds = %"4.i"
+  tail call void @free(i8* %0) nounwind, !dbg !84
+  br label %"5", !dbg !85
+
+"6.i2.preheader":                                 ; preds = %"4.i"
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %2, i8* %buffer, i64 %1, i32 1, i1 false) nounwind, !dbg !86
+  %5 = tail call i64 @strlen(i8* %2) nounwind readonly, !dbg !87
+  %6 = add i64 %5, -1, !dbg !87
+  br label %"6.i2", !dbg !89
+
+"4.i1":                                           ; preds = %"6.i2"
+  %7 = getelementptr inbounds i8* %2, i64 %12, !dbg !90
+  %8 = load i8* %7, align 1, !dbg !90
+  %9 = icmp eq i8 %8, 10, !dbg !90
+  br i1 %9, label %"7.i", label %"6.i2", !dbg !90
+
+"6.i2":                                           ; preds = %"6.i2.preheader", %"4.i1"
+  %10 = phi i64 [ %12, %"4.i1" ], [ %6, %"6.i2.preheader" ], !dbg !91
+  %11 = icmp eq i64 %10, 0, !dbg !89
+  %12 = add i64 %10, -1, !dbg !89
+  br i1 %11, label %"7.i", label %"4.i1", !dbg !89
+
+"7.i":                                            ; preds = %"6.i2", %"4.i1"
+  %13 = phi i64 [ %12, %"6.i2" ], [ %10, %"4.i1" ], !dbg !89
+  %14 = sub i64 %6, %13, !dbg !92
+  %15 = tail call noalias i8* @malloc(i64 %14) nounwind, !dbg !93
+  %16 = icmp eq i8* %15, null, !dbg !94
+  br i1 %16, label %readline_free.exit, label %"11.i", !dbg !94
+
+"11.i":                                           ; preds = %"7.i"
+  %17 = getelementptr inbounds i8* %2, i64 %13, !dbg !95
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %15, i8* %17, i64 %14, i32 1, i1 false) nounwind, !dbg !95
+  br label %readline_free.exit, !dbg !96
+
+readline_free.exit:                               ; preds = %"11.i", %"7.i"
+  %18 = phi i8* [ %15, %"11.i" ], [ null, %"7.i" ], !dbg !96
+  tail call void @free(i8* %2) nounwind, !dbg !97
+  tail call void @free(i8* %0) nounwind, !dbg !99
+  br label %"5", !dbg !100
+
+"5":                                              ; preds = %entry, %readline_new.exit.thread, %readline_free.exit
+  %19 = phi i8* [ %18, %readline_free.exit ], [ null, %readline_new.exit.thread ], [ null, %entry ], !dbg !100
+  ret i8* %19, !dbg !100
+}
+
+!llvm.dbg.sp = !{!0, !18, !21, !22, !25}
+!llvm.dbg.lv.readline_new = !{!28}
+!llvm.dbg.lv.readline_next = !{!29}
+!llvm.dbg.lv.readline_last_from_rl = !{!30}
+!llvm.dbg.lv.readline_free = !{!31}
+!llvm.dbg.lv.readline_last = !{!32}
+
+!0 = metadata !{i32 655406, i32 0, metadata !1, metadata !"readline_new", metadata !"readline_new", metadata !"readline_new", metadata !1, i32 15, metadata !3, i1 false, i1 true, i32 0, i32 0, null, i32 0, i1 true, null}
+!1 = metadata !{i32 655401, metadata !"readline.c", metadata !"/home/xlous/Development/Compiler/xcc/test/clibs/readline/", metadata !2}
+!2 = metadata !{i32 655377, i32 0, i32 1, metadata !"readline.c", metadata !"/home/xlous/Development/Compiler/xcc/test/clibs/readline/", metadata !"4.6.4", i1 true, i1 true, metadata !"", i32 0}
+!3 = metadata !{i32 655381, metadata !1, metadata !"", metadata !1, i32 0, i64 0, i64 0, i64 0, i32 0, null, metadata !4, i32 0, null}
+!4 = metadata !{metadata !5, metadata !11}
+!5 = metadata !{i32 655375, metadata !1, metadata !"", metadata !1, i32 0, i64 64, i64 64, i64 0, i32 0, metadata !6}
+!6 = metadata !{i32 655382, metadata !1, metadata !"readline_t", metadata !7, i32 19, i64 0, i64 0, i64 0, i32 0, metadata !8}
+!7 = metadata !{i32 655401, metadata !"readline.h", metadata !"/home/xlous/Development/Compiler/xcc/test/clibs/readline/", metadata !2}
+!8 = metadata !{i32 655379, metadata !1, metadata !"readline_s", metadata !7, i32 15, i64 192, i64 64, i64 0, i32 0, null, metadata !9, i32 0, null}
+!9 = metadata !{metadata !10, metadata !13, metadata !17}
+!10 = metadata !{i32 655373, metadata !8, metadata !"buffer", metadata !7, i32 16, i64 64, i64 64, i64 0, i32 0, metadata !11}
+!11 = metadata !{i32 655375, metadata !1, metadata !"", metadata !1, i32 0, i64 64, i64 64, i64 0, i32 0, metadata !12}
+!12 = metadata !{i32 655396, metadata !1, metadata !"char", metadata !1, i32 0, i64 8, i64 8, i64 0, i32 0, i32 6}
+!13 = metadata !{i32 655373, metadata !8, metadata !"cursor", metadata !7, i32 17, i64 64, i64 64, i64 64, i32 0, metadata !14}
+!14 = metadata !{i32 655382, metadata !1, metadata !"size_t", metadata !15, i32 27, i64 0, i64 0, i64 0, i32 0, metadata !16}
+!15 = metadata !{i32 655401, metadata !"xlocale.h", metadata !"/usr/include", metadata !2}
+!16 = metadata !{i32 655396, metadata !1, metadata !"long unsigned int", metadata !1, i32 0, i64 64, i64 64, i64 0, i32 0, i32 7}
+!17 = metadata !{i32 655373, metadata !8, metadata !"line", metadata !7, i32 18, i64 64, i64 64, i64 128, i32 0, metadata !14}
+!18 = metadata !{i32 655406, i32 0, metadata !1, metadata !"readline_next", metadata !"readline_next", metadata !"readline_next", metadata !1, i32 33, metadata !19, i1 false, i1 true, i32 0, i32 0, null, i32 0, i1 true, null}
+!19 = metadata !{i32 655381, metadata !1, metadata !"", metadata !1, i32 0, i64 0, i64 0, i64 0, i32 0, null, metadata !20, i32 0, null}
+!20 = metadata !{metadata !11, metadata !5}
+!21 = metadata !{i32 655406, i32 0, metadata !1, metadata !"readline_last_from_rl", metadata !"readline_last_from_rl", metadata !"readline_last_from_rl", metadata !1, i32 62, metadata !19, i1 false, i1 true, i32 0, i32 0, null, i32 0, i1 true, null}
+!22 = metadata !{i32 655406, i32 0, metadata !1, metadata !"readline_free", metadata !"readline_free", metadata !"readline_free", metadata !1, i32 103, metadata !23, i1 false, i1 true, i32 0, i32 0, null, i32 0, i1 true, null}
+!23 = metadata !{i32 655381, metadata !1, metadata !"", metadata !1, i32 0, i64 0, i64 0, i64 0, i32 0, null, metadata !24, i32 0, null}
+!24 = metadata !{null, metadata !5}
+!25 = metadata !{i32 655406, i32 0, metadata !1, metadata !"readline_last", metadata !"readline_last", metadata !"readline_last", metadata !1, i32 92, metadata !26, i1 false, i1 true, i32 0, i32 0, null, i32 0, i1 true, null}
+!26 = metadata !{i32 655381, metadata !1, metadata !"", metadata !1, i32 0, i64 0, i64 0, i64 0, i32 0, null, metadata !27, i32 0, null}
+!27 = metadata !{metadata !11, metadata !11}
+!28 = metadata !{i32 655617, metadata !0, metadata !"buffer", metadata !1, i32 15, metadata !11, i32 0, i32 0}
+!29 = metadata !{i32 655617, metadata !18, metadata !"rl", metadata !1, i32 33, metadata !5, i32 0, i32 0}
+!30 = metadata !{i32 655617, metadata !21, metadata !"rl", metadata !1, i32 62, metadata !5, i32 0, i32 0}
+!31 = metadata !{i32 655617, metadata !22, metadata !"rl", metadata !1, i32 103, metadata !5, i32 0, i32 0}
+!32 = metadata !{i32 655617, metadata !25, metadata !"buffer", metadata !1, i32 92, metadata !11, i32 0, i32 0}
+!33 = metadata !{i32 15, i32 0, metadata !0, null}
+!34 = metadata !{i32 16, i32 0, metadata !0, null}
+!35 = metadata !{i32 17, i32 0, metadata !0, null}
+!36 = metadata !{i32 20, i32 0, metadata !0, null}
+!37 = metadata !{i32 22, i32 0, metadata !0, null}
+!38 = metadata !{i32 23, i32 0, metadata !0, null}
+!39 = metadata !{i32 24, i32 0, metadata !0, null}
+!40 = metadata !{i32 25, i32 0, metadata !0, null}
+!41 = metadata !{i32 28, i32 0, metadata !0, null}
+!42 = metadata !{i32 29, i32 0, metadata !0, null}
+!43 = metadata !{i32 33, i32 0, metadata !18, null}
+!44 = metadata !{i32 35, i32 0, metadata !18, null}
+!45 = metadata !{i32 37, i32 0, metadata !18, null}
+!46 = metadata !{i32 39, i32 0, metadata !18, null}
+!47 = metadata !{i32 42, i32 0, metadata !18, null}
+!48 = metadata !{i32 41, i32 0, metadata !18, null}
+!49 = metadata !{i32 45, i32 0, metadata !18, null}
+!50 = metadata !{i32 46, i32 0, metadata !18, null}
+!51 = metadata !{i32 48, i32 0, metadata !18, null}
+!52 = metadata !{i32 50, i32 0, metadata !18, null}
+!53 = metadata !{i32 51, i32 0, metadata !18, null}
+!54 = metadata !{i32 52, i32 0, metadata !18, null}
+!55 = metadata !{i32 55, i32 0, metadata !18, null}
+!56 = metadata !{i32 56, i32 0, metadata !18, null}
+!57 = metadata !{i32 57, i32 0, metadata !18, null}
+!58 = metadata !{i32 58, i32 0, metadata !18, null}
+!59 = metadata !{i32 62, i32 0, metadata !21, null}
+!60 = metadata !{i32 64, i32 0, metadata !21, null}
+!61 = metadata !{i32 68, i32 0, metadata !21, null}
+!62 = metadata !{i32 71, i32 0, metadata !21, null}
+!63 = metadata !{i32 72, i32 0, metadata !21, null}
+!64 = metadata !{i32 70, i32 0, metadata !21, null}
+!65 = metadata !{i32 77, i32 0, metadata !21, null}
+!66 = metadata !{i32 78, i32 0, metadata !21, null}
+!67 = metadata !{i32 80, i32 0, metadata !21, null}
+!68 = metadata !{i32 87, i32 0, metadata !21, null}
+!69 = metadata !{i32 88, i32 0, metadata !21, null}
+!70 = metadata !{i32 103, i32 0, metadata !22, null}
+!71 = metadata !{i32 104, i32 0, metadata !22, null}
+!72 = metadata !{i32 107, i32 0, metadata !22, null}
+!73 = metadata !{i32 108, i32 0, metadata !22, null}
+!74 = metadata !{i32 109, i32 0, metadata !22, null}
+!75 = metadata !{i32 92, i32 0, metadata !25, null}
+!76 = metadata !{i32 655617, metadata !0, metadata !"buffer", metadata !1, i32 15, metadata !11, i32 0, metadata !77}
+!77 = metadata !{i32 93, i32 0, metadata !25, null}
+!78 = metadata !{i32 15, i32 0, metadata !0, metadata !77}
+!79 = metadata !{i32 16, i32 0, metadata !0, metadata !77}
+!80 = metadata !{i32 17, i32 0, metadata !0, metadata !77}
+!81 = metadata !{i32 20, i32 0, metadata !0, metadata !77}
+!82 = metadata !{i32 22, i32 0, metadata !0, metadata !77}
+!83 = metadata !{i32 23, i32 0, metadata !0, metadata !77}
+!84 = metadata !{i32 24, i32 0, metadata !0, metadata !77}
+!85 = metadata !{i32 94, i32 0, metadata !25, null}
+!86 = metadata !{i32 28, i32 0, metadata !0, metadata !77}
+!87 = metadata !{i32 64, i32 0, metadata !21, metadata !88}
+!88 = metadata !{i32 97, i32 0, metadata !25, null}
+!89 = metadata !{i32 70, i32 0, metadata !21, metadata !88}
+!90 = metadata !{i32 71, i32 0, metadata !21, metadata !88}
+!91 = metadata !{i32 72, i32 0, metadata !21, metadata !88}
+!92 = metadata !{i32 77, i32 0, metadata !21, metadata !88}
+!93 = metadata !{i32 78, i32 0, metadata !21, metadata !88}
+!94 = metadata !{i32 80, i32 0, metadata !21, metadata !88}
+!95 = metadata !{i32 87, i32 0, metadata !21, metadata !88}
+!96 = metadata !{i32 88, i32 0, metadata !21, metadata !88}
+!97 = metadata !{i32 107, i32 0, metadata !22, metadata !98}
+!98 = metadata !{i32 98, i32 0, metadata !25, null}
+!99 = metadata !{i32 108, i32 0, metadata !22, metadata !98}
+!100 = metadata !{i32 99, i32 0, metadata !25, null}

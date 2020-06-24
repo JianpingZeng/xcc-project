@@ -1,0 +1,62 @@
+                          RDEMO Test Scripts
+
+                           RSA Laboratories
+                            March 2, 1992
+
+
+RDEMO comes with several test scripts that test RSAREF cryptographic
+operations of various key sizes.
+
+The test scripts are: '508test.in', '512test.in', '767test.in',
+'1024test.in', and 'md2test.in'. The scripts consists of RDEMO
+commands. To exercise a script, redirect RDEMO's input to the script.
+For example, on a UNIX system you would run the command
+
+     rdemo < 508test.in
+
+to exercise the test script '508test.in'.
+
+The scripts work with a number of input files. Each script also
+produces output files that you can compare against reference files
+supplied with RDEMO.
+
+See the file 'rdemo.txt' in the 'doc' subdirectory for more on the
+demonstration program.
+
+
+'508test.in' script
+
+     1.   Generates a 508-bit RSA key pair.
+
+     2.   Outputs key to '508key.out' - compare to '508key'.
+ 
+     3.   Verifies signature '508sig' on 'signfile' with 508-bit
+          public key.
+
+     4.   Opens envelope '508env' (signature '508env.sig', encrypted
+          key '508env.key', initialization vector '508env.iv') with
+          508-bit private key, built-in user #1 private key. Outputs
+          result to '508env.out' - read to verify.
+
+
+'512test.in' script
+
+     1.   Verifies signature '512sig' on 'signfile' with built-in
+          user #1 public key.
+
+     2.   Opens envelope '512env' (encrypted signature '512env.sig',
+          encrypted key '512env.key', initialization vector
+          '512env.iv') with built-in user #1 private key, built-in
+          user #2 public key. Outputs result to '512env.out' - read
+          to verify.
+
+
+'767test.in' and '1024test.in'
+
+     Same as '508test.in', except that '508' becomes '767' or '1024'.
+
+
+'md2test.in'
+
+     Verifies signature '512sig.md2' on 'signfile' with built-in user
+     #1 public key. Run RDEMO with the '-2' flag for this script.

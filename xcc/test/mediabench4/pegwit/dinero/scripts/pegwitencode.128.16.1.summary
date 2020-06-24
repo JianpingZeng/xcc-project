@@ -1,0 +1,10 @@
+Analyzer: /u/gs3/leec/leec/Projects/shade/bin/gen
+Version: 1.0 (4/Apr/97) (shade version: 5.25 V8 SPARC ELF32 (14/Feb/95))
+Uname: panther sun4u SunOS 5.5.1 Generic_103640-08
+Start: Mon Jul  7 03:44:34 1997
+Application: ../../bin/pegwitencode -e ../../data/my.pub ../../data/pgptest.plain ../../data/pgptest.plain.enc
+Application Instructions: 34608447
+Stop: Mon Jul  7 04:08:57 1997
+Instructions: 34608447
+Time: 115.980 usr  3.290 sys  1462.731 real  8.154%
+Speed: 290.169 KIPS
