@@ -40,13 +40,11 @@ set(OUT_INCLUDE_DIR "${XCC_BINARY_DIR}/include")
 set(OUT_JAVADOC_DIR "${XCC_BINARY_DIR}/docs")
 set(XCC_JAR "${PACKAGE_STRING}.jar")
 set(GEN_SOURCES_DIR "${XCC_BINARY_DIR}/gen_tblgen_srcs")
-set(GEN_OPTIONS_DIR "${GEN_SOURCES_DIR}/driver")
 
 set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR} -cp ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
-set(EXCLUDE_XCC_DRIVER "${SRC_DIR}/driver")
 set(TARGET_DIRECTORY "${SRC_DIR}/backend/target")
 
 # Find the executable for displaying dot file.
@@ -146,9 +144,7 @@ set(CPUInfoUtility_NAME GetCpuIDAndInfo)
 # Configure the XCC_NAME, XCC_MAJOR, XCC_MINOR
 # Produce ${GEN_SOURCES_DIR}/config/Config.java and Targets.java
 set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
-set(TARGET_SELECT_SRC "${GEN_SOURCES_DIR}/backend/target/TargetSelect.java")
-set(TARGET_SELECT_DEPENDS_ON_SRC "${SRC_DIR}/cfe/driver/CFrontEnd.java"
-"${SRC_DIR}/cfe/driver/PreprocessorFactory.java"
+set(TARGET_SELECT_SRC "${GEN_SOURCES_DIR}/backend/target/TargetSelect.java"
 "${SRC_DIR}/utils/llc/LLC.java"
 "${SRC_DIR}/utils/llvmcheck/LLVMChecker.java")
 
@@ -214,9 +210,6 @@ add_custom_target(GenCpuInfoHeader
 # Add sources file to be compiled.
 file(GLOB_RECURSE SRCS_NO_TARGET "${SRC_DIR}/*.java")
 
-# The xcc driver related sources
-file(GLOB_RECURSE XCC_DRIVER_SRCS ${SRC_DIR}/driver/*.java)
-
 # Collects targets to be excluded.
 foreach(t ${XCC_ALL_TARGETS})
     string(TOLOWER ${t} LOWER_TARGET)
@@ -227,13 +220,9 @@ set(TMP_TARGET "${EXCLUDE_TARGET}")
 # replace the leading '\' with space
 string(REGEX REPLACE "^\\|" "" EXCLUDE_TARGET ${TMP_TARGET})
 
-# Remove target-specific or xcc driver related source files.
+# Remove target-specific related source files.
 foreach (file ${SRCS_NO_TARGET})
 	if ("${file}" MATCHES "(.*)${EXCLUDE_TARGET}(.*)")
-		#message(STATUS "Remove Item from List:${file}")
-        list (REMOVE_ITEM SRCS_NO_TARGET ${file})
-    endif ()
-    if ("${file}" MATCHES "(.*)${EXCLUDE_XCC_DRIVER}(.*)")
 		#message(STATUS "Remove Item from List:${file}")
         list (REMOVE_ITEM SRCS_NO_TARGET ${file})
     endif ()
@@ -241,7 +230,6 @@ endforeach()
 
 # Exclude the TargetSelect.java from source files list as yet.
 list(REMOVE_ITEM SRCS_NO_TARGET ${TARGET_SELECT_SRC})
-list(REMOVE_ITEM SRCS_NO_TARGET ${TARGET_SELECT_DEPENDS_ON_SRC})
 
 #file(GLOB_RECURSE TROVE_SRCS "${XCC_SOURCE_DIR}/external/trove/*.java")
 file(GLOB TROVE_SRCS
@@ -276,7 +264,7 @@ file(MAKE_DIRECTORY ${CLASSES_DIR})
 # target-specific codes.
 add_custom_target(CommonBackend
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${TROVE_SRCS} ${SRCS_NO_TARGET}
-    DEPENDS XccConfig
+    DEPENDS GenCpuInfoHeader
     COMMENT "Building CommonBackend"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/java)
 
@@ -296,42 +284,22 @@ endforeach()
 # Generates TableGen files for each target
 add_subdirectory(java/backend/target)
 
-# Generates xcc options for xcc driver.
-file(MAKE_DIRECTORY ${GEN_OPTIONS_DIR})
-
-set(local_tds "${XCC_SOURCE_DIR}/java/driver")
-add_custom_command(OUTPUT ${GEN_OPTIONS_DIR}/OptionInfo.java
-  COMMAND java -cp ${CLASSES_DIR} utils.tablegen.TableGen
-  -o ${GEN_OPTIONS_DIR}/OptionInfo.java -gen-xcc-options -I ${local_tds} ${local_tds}/Options.td
-  DEPENDS ${BACKEND_TARGET}
-  COMMENT "Building OptionInfo.java..."
-)
-
-add_custom_target(XCCOptionsTableGen
-  COMMENT "Building XCCOptionsTableGen"
-  DEPENDS ${GEN_OPTIONS_DIR}/OptionInfo.java
-)
-
 # Compiling collection of generated java source code by TableGen tool.
-add_custom_target(BuildXCCOptions
+add_custom_target(BuildXCC
 	COMMAND ${JAVA_COMPILE} -cp ${CLASSES_DIR} ${JFLAGS}
     ${TARGET_SELECT_SRC}
-    ${TARGET_SELECT_DEPENDS_ON_SRC}
-    ${XCC_DRIVER_SRCS}
-	${GEN_OPTIONS_DIR}/*.java
-	DEPENDS XCCOptionsTableGen
-    COMMENT "Compiling taraget-specific source files"
+    DEPENDS CommonBackend ${BACKEND_TARGET}
+    COMMENT "Compiling target-specific source files"
 )
 
 # Generating jar and resides it into out/lib directory.
 file(MAKE_DIRECTORY ${OUT_LIB_DIR})
 add_custom_target(jar ALL
     COMMAND ${JAVA_ARCHIVE} -cf "${OUT_LIB_DIR}/${XCC_JAR}" -C ${CLASSES_DIR} .
-    DEPENDS BuildXCCOptions
+    DEPENDS BuildXCC
     WORKING_DIRECTORY ${CLASSES_DIR}
     COMMENT "Building jar"
 )
-
 
 set(COM_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/cpp/NativeLauncher.cpp)
 set(XCC_SRCS ${COM_SRCS} ${XCC_SOURCE_DIR}/cpp/xcc.cpp)

@@ -18,7 +18,7 @@ package backend.llReader;
 
 import backend.support.LLVMContext;
 import backend.value.Module;
-import cfe.support.MemoryBuffer;
+import tools.MemoryBuffer;
 import tools.OutRef;
 import tools.SMDiagnostic;
 import tools.SourceMgr;

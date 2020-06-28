@@ -28,7 +28,6 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import cfe.support.MemoryBuffer;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;

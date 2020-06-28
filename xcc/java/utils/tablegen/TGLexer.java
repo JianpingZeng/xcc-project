@@ -16,7 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import cfe.support.MemoryBuffer;
+import tools.MemoryBuffer;
 import tools.Error;
 import tools.SourceMgr;
 import tools.SourceMgr.SMLoc;

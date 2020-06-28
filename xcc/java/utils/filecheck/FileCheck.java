@@ -18,8 +18,8 @@
 package utils.filecheck;
 
 import gnu.trove.list.array.TCharArrayList;
-import cfe.support.MemoryBuffer;
 import tools.Error;
+import tools.MemoryBuffer;
 import tools.SourceMgr;
 import tools.Util;
 import tools.commandline.*;

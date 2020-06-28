@@ -27,7 +27,7 @@ package backend.io;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import cfe.support.MemoryBuffer;
+import tools.MemoryBuffer;
 
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;

@@ -16,11 +16,8 @@
 package utils.tablegen;
 
 import gnu.trove.list.array.TIntArrayList;
-import cfe.support.MemoryBuffer;
+import tools.*;
 import tools.Error;
-import tools.Pair;
-import tools.SourceMgr;
-import tools.Util;
 import utils.tablegen.Init.BinOpInit;
 import utils.tablegen.Init.BinOpInit.BinaryOp;
 import utils.tablegen.Init.BitsInit;

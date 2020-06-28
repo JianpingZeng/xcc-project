@@ -16,31 +16,14 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import cfe.diag.Diagnostic;
-
 /**
  * @author Jianping Zeng
  * @version 0.4
  */
 public class ErrorHandling {
-  public interface LLVMErrorHandler {
-    void apply(Diagnostic diag, String msg);
-  }
-
-  private static LLVMErrorHandler errorHandler;
-  private static Diagnostic diagEngineer;
-
   public static void reportFatalError(String msg) {
-    if (errorHandler != null)
-      errorHandler.apply(diagEngineer, msg);
-    else
-      System.err.println(msg);
+    System.err.println(msg);
     // It should terminate program immediately when backend error occurs.
     System.exit(-1);
-  }
-
-  public static void installLLVMErrorHandler(LLVMErrorHandler handler, Diagnostic diag) {
-    errorHandler = handler;
-    diagEngineer = diag;
   }
 }

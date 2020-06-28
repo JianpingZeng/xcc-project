@@ -20,7 +20,6 @@ package backend.llReader;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.value.Operator;
-import cfe.support.MemoryBuffer;
 import tools.APFloat;
 import tools.*;
 import tools.APSInt;

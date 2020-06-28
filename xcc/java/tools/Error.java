@@ -17,7 +17,6 @@
 
 package tools;
 
-import cfe.support.MemoryBuffer;
 import tools.SourceMgr.DiagKind;
 import tools.SourceMgr.SMLoc;
 

@@ -28,8 +28,6 @@ import backend.support.Triple;
 import backend.target.*;
 import backend.value.Function;
 import backend.value.Module;
-import cfe.basic.TargetInfo;
-import cfe.system.Process;
 import tools.OutRef;
 import tools.PrintStackTraceProgram;
 import tools.SMDiagnostic;
@@ -48,7 +46,6 @@ import java.util.Iterator;
 import java.util.Map;
 
 import static backend.target.TargetMachine.CodeGenOpt.*;
-import static cfe.driver.CFrontEnd.MacOSVersionMin;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
 import static tools.commandline.Initializer.init;
@@ -227,7 +224,7 @@ public class LLC {
 
     Triple theTriple = new Triple(theModule.getTargetTriple());
     if (theTriple.getTriple().isEmpty())
-      theTriple.setTriple(Process.getHostTriple());
+      theTriple.setTriple(tools.Process.getHostTriple());
 
     // Allocate target machine.  First, check whether the user has explicitly
     // specified an architecture to compile for. If so we have to look it up by
@@ -394,130 +391,6 @@ public class LLC {
     }
     String suffix = f.getName().substring(0, f.getName().lastIndexOf('.'));
     return f.getAbsoluteFile().getParent() + "/" + suffix;
-  }
-
-  /**
-   * Recompute the target feature list to only be the list of things that are
-   * enabled, based on the target cpu and feature list.
-   *
-   * @param target
-   * @param features
-   */
-  private static void computeFeatureMap(TargetInfo target, HashMap<String, Boolean> features) {
-    Util.assertion(features.isEmpty(), "Invalid map");
-
-    // Initialze the feature map based on the target.
-    String targetCPU = MCPU.value;
-    target.getDefaultFeatures(targetCPU, features);
-
-    if (MAttrs.isEmpty())
-      return;
-
-    for (int i = 0, e = MAttrs.size(); i != e; i++) {
-      String name = MAttrs.get(i);
-      char firstCh = name.charAt(0);
-      if (firstCh != '-' && firstCh != '+') {
-        java.lang.System.err.printf("error: xcc: invalid target features string: %s\n", name);
-        java.lang.System.exit(-1);
-      }
-      if (!target.setFeatureEnabled(features, name.substring(1), firstCh == '+')) {
-        java.lang.System.err.printf("error: xcc: invalid target features string: %s\n",
-            name.substring(1));
-        java.lang.System.exit(-1);
-      }
-    }
-  }
-
-  /**
-   * If -mmacosx-version-min=10.12 is specified, change the triple
-   * from being something like i386-apple-darwin17 to i386-apple-darwin16.
-   *
-   * @param triple
-   * @return
-   */
-  private static String handleMacOSVersionMin(String triple) {
-    int darwinDashIdx = triple.indexOf("-darwin");
-    if (darwinDashIdx == -1) {
-      java.lang.System.err.println("-mmacosx-version-min only valid for darwin (Mac OS X) targets");
-      java.lang.System.exit(-1);
-    }
-    int darwinNumIdx = darwinDashIdx + "-darwin".length();
-    // remove the darwin version number.
-    triple = triple.substring(0, darwinNumIdx);
-    String macosxmin = MacOSVersionMin.value;
-    boolean macosxMinVersionInvalid = false;
-    int versionNum = 0;
-
-    // macos x version min must like this, 10.12.1
-    if (macosxmin.length() < 4 || !macosxmin.startsWith("10.") ||
-        !Process.isDigit(macosxmin.charAt(3))) {
-      macosxMinVersionInvalid = true;
-    } else {
-      try {
-        macosxmin = macosxmin.substring(3);
-        int dotIdx = macosxmin.indexOf('.');
-        if (dotIdx != -1)
-          // like 10.12.1
-          versionNum = Integer.parseInt(macosxmin.substring(0, dotIdx));
-        else
-          // like 10.12
-          versionNum = Integer.parseInt(macosxmin);
-        macosxMinVersionInvalid = versionNum > 13;
-        triple += (versionNum + 4);
-        if (dotIdx != -1) {
-          triple += macosxmin.substring(dotIdx);
-        }
-      } catch (NumberFormatException e) {
-        macosxMinVersionInvalid = true;
-      }
-    }
-
-    if (macosxMinVersionInvalid) {
-      java.lang.System.err.printf("-mmacosx-version-min=%s is invalid, expected something like '10.4'.\n",
-          MacOSVersionMin.value);
-      java.lang.System.exit(-1);
-    } else if (versionNum < 4 && triple.startsWith("x86_64")) {
-      java.lang.System.err.printf("-mmacosx-version-min=%s is invalid with -arch x86_64.\n",
-          MacOSVersionMin.value);
-      java.lang.System.exit(-1);
-    }
-    return triple;
-  }
-
-  /**
-   * Process the various options that may affects the target triple and build a
-   * final aggregate string that we are compiling for.
-   *
-   * @return
-   */
-  private static String createTargetTriple() {
-    // Initialize base triple.  If a -triple option has been specified, use
-    // that triple.  Otherwise, default to the host triple.
-    String triple = TargetTriple.value;
-    if (triple == null || triple.isEmpty())
-      triple = Process.getHostTriple();
-
-    if (!MacOSVersionMin.value.isEmpty())
-      triple = handleMacOSVersionMin(triple);
-
-    return triple;
-  }
-
-  private static ArrayList<String> computeCPUFeatures() {
-    // Get information about the target being compiled for.
-    String triple = createTargetTriple();
-    TargetInfo target = TargetInfo.createTargetInfo(triple);
-
-    HashMap<String, Boolean> features = new HashMap<>();
-    computeFeatureMap(target, features);
-
-    ArrayList<String> res = new ArrayList<>();
-    for (Map.Entry<String, Boolean> entry : features.entrySet()) {
-      String name = entry.getValue() ? "+" : "-";
-      name += entry.getKey();
-      res.add(name);
-    }
-    return res;
   }
 }
 

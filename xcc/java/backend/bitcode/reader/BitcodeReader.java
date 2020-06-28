@@ -32,7 +32,6 @@ import backend.io.ByteSequence;
 import backend.support.*;
 import backend.type.*;
 import backend.value.*;
-import cfe.support.MemoryBuffer;
 import tools.*;
 
 import java.util.*;
