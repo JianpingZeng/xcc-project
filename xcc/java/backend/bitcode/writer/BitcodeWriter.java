@@ -237,7 +237,7 @@ public class BitcodeWriter {
           vals.add(dl.getCol());
           vals.add(scope.get() != null ? ve.getValueID(scope.get())+1 : 0);
           vals.add(ia.get() != null ? ve.getValueID(ia.get())+1 : 0);
-          stream.emitRecord(FUNC_CODE_DEBUG_LOC2, vals);
+          stream.emitRecord(BitcodeReader.FunctionCodes.FUNC_CODE_DEBUG_LOC, vals);
           vals.clear();
 
           lastDL = dl;
@@ -444,7 +444,7 @@ public class BitcodeWriter {
         vals.add(((LoadInst)inst).isVolatile()?1:0);
         break;
       case Store:
-        code = FUNC_CODE_INST_STORE2;
+        code = FUNC_CODE_INST_STORE;
         pushValueAndType(inst.operand(1), instID, vals, ve);
         vals.add(ve.getValueID(inst.operand(0)));
         vals.add(Util.log2(((StoreInst)inst).getAlignment()) + 1);
@@ -454,7 +454,7 @@ public class BitcodeWriter {
         CallInst ci = (CallInst) inst;
         PointerType pty = (PointerType) ci.getCalledValue().getType();
         FunctionType fty = (FunctionType) pty.getElementType();
-        code = FUNC_CODE_INST_CALL2;
+        code = FUNC_CODE_INST_CALL;
 
         vals.add(ve.getAttributeID(ci.getAttributes()));
         vals.add(ci.getCallingConv().ordinal() << 1);
@@ -1084,7 +1084,7 @@ public class BitcodeWriter {
                                      BitstreamWriter stream) {
     ArrayList<Pair<Type, Integer>> typeList = ve.getTypes();
 
-    stream.enterSubBlock(TYPE_BLOCK_ID, 4 /*count from # abbrevs */);
+    stream.enterSubBlock(TYPE_BLOCK_ID_OLD, 4 /*count from # abbrevs */);
     TLongArrayList typeVals = new TLongArrayList();
 
     // Abbrev for TYPE_CODE_POINTER.
@@ -1105,9 +1105,9 @@ public class BitcodeWriter {
         Util.log2Ceil(ve.getTypes().size()+1)));
     int FunctionAbbrev = stream.emitAbbrev(abbv);
 
-    // Abbrev for TYPE_CODE_STRUCT.
+    // Abbrev for TYPE_CODE_STRUCT_ANON.
     abbv = new BitCodeAbbrev();
-    abbv.add(new BitCodeAbbrevOp(TYPE_CODE_STRUCT));
+    abbv.add(new BitCodeAbbrevOp(TYPE_CODE_STRUCT_ANON));
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 1));  // ispacked
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,
@@ -1130,7 +1130,7 @@ public class BitcodeWriter {
     // Loop over all of the types, emitting each in turn.
     for (int i = 0, e = typeList.size(); i != e; ++i) {
      Type T = typeList.get(i).first;
-      int AbbrevToUse = 0;
+      int abbrevToUse = 0;
       int Code = 0;
 
       switch (T.getTypeID()) {
@@ -1156,7 +1156,7 @@ public class BitcodeWriter {
           typeVals.add(ve.getTypeID(PTy.getElementType()));
           int AddressSpace = PTy.getAddressSpace();
           typeVals.add(AddressSpace);
-          if (AddressSpace == 0) AbbrevToUse = PtrAbbrev;
+          if (AddressSpace == 0) abbrevToUse = PtrAbbrev;
           break;
         }
         case FunctionTyID: {
@@ -1168,19 +1168,22 @@ public class BitcodeWriter {
           typeVals.add(ve.getTypeID(FT.getReturnType()));
           for (int j = 0, sz = FT.getNumParams(); j < sz; ++j)
             typeVals.add(ve.getTypeID(FT.getParamType(j)));
-          AbbrevToUse = FunctionAbbrev;
+          abbrevToUse = FunctionAbbrev;
           break;
         }
         case StructTyID: {
-       StructType ST = (StructType) T;
+          StructType st = (StructType) T;
           // STRUCT: [ispacked, eltty x N]
-          Code = TYPE_CODE_STRUCT;
-          typeVals.add(ST.isPacked() ? 1 : 0);
+          typeVals.add(st.isPacked() ? 1 : 0);
           // Output all of the element types.
-          for (int j = 0, sz = ST.getNumOfElements(); j < sz; j++)
-            typeVals.add(ve.getTypeID(ST.getElementType(j)));
+          for (int j = 0, sz = st.getNumOfElements(); j < sz; j++)
+            typeVals.add(ve.getTypeID(st.getElementType(j)));
 
-          AbbrevToUse = StructAbbrev;
+          if (st.isLiteral()) {
+            Code = TYPE_CODE_STRUCT_ANON;
+            // TODO 2020/7/6
+          }
+          abbrevToUse = StructAbbrev;
           break;
         }
         case ArrayTyID: {
@@ -1189,7 +1192,7 @@ public class BitcodeWriter {
           Code = TYPE_CODE_ARRAY;
           typeVals.add(AT.getNumElements());
           typeVals.add(ve.getTypeID(AT.getElementType()));
-          AbbrevToUse = ArrayAbbrev;
+          abbrevToUse = ArrayAbbrev;
           break;
         }
         case VectorTyID: {
@@ -1203,7 +1206,7 @@ public class BitcodeWriter {
       }
 
       // Emit the finished record.
-      stream.emitRecord(Code, typeVals, AbbrevToUse);
+      stream.emitRecord(Code, typeVals, abbrevToUse);
       typeVals.clear();
     }
 

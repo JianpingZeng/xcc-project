@@ -171,6 +171,6 @@ public interface ByteSequence {
   static ByteSequence create(MemoryBuffer buffer) {
     if (buffer == null)
       return null;
-    return create(new String(buffer.getBuffer()).getBytes());
+    return create(buffer.getCharBuffer());
   }
 }

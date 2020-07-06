@@ -212,7 +212,7 @@ public final class TGLexer {
   }
 
   private int getNextChar() {
-    char curChar = curBuf.getCharAt(curPtr++);
+    byte curChar = curBuf.getCharAt(curPtr++);
     switch (curChar) {
       default:
         return curChar;
@@ -254,7 +254,7 @@ public final class TGLexer {
   private void skipBCPLComment() {
     ++curPtr;
     while (true) {
-      char ch = curBuf.getCharAt(curPtr);
+      byte ch = curBuf.getCharAt(curPtr);
       switch (ch) {
         case '\r':
         case '\n':
@@ -307,8 +307,7 @@ public final class TGLexer {
 
   private TokKind lexIdentifier() {
     int identStart = tokStart;
-
-    char ch = curBuf.getCharAt(curPtr);
+    byte ch = curBuf.getCharAt(curPtr);
     while (Character.isJavaIdentifierPart(ch)) {
       if (curBuf.getCharAt(identStart) == '#') {
         if (!curBuf.getSubString(identStart, identStart + 6).equals("#NAME#"))
@@ -396,7 +395,7 @@ public final class TGLexer {
     int strStart = curPtr;
 
     StringBuilder sb = new StringBuilder();
-    char ch = curBuf.getCharAt(curPtr);
+    byte ch = curBuf.getCharAt(curPtr);
     while (ch != '"') {
       if (ch == 0 && curPtr == curBuf.length()) {
         MemoryBuffer mb2 = curBuf.clone();
@@ -460,7 +459,7 @@ public final class TGLexer {
   }
 
   private TokKind lexVarName() {
-    char ch = curBuf.getCharAt(curPtr);
+    byte ch = curBuf.getCharAt(curPtr);
     if (!Character.isLetter(ch) && ch != '_') {
       MemoryBuffer mb2 = curBuf.clone();
       mb2.setBufferStart(tokStart);
@@ -487,7 +486,7 @@ public final class TGLexer {
   private TokKind lexNumber() {
     int prevChar = curBuf.getCharAt(curPtr - 1);
     if (prevChar == '0') {
-      char curChar = curBuf.getCharAt(curPtr);
+      byte curChar = curBuf.getCharAt(curPtr);
       if (curChar == 'x') {
         // hexdecimal number.
         ++curPtr;

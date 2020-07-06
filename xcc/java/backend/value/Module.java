@@ -287,7 +287,8 @@ public final class Module implements Iterable<Function> {
         && fn.getName() != null);
     functionList.add(fn);
     fn.setParent(this);
-    valSymTable.createValueName(fn.getName(), fn);
+    if (fn.getName() != null && !fn.getName().isEmpty())
+      valSymTable.createValueName(fn.getName(), fn);
   }
 
   /**

@@ -312,4 +312,17 @@ public class AutoUpgrade {
       if (exn.get() != null && sel.get() != null) return;
     }
   }
+
+  /**
+   * This function strips all debug information intrinsics, except for llvm.dbg.declare.
+   * If an llvm.dbg.declare intrinsic is invalid, the all uses of that will be be striped.
+   * @param m
+   */
+  public static void checkDebugInfoIntrinsics(Module m) {
+    // TODO July/06/2020
+  }
+
+  public static void upgradeIntrinsicCall(CallInst ci, Function func) {
+
+  }
 }

@@ -1,27 +1,16 @@
 package tools;
 /*
- * Extremely C language Compiler.
+ * Extremely C language Compiler
  * Copyright (c) 2015-2020, Jianping Zeng.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * All rights reserved.
+ * This software is subjected to the protection of BSD 3.0 Licence.
+ * For more details, please refers to the LICENSE file.
  */
 
-import tools.Util;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,31 +21,23 @@ import java.util.Arrays;
  * @version 0.4
  */
 public class MemoryBuffer implements Cloneable {
-    private char[] buffer;
+    private final byte[] buffer;
     private int bufferStart;
     private String filename;
     private boolean isRegular;
 
-    public MemoryBuffer(char[] buffer) {
-        this.buffer = new char[buffer.length];
+    private MemoryBuffer(byte[] buffer) {
+        this.buffer = new byte[buffer.length];
         System.arraycopy(buffer, 0, this.buffer, 0, buffer.length);
     }
 
-    public String getFilename() {
-        return filename;
-    }
+    public String getFilename() { return filename; }
 
-    public void setFilename(String filename) {
-        this.filename = filename;
-    }
+    public void setFilename(String filename) { this.filename = filename; }
 
-    public char[] getBuffer() {
-        return buffer;
-    }
+    public byte[] getCharBuffer() { return buffer; }
 
-    public int length() {
-        return buffer.length;
-    }
+    public int length() { return buffer.length; }
 
     /**
      * Determines whether this memory buffer is read from regular file (either stdin nor memory).
@@ -85,11 +66,11 @@ public class MemoryBuffer implements Cloneable {
      *
      * @return
      */
-    public char getCurChar() {
+    public byte getCurChar() {
         return buffer[bufferStart];
     }
 
-    public char getCharAt(int i) {
+    public byte getCharAt(int i) {
         int len = length();
         if (i >= getBufferStart() && i < len)
             return buffer[i];
@@ -98,13 +79,10 @@ public class MemoryBuffer implements Cloneable {
 
     public String getSubString(int lineStart, int lineEnd) {
         Util.assertion(0 <= lineStart && lineStart <= lineEnd && lineEnd < buffer.length);
-
         if (lineEnd == lineStart) return "";
-
         StringBuilder sb = new StringBuilder();
         for (int i = lineStart; i < lineEnd; i++)
-            sb.append(buffer[i]);
-
+            sb.append((char)buffer[i]);
         return sb.toString();
     }
 
@@ -116,7 +94,7 @@ public class MemoryBuffer implements Cloneable {
      * @return
      */
     public boolean contains(MemoryBuffer other) {
-        boolean b1 = Arrays.equals(buffer, other.getBuffer()),
+        boolean b1 = Arrays.equals(buffer, other.getCharBuffer()),
                 b2 = other.getBufferStart() >= bufferStart,
                 b3 = other.getBufferStart() <= buffer.length;   // must be less and equal.
         return b1 && b2 && b3;
@@ -147,26 +125,35 @@ public class MemoryBuffer implements Cloneable {
         this.bufferStart = bufferStart;
     }
 
-    public static MemoryBuffer getFile(Path path) {
-        long sz = 0;
-        try {
-            sz = Files.size(path);
-        } catch (IOException e) {
-            System.err.println("Obtain the size of '" + path.toString() + "' failed");
-            System.exit(1);
-        }
+    private static MemoryBuffer read(String filename) {
+        int sz = 1024;
+        try (BufferedInputStream reader = new BufferedInputStream(filename.equals("-") ?
+                System.in : new FileInputStream(filename))) {
+            byte[] buf = new byte[sz];
+            int offset = 0;
+            do {
+                sz = reader.read(buf, offset, sz);
+                if (sz < 0)
+                    break;
 
-        try (BufferedReader reader = Files.newBufferedReader(path)) {
+                offset += sz;
+
+                byte[] newArray = new byte[buf.length * 2];
+                System.arraycopy(buf, 0, newArray, 0, buf.length);
+                buf = newArray;
+            } while (true);
+
             // Allocate a redundant one space to reside the '\0' which
             // indicates EOF.
-            CharBuffer cb = CharBuffer.allocate((int) sz + 1);
-            reader.read(cb);
-            MemoryBuffer mb = new MemoryBuffer(cb.array());
-            mb.setFilename(path.normalize().toString());
-            mb.setRegular(true);
-            return mb;
-        } catch (IOException e) {
-            e.printStackTrace();
+            byte[] newBuf = new byte[offset];
+            System.arraycopy(buf, 0, newBuf, 0, offset);
+            MemoryBuffer buffer = new MemoryBuffer(newBuf);
+            buffer.setRegular(!filename.equals("-"));
+            buffer.setFilename(filename);
+            return buffer;
+        } catch (Exception e) {
+            System.err.printf("error when reading input file '%s'\n", filename);
+            System.exit(1);
         }
         return null;
     }
@@ -177,45 +164,10 @@ public class MemoryBuffer implements Cloneable {
             System.err.println("File '" + filename + "' is not exists");
             System.exit(1);
         }
-
-        return getFile(path);
+        return read(filename);
     }
 
-    public static MemoryBuffer getSTDIN() {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
-            int sz = System.in.available();
-            char[] buf = null;
-            if (sz <= 0) {
-                return null;
-            }
-
-            buf = new char[sz];
-            int offset = 0;
-            do {
-                sz = reader.read(buf, offset, sz);
-                if (sz < 0)
-                    break;
-
-                offset += sz;
-
-                char[] newArray = new char[buf.length * 2];
-                System.arraycopy(buf, 0, newArray, 0, buf.length);
-                buf = newArray;
-            } while (true);
-
-            // Allocate a redundant one space to reside the '\0' which
-            // indicates EOF.
-            char[] newBuf = new char[offset + 1];
-            System.arraycopy(buf, 0, newBuf, 0, offset);
-            MemoryBuffer mb = new MemoryBuffer(newBuf);
-            mb.setFilename("-");
-            mb.setRegular(false);
-            return mb;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
+    public static MemoryBuffer getSTDIN() { return read("-"); }
 
     public static MemoryBuffer getFileOrSTDIN(String filename) {
         if (!filename.equals("-") && !filename.isEmpty())
@@ -231,32 +183,10 @@ public class MemoryBuffer implements Cloneable {
         return getFilename();
     }
 
-    /**
-     * Allocate a new MemoryBuffer of the specified size that
-     * is completely initialized to zeros.  Note that the caller should
-     * initialize the memory allocated by this method.  The memory is owned by
-     * the MemoryBuffer object.
-     *
-     * @param size
-     * @param bufferName
-     * @return
-     */
-    public static MemoryBuffer getNewMemBuffer(int size, String bufferName) {
-        char[] buf = new char[size];
-        return new MemoryBuffer.MemoryBufferMem(buf, bufferName);
-    }
-
     static class MemoryBufferMem extends MemoryBuffer {
-        private String fileID;
-
-        public MemoryBufferMem(char[] buffer, String fid) {
+        public MemoryBufferMem(byte[] buffer, String fid) {
             super(buffer);
-            fileID = fid;
-        }
-
-        @Override
-        public String getBufferIdentifier() {
-            return fileID;
+            setFilename(fid);
         }
 
         /**
@@ -264,16 +194,15 @@ public class MemoryBuffer implements Cloneable {
          *
          * @return
          */
-        public boolean isRegular() {
-            return false;
-        }
+        public boolean isRegular() { return false; }
     }
 
     public static MemoryBuffer getMemBuffer(String buffer, String name) {
-        // Allocate a redundant one space to reside the '\0' which
-        // indicates EOF.
-        char[] temp = new char[buffer.length() + 1];
-        System.arraycopy(buffer.toCharArray(), 0, temp, 0, temp.length - 1);
+        byte[] temp = buffer.getBytes(StandardCharsets.US_ASCII);
         return new MemoryBuffer.MemoryBufferMem(temp, name);
+    }
+
+    public static MemoryBuffer getMemBuffer(byte[] buffer, String name) {
+        return new MemoryBuffer.MemoryBufferMem(buffer, name);
     }
 }

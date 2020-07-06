@@ -16,6 +16,9 @@ package backend.llReader;
  * permissions and limitations under the License.
  */
 
+import backend.bitcode.BitcodeUtil;
+import backend.bitcode.reader.BitcodeReader;
+import backend.io.ByteSequence;
 import backend.support.LLVMContext;
 import backend.value.Module;
 import tools.MemoryBuffer;
@@ -33,9 +36,6 @@ public final class Parser {
                                          LLVMContext ctx) {
     MemoryBuffer f = MemoryBuffer.getFileOrSTDIN(filename);
     SourceMgr srcMgr = new SourceMgr();
-    srcMgr.addNewSourceBuffer(f, new SMLoc());
-    Module m = new Module(filename, ctx);
-
     if (f == null) {
       diag.set(srcMgr.getMessage(new SMLoc(),
           String.format("Could not open input file '%s'\n", filename),
@@ -43,6 +43,21 @@ public final class Parser {
       return null;
     }
 
+    if (BitcodeUtil.isBitcode(ByteSequence.create(f))) {
+      OutRef<String> errorMsg = new OutRef<>("");
+      Module m = BitcodeReader.parseBitcodeFile(f, errorMsg, ctx);
+      if (m == null) {
+        System.err.print("error on reading input bitcode file");
+        if (!errorMsg.get().isEmpty())
+          System.err.printf(", '%s'", errorMsg.get());
+        System.err.println();
+        System.exit(1);
+      }
+      return m;
+    }
+
+    srcMgr.addNewSourceBuffer(f, new SMLoc());
+    Module m = new Module(filename, ctx);
     LLParser parser = new LLParser(f, srcMgr, m, diag, ctx);
     if (parser.run()) {
       return null;

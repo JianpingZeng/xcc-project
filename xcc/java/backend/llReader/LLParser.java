@@ -52,20 +52,6 @@ import static tools.Util.unEscapeLexed;
  * @version 0.4
  */
 public final class LLParser {
-  public static class UpRefRecord {
-    SMLoc loc;
-    int nestedLevel;
-    Type lastContainedTy;
-    OpaqueType upRefTy;
-
-    public UpRefRecord(SMLoc loc, int nestedLevel, OpaqueType upRefTy) {
-      this.loc = loc;
-      this.nestedLevel = nestedLevel;
-      this.lastContainedTy = upRefTy;
-      this.upRefTy = upRefTy;
-    }
-  }
-
   // Instruction metadata resolution.  Each instruction can have a list of
   // MDRef info associated with them.
   //

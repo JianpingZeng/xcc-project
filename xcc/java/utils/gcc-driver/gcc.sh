@@ -357,7 +357,7 @@ for src in $srcs; do
 #  DCall "${LLVM}/bin/opt -mem2reg -indvars -loop-unroll -unroll-count=8 ${llc} -S -o ${llc}" || Die "LLVM opt loop unroll failed!!"
 #  DCall "${LLVM}/bin/opt -dse ${llc} -S -o ${llc}" || Die "LLVM opt basicaa failed!" 
 
-#  DCall "${LLVM}/bin/llvm-as ${llc} -o ${byc}" || Die "LLVM llvm-as failed!"
+#  DCall "${LLVM}/bin/llvm-as.cpp ${llc} -o ${byc}" || Die "LLVM llvm-as.cpp failed!"
 done
 
 # Compile.

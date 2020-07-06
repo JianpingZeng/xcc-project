@@ -17,6 +17,7 @@
 
 package utils.filecheck;
 
+import gnu.trove.list.array.TByteArrayList;
 import gnu.trove.list.array.TCharArrayList;
 import tools.Error;
 import tools.MemoryBuffer;
@@ -72,7 +73,7 @@ public final class FileCheck {
     Util.assertion(!str.isEmpty(), "Can't find an empty string");
 
     int end = buffer.length();
-    String bufStr = new String(buffer.getBuffer());
+    String bufStr = new String(buffer.getCharBuffer());
     while (true) {
       curPtr = bufStr.indexOf(str, curPtr);
       if (curPtr < 0) return end;
@@ -180,18 +181,19 @@ public final class FileCheck {
   }
 
   private static MemoryBuffer canonicalizeInputFile(MemoryBuffer buffer) {
-    TCharArrayList newFile = new TCharArrayList(buffer.length());
+    TByteArrayList newFile = new TByteArrayList();
     for (int ptr = buffer.getBufferStart(), end = buffer.length(); ptr < end; ptr++) {
-      char ch = buffer.getCharAt(ptr);
+      byte ch = buffer.getCharAt(ptr);
       if (ch != ' ' && ch != '\t') {
         newFile.add(ch);
         continue;
       }
 
-      newFile.add(' ');
+      newFile.add((byte)' ');
       while (ptr + 1 < end && (buffer.getCharAt(ptr + 1) == ' ' ||
           buffer.getCharAt(ptr + 1) == '\t'))
         ++ptr;
+      return MemoryBuffer.getMemBuffer(newFile.toArray(), buffer.getFilename());
     }
 
     return MemoryBuffer.getMemBuffer(
@@ -216,7 +218,7 @@ public final class FileCheck {
   private static int countNumNewlinesBetween(MemoryBuffer buffer, int start, int end) {
     int numNewLines = 0;
     for (; start < end; ++start) {
-      char ch = buffer.getCharAt(start);
+      byte ch = buffer.getCharAt(start);
       if (ch != '\n' && ch != '\r')
         continue;
 

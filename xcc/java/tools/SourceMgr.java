@@ -202,7 +202,7 @@ public final class SourceMgr {
 
     if (lineNoCache != null) {
       if (lineNoCache.lastQueryBufferID == bufferID
-          && lineNoCache.lastQuery.getBuffer().equals(buf.getBuffer())
+          && lineNoCache.lastQuery.getCharBuffer().equals(buf.getCharBuffer())
           && lineNoCache.lastQuery.getBufferStart() <= buf.getBufferStart()) {
         buf = lineNoCache.lastQuery;
         lineNo = lineNoCache.lineNoOfQuery;
@@ -255,7 +255,7 @@ public final class SourceMgr {
     Util.assertion(curBuf != -1, "Invalid or unspecified location!");
 
     MemoryBuffer curMB = getBufferInfo(curBuf).buffer;
-    Util.assertion(curMB.getBuffer() == loc.buffer.getBuffer());
+    Util.assertion(curMB.getCharBuffer() == loc.buffer.getCharBuffer());
     int columnStart = loc.getPointer();
     while (columnStart >= curMB.getBufferStart()
         && curMB.getCharAt(columnStart) != '\n'

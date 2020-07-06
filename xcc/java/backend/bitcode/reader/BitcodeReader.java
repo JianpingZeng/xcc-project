@@ -27,11 +27,16 @@ package backend.bitcode.reader;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.io.BitStream;
+import backend.debug.DebugLoc;
 import backend.io.ByteSequence;
+import backend.ir.IndirectBrInst;
+import backend.ir.SelectInst;
 import backend.support.*;
 import backend.type.*;
 import backend.value.*;
+import backend.value.Instruction.CallInst;
+import backend.value.Instruction.GetElementPtrInst;
+import backend.value.Instruction.LandingPadInst;
 import tools.*;
 
 import java.util.*;
@@ -52,8 +57,7 @@ import static backend.bitcode.reader.BitcodeReader.TypeCodes.*;
 import static backend.bitcode.reader.BitcodeReader.TypeSymtabCodes.TST_CODE_ENTRY;
 import static backend.bitcode.reader.BitcodeReader.ValueSymtabCodes.VST_CODE_BBENTRY;
 import static backend.bitcode.reader.BitcodeReader.ValueSymtabCodes.VST_CODE_ENTRY;
-import static backend.support.AutoUpgrade.upgradeGlobalVariable;
-import static backend.support.AutoUpgrade.upgradeIntrinsicFunction;
+import static backend.support.AutoUpgrade.*;
 
 /**
  * @author Jianping Zeng.
@@ -65,26 +69,69 @@ public class BitcodeReader implements GVMaterializer {
 
   @Override
   public boolean isMaterializable(GlobalValue gv) {
+    if (gv instanceof Function) {
+      Function f = (Function) gv;
+      return f.isDeclaration() && deferredFunctionInfo.containsKey(f);
+    }
     return false;
   }
 
   @Override
-  public boolean isDematerializable(GlobalValue gv) {
-    return false;
-  }
+  public boolean isDematerializable(GlobalValue gv) { return false; }
 
   @Override
   public boolean materialize(GlobalValue gv, OutRef<String> errInfo) {
+    Function f = (Function) gv;
+    if (f == null || !isMaterializable(f)) return false;
+
+    Util.assertion(deferredFunctionInfo.containsKey(f), "Deferred function not found");
+    jumpToBit(deferredFunctionInfo.get(f));
+
+    if (parseFunctionBody(f)) {
+      if (errInfo != null)
+        errInfo.set(errorString);
+      return true;
+    }
+    // upgrade any old intrinsic calls in the function.
+    for (Pair<Function, Function> pair : upgradedIntrinsics) {
+      if (pair.first != pair.second) {
+        for (Use u : pair.first.usesList) {
+          if (u.getUser() instanceof CallInst)
+            upgradeIntrinsicCall((CallInst)u.getUser(), pair.second);
+        }
+        if (!pair.first.isUseEmpty())
+          pair.first.replaceAllUsesWith(pair.second);
+        pair.first.eraseFromParent();
+      }
+    }
     return false;
   }
 
   @Override
-  public void dematerialize(GlobalValue gv) {
-
-  }
+  public void dematerialize(GlobalValue gv) { }
 
   @Override
   public boolean materializeModule(Module m, OutRef<String> errInfo) {
+    Util.assertion(theModule == m, "Can only materialize the module which this BitcodeReader is being attached to");
+    for (Function f : theModule) {
+      if (isMaterializable(f) && materialize(f, errInfo))
+        return true;
+    }
+
+    for (Pair<Function, Function> pair : upgradedIntrinsics) {
+      if (pair.first != pair.second) {
+        for (Use u : pair.first.usesList) {
+          if (u.getUser() instanceof CallInst)
+            upgradeIntrinsicCall((CallInst)u.getUser(), pair.second);
+        }
+        if (!pair.first.isUseEmpty())
+          pair.first.replaceAllUsesWith(pair.second);
+        pair.first.eraseFromParent();
+      }
+    }
+    upgradedIntrinsics.clear();
+    upgradeExceptionHandling(m);
+    checkDebugInfoIntrinsics(m);
     return false;
   }
 
@@ -98,7 +145,8 @@ public class BitcodeReader implements GVMaterializer {
   // nested block, define abbrevs, and define an unabbreviated record.
   public interface FixedAbbrevIDs {
     int END_BLOCK = 0,  // Must be zero to guarantee termination for broken bitcode.
-        ENTER_SUBBLOCK = 1,
+
+    ENTER_SUBBLOCK = 1,
 
     /// DEFINE_ABBREV - Defines an abbrev for the current block.  It consists
     /// of a vbr5 for # operand infos.  Each operand info is emitted with a
@@ -144,13 +192,14 @@ public class BitcodeReader implements GVMaterializer {
 
     // Module sub-block id's.
     PARAMATTR_BLOCK_ID = MODULE_BLOCK_ID + 1,
-        TYPE_BLOCK_ID = PARAMATTR_BLOCK_ID + 1,
-        CONSTANTS_BLOCK_ID = TYPE_BLOCK_ID + 1,
-        FUNCTION_BLOCK_ID = CONSTANTS_BLOCK_ID + 1,
-        TYPE_SYMTAB_BLOCK_ID = FUNCTION_BLOCK_ID + 1,
-        VALUE_SYMTAB_BLOCK_ID = TYPE_SYMTAB_BLOCK_ID + 1,
-        METADATA_BLOCK_ID = VALUE_SYMTAB_BLOCK_ID + 1,
-        METADATA_ATTACHMENT_ID = METADATA_BLOCK_ID + 1;
+    TYPE_BLOCK_ID_OLD = PARAMATTR_BLOCK_ID + 1,
+    CONSTANTS_BLOCK_ID = TYPE_BLOCK_ID_OLD + 1,
+    FUNCTION_BLOCK_ID = CONSTANTS_BLOCK_ID + 1,
+    TYPE_SYMTAB_BLOCK_ID_OLD = FUNCTION_BLOCK_ID + 1,
+    VALUE_SYMTAB_BLOCK_ID = TYPE_SYMTAB_BLOCK_ID_OLD + 1,
+    METADATA_BLOCK_ID = VALUE_SYMTAB_BLOCK_ID + 1,
+    METADATA_ATTACHMENT_ID = METADATA_BLOCK_ID + 1,
+    TYPE_BLOCK_ID_NEW = METADATA_ATTACHMENT_ID + 1;
   }
 
 
@@ -187,29 +236,38 @@ public class BitcodeReader implements GVMaterializer {
 
   /// TYPE blocks have codes for each type primitive they use.
   public interface TypeCodes {
-    int TYPE_CODE_NUMENTRY = 1,   // NUMENTRY: [numentries]
+    int TYPE_CODE_NUMENTRY =  1,    // NUMENTRY: [numentries]
 
     // Type Codes
-    TYPE_CODE_VOID = 2,   // VOID
-        TYPE_CODE_FLOAT = 3,   // FLOAT
-        TYPE_CODE_DOUBLE = 4,   // DOUBLE
-        TYPE_CODE_LABEL = 5,   // LABEL
-        TYPE_CODE_OPAQUE = 6,   // OPAQUE
-        TYPE_CODE_INTEGER = 7,   // INTEGER: [width]
-        TYPE_CODE_POINTER = 8,   // POINTER: [pointee type]
-        TYPE_CODE_FUNCTION = 9,   // FUNCTION: [vararg, retty, paramty x N]
-        TYPE_CODE_STRUCT = 10,   // STRUCT: [ispacked, eltty x N]
-        TYPE_CODE_ARRAY = 11,   // ARRAY: [numelts, eltty]
-        TYPE_CODE_VECTOR = 12,   // VECTOR: [numelts, eltty]
+    TYPE_CODE_VOID     =  2,    // VOID
+    TYPE_CODE_FLOAT    =  3,    // FLOAT
+    TYPE_CODE_DOUBLE   =  4,    // DOUBLE
+    TYPE_CODE_LABEL    =  5,    // LABEL
+    TYPE_CODE_OPAQUE   =  6,    // OPAQUE
+    TYPE_CODE_INTEGER  =  7,    // INTEGER: [width]
+    TYPE_CODE_POINTER  =  8,    // POINTER: [pointee type]
+    TYPE_CODE_FUNCTION =  9,    // FUNCTION: [vararg, retty, paramty x N]
+
+    // FIXME: This is the encoding used for structs in LLVM 2.9 and earlier.
+    // REMOVE this in LLVM 3.1
+    TYPE_CODE_STRUCT_OLD = 10,  // STRUCT: [ispacked, eltty x N]
+    TYPE_CODE_ARRAY    = 11,    // ARRAY: [numelts, eltty]
+    TYPE_CODE_VECTOR   = 12,    // VECTOR: [numelts, eltty]
 
     // These are not with the other floating point types because they're
     // a late addition, and putting them in the right place breaks
     // binary compatibility.
-    TYPE_CODE_X86_FP80 = 13,   // X86 LONG DOUBLE
-        TYPE_CODE_FP128 = 14,   // LONG DOUBLE (112 bit mantissa)
-        TYPE_CODE_PPC_FP128 = 15,   // PPC LONG DOUBLE (2 doubles)
+    TYPE_CODE_X86_FP80 = 13,    // X86 LONG DOUBLE
+    TYPE_CODE_FP128    = 14,    // LONG DOUBLE (112 bit mantissa)
+    TYPE_CODE_PPC_FP128= 15,    // PPC LONG DOUBLE (2 doubles)
 
-    TYPE_CODE_METADATA = 16;    // METADATA
+    TYPE_CODE_METADATA = 16,    // METADATA
+
+    TYPE_CODE_X86_MMX = 17,     // X86 MMX
+
+    TYPE_CODE_STRUCT_ANON = 18, // STRUCT_ANON: [ispacked, eltty x N]
+    TYPE_CODE_STRUCT_NAME = 19, // STRUCT_NAME: [strchr x N]
+    TYPE_CODE_STRUCT_NAMED = 20;// STRUCT_NAMED: [ispacked, eltty x N]
   }
 
   // The type symbol table only has one code (TST_ENTRY_CODE).
@@ -313,6 +371,13 @@ public class BitcodeReader implements GVMaterializer {
         OBO_NO_SIGNED_WRAP = 1;
   }
 
+  /**
+   * Flags for serializing PossiblyExactOperator's SubclassOptionalData contents.
+   */
+  interface PossiblyExactOperatorOptionalFlags {
+    int PEO_EXACT = 0;
+  }
+
   /// SDivOperatorOptionalFlags - Flags for serializing SDivOperator's
   /// SubclassOptionalData contents.
   interface SDivOperatorOptionalFlags {
@@ -325,54 +390,59 @@ public class BitcodeReader implements GVMaterializer {
     int FUNC_CODE_DECLAREBLOCKS = 1, // DECLAREBLOCKS: [n]
 
     FUNC_CODE_INST_BINOP = 2, // BINOP:      [opcode, ty, opval, opval]
-        FUNC_CODE_INST_CAST = 3, // CAST:       [opcode, ty, opty, opval]
-        FUNC_CODE_INST_GEP = 4, // GEP:        [n x operands]
-        FUNC_CODE_INST_SELECT = 5, // SELECT:     [ty, opval, opval, opval]
-        FUNC_CODE_INST_EXTRACTELT = 6, // EXTRACTELT: [opty, opval, opval]
-        FUNC_CODE_INST_INSERTELT = 7, // INSERTELT:  [ty, opval, opval, opval]
-        FUNC_CODE_INST_SHUFFLEVEC = 8, // SHUFFLEVEC: [ty, opval, opval, opval]
-        FUNC_CODE_INST_CMP = 9, // CMP:        [opty, opval, opval, pred]
+    FUNC_CODE_INST_CAST = 3, // CAST:       [opcode, ty, opty, opval]
+    FUNC_CODE_INST_GEP = 4, // GEP:        [n x operands]
+    FUNC_CODE_INST_SELECT = 5, // SELECT:     [ty, opval, opval, opval]
+    FUNC_CODE_INST_EXTRACTELT = 6, // EXTRACTELT: [opty, opval, opval]
+    FUNC_CODE_INST_INSERTELT = 7, // INSERTELT:  [ty, opval, opval, opval]
+    FUNC_CODE_INST_SHUFFLEVEC = 8, // SHUFFLEVEC: [ty, opval, opval, opval]
+    FUNC_CODE_INST_CMP = 9, // CMP:        [opty, opval, opval, pred]
 
     FUNC_CODE_INST_RET = 10, // RET:        [opty,opval<both optional>]
-        FUNC_CODE_INST_BR = 11, // BR:         [bb#, bb#, cond] or [bb#]
-        FUNC_CODE_INST_SWITCH = 12, // SWITCH:     [opty, op0, op1, ...]
-        FUNC_CODE_INST_INVOKE = 13, // INVOKE:     [attr, fnty, op0,op1, ...]
-        FUNC_CODE_INST_UNWIND = 14, // UNWIND
-        FUNC_CODE_INST_UNREACHABLE = 15, // UNREACHABLE
+    FUNC_CODE_INST_BR = 11, // BR:         [bb#, bb#, cond] or [bb#]
+    FUNC_CODE_INST_SWITCH = 12, // SWITCH:     [opty, op0, op1, ...]
+    FUNC_CODE_INST_INVOKE = 13, // INVOKE:     [attr, fnty, op0,op1, ...]
+    FUNC_CODE_INST_UNWIND = 14, // UNWIND
+    FUNC_CODE_INST_UNREACHABLE = 15, // UNREACHABLE
 
     FUNC_CODE_INST_PHI = 16, // PHI:        [ty, val0,bb0, ...]
-        FUNC_CODE_INST_MALLOC = 17, // MALLOC:     [instty, op, align]
-        FUNC_CODE_INST_FREE = 18, // FREE:       [opty, op]
-        FUNC_CODE_INST_ALLOCA = 19, // ALLOCA:     [instty, op, align]
-        FUNC_CODE_INST_LOAD = 20, // LOAD:       [opty, op, align, vol]
-    // FIXME: Remove STORE in favor of STORE2 in LLVM 3.0
-    FUNC_CODE_INST_STORE = 21, // STORE:      [valty,val,ptr, align, vol]
-    // FIXME: Remove CALL in favor of CALL2 in LLVM 3.0
-    FUNC_CODE_INST_CALL = 22, // CALL with potentially invalid metadata
-        FUNC_CODE_INST_VAARG = 23, // VAARG:      [valistty, valist, instty]
+    // 17 and 18 are not used.
+    FUNC_CODE_INST_ALLOCA = 19, // ALLOCA:     [instty, op, align]
+    FUNC_CODE_INST_LOAD = 20, // LOAD:       [opty, op, align, vol]
+    // 21 and 22 are not used
+    FUNC_CODE_INST_VAARG = 23, // VAARG:      [valistty, valist, instty]
     // This store code encodes the pointer type, rather than the value type
     // this is so information only available in the pointer type (e.g. address
     // spaces) is retained.
-    FUNC_CODE_INST_STORE2 = 24, // STORE:      [ptrty,ptr,val, align, vol]
-    // FIXME: Remove GETRESULT in favor of EXTRACTVAL in LLVM 3.0
-    FUNC_CODE_INST_GETRESULT = 25, // GETRESULT:  [ty, opval, n]
-        FUNC_CODE_INST_EXTRACTVAL = 26, // EXTRACTVAL: [n x operands]
-        FUNC_CODE_INST_INSERTVAL = 27, // INSERTVAL:  [n x operands]
+    FUNC_CODE_INST_STORE = 24, // STORE:      [ptrty,ptr,val, align, vol]
+    // 25 are not used
+    FUNC_CODE_INST_EXTRACTVAL = 26, // EXTRACTVAL: [n x operands]
+    FUNC_CODE_INST_INSERTVAL = 27, // INSERTVAL:  [n x operands]
     // fcmp/icmp returning Int1TY or vector of Int1Ty. Same as CMP, exists to
     // support legacy vicmp/vfcmp instructions.
     FUNC_CODE_INST_CMP2 = 28, // CMP2:       [opty, opval, opval, pred]
     // new select on i1 or [N x i1]
     FUNC_CODE_INST_VSELECT = 29, // VSELECT:    [ty,opval,opval,predty,pred]
-        FUNC_CODE_INST_INBOUNDS_GEP = 30, // INBOUNDS_GEP: [n x operands]
-        FUNC_CODE_INST_INDIRECTBR = 31, // INDIRECTBR: [opty, op0, op1, ...]
+    FUNC_CODE_INST_INBOUNDS_GEP = 30, // INBOUNDS_GEP: [n x operands]
+    FUNC_CODE_INST_INDIRECTBR = 31, // INDIRECTBR: [opty, op0, op1, ...]
+    // 32 is not used.
+    FUNC_CODE_DEBUG_LOC_AGAIN = 33, // DEBUG_LOC_AGAIN
 
-    // FIXME: Remove DEBUG_LOC in favor of DEBUG_LOC2 in LLVM 3.0
-    FUNC_CODE_DEBUG_LOC = 32, // DEBUG_LOC with potentially invalid metadata
-        FUNC_CODE_DEBUG_LOC_AGAIN = 33, // DEBUG_LOC_AGAIN
+    FUNC_CODE_INST_CALL = 34, // CALL2:      [attr, fnty, fnid, args...]
 
-    FUNC_CODE_INST_CALL2 = 34, // CALL2:      [attr, fnty, fnid, args...]
-
-    FUNC_CODE_DEBUG_LOC2 = 35;  // DEBUG_LOC2: [Line,Col,ScopeVal, IAVal]
+    FUNC_CODE_DEBUG_LOC = 35, // DEBUG_LOC with potentially invalid metadata
+    FUNC_CODE_INST_FENCE = 36, // FENCE: [ordering, synchscope]
+    FUNC_CODE_INST_CMPXCHG     = 37, // CMPXCHG: [ptrty,ptr,cmp,new, align, vol,
+                                     //           ordering, synchscope]
+    FUNC_CODE_INST_ATOMICRMW   = 38, // ATOMICRMW: [ptrty,ptr,val, operation,
+                                     //             align, vol,
+                                     //             ordering, synchscope]
+    FUNC_CODE_INST_RESUME      = 39, // RESUME:     [opval]
+    FUNC_CODE_INST_LANDINGPAD  = 40, // LANDINGPAD: [ty,val,val,num,id0,val0...]
+    FUNC_CODE_INST_LOADATOMIC  = 41, // LOAD: [opty, op, align, vol,
+                                     //        ordering, synchscope]
+    FUNC_CODE_INST_STOREATOMIC = 42; // STORE: [ptrty,ptr,val, align, vol
+                                     //         ordering, synchscope]
   }
 
   public interface Encoding {
@@ -396,6 +466,8 @@ public class BitcodeReader implements GVMaterializer {
       val = v;
       isLiteral = true;
     }
+
+    public BitCodeAbbrevOp(int e) { this(e, 0);}
 
     public BitCodeAbbrevOp(int e, long data) {
       val = data;
@@ -465,7 +537,7 @@ public class BitcodeReader implements GVMaterializer {
       return 0;
     }
 
-    char decodeChar6(int v) {
+    public static int decodeChar6(int v) {
       Util.assertion((v & ~63) == 0, "Not a Char6 encoded character!");
       if (v < 26) return (char) (v + 'a');
       if (v < 26 + 26) return (char) (v - 26 + 'A');
@@ -482,18 +554,10 @@ public class BitcodeReader implements GVMaterializer {
   /// specialized format instead of the fully-general, fully-vbr, format.
   public static class BitCodeAbbrev {
     ArrayList<BitCodeAbbrevOp> operandList;
-
-    public int getNumOperandInfos() {
-      return operandList.size();
-    }
-
-    public BitCodeAbbrevOp getOperandInfo(int n) {
-      return operandList.get(n);
-    }
-
-    public void add(BitCodeAbbrevOp opInfo) {
-      operandList.add(opInfo);
-    }
+    public BitCodeAbbrev() { operandList = new ArrayList<>(); }
+    public int getNumOperandInfos() { return operandList.size(); }
+    public BitCodeAbbrevOp getOperandInfo(int n) { return operandList.get(n); }
+    public void add(BitCodeAbbrevOp opInfo) { operandList.add(opInfo); }
   }
 
   /// BlockInfo - This contains information emitted to BLOCKINFO_BLOCK blocks.
@@ -504,6 +568,13 @@ public class BitcodeReader implements GVMaterializer {
     String name;
 
     ArrayList<Pair<Integer, String>> recordNames;
+
+    BlockInfo() {
+      blockID = 0;
+      abbrevs = new ArrayList<>();
+      name = "";
+      recordNames = new ArrayList<>();
+    }
   }
 
   private static class Block {
@@ -522,7 +593,8 @@ public class BitcodeReader implements GVMaterializer {
    * Note that, this variable refers to the bit position instead of byte position.
    */
   private int curOffset;
-  private BitStream bitStream;
+  private int bitsInCurWord;
+  private int curWord;
   /**
    * Specify how many bytes would be read when calling {@linkplain #readCode()}.
    * This value will changes when entering difference block.
@@ -561,6 +633,8 @@ public class BitcodeReader implements GVMaterializer {
    */
   private TreeMap<Integer, Integer> mdKindMap;
 
+  private BitcodeReaderMDValueList mdValueList;
+
   /**
    * After the module headers have been read, the field {@linkplain #functionsWithBodies}
    * list is reversed. This keeps track of whether we've done this yet.
@@ -591,6 +665,7 @@ public class BitcodeReader implements GVMaterializer {
 
   private BitcodeReaderValueList valueList;
   private ArrayList<Type> typeList;
+  private ArrayList<Instruction> instructionList;
 
   private BitcodeReader(MemoryBuffer buffer) {
     errorString = null;
@@ -605,6 +680,7 @@ public class BitcodeReader implements GVMaterializer {
     functionsWithBodies = new LinkedList<>();
     upgradedIntrinsics = new ArrayList<>();
     mdKindMap = new TreeMap<>();
+    mdValueList = new BitcodeReaderMDValueList(context);
     hasReversedFunctionsWithBodies = false;
     deferredFunctionInfo = new HashMap<>();
     blockAddrFwdRefs = new HashMap<>();
@@ -614,6 +690,7 @@ public class BitcodeReader implements GVMaterializer {
     ignoreBlockInfoNames = false;
     valueList = new BitcodeReaderValueList();
     typeList = new ArrayList<>();
+    instructionList = new ArrayList<>();
   }
 
   private String getErrorString() {
@@ -625,14 +702,47 @@ public class BitcodeReader implements GVMaterializer {
     return true;
   }
 
-  private long read(int size) {
-    long res = bitStream.read(curOffset, size);
-    curOffset += size;
+  private long read(int numBits) {
+    Util.assertion(numBits <= 32, "Can't return more than 32 bits");
+    if (bitsInCurWord >= numBits) {
+      // remained bits is enough.
+      int res = curWord & ((1 << numBits) - 1);
+      curWord >>>= numBits;
+      bitsInCurWord -= numBits;
+      return res;
+    }
+
+    // if we ran out data stream, stop at end of the stream.
+    if (atEndOfStream()) {
+      curWord = 0;
+      bitsInCurWord = 0;
+      return 0;
+    }
+
+    // remained bits is not enough, but we keep the left bits.
+    int res = curWord;
+    // construct a 32 bit integer with 4 bytes layout in little endian.
+    int b1 = buffer.byteAt(curOffset) & 0xff;
+    int b2 = buffer.byteAt(curOffset+1) & 0xff;
+    int b3 = buffer.byteAt(curOffset+2) & 0xff;
+    int b4 = buffer.byteAt(curOffset+3) & 0xff;
+
+    curWord = b1 | (b2 << 8) | (b3 << 16) | (b4 << 24);
+    curOffset += 4;
+
+    // extract numBits - bitsInCurWord bits from curWord.
+    int bitsLeft = numBits - bitsInCurWord;
+    res |= (curWord & (~0 >>> (32 - bitsLeft))) << bitsInCurWord;
+    if (bitsLeft != 32)
+      curWord >>>= bitsLeft;
+    else
+      curWord = 0;
+    bitsInCurWord = 32 - bitsLeft;
     return res;
   }
 
   private boolean atEndOfStream() {
-    return curOffset < bitStream.size();
+    return curOffset >= buffer.length();
   }
 
   private long readCode() {
@@ -640,15 +750,12 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private int readSubBlockID() {
-    int res = (int) bitStream.readVBR(curOffset, BlockIDWidth);
-    curOffset += BlockIDWidth;
-    return res;
+    return (int) readVBR(BlockIDWidth);
   }
 
   private boolean parseBitcodeInfo(Module m) {
     context = m.getContext();
     theModule = null;
-    bitStream = null;
     if ((buffer.length() & 3) != 0) {
       if (!isRawBitcode(buffer) && !isBitcodeWrapper(buffer))
         return error("Invalid bitcode signature");
@@ -662,7 +769,6 @@ public class BitcodeReader implements GVMaterializer {
         return error("Invalid bitcode wrapper header");
     }
 
-    bitStream = BitStream.create(buffer);
     // sniff for the signature.
     if (read(8) != 'B' || read(8) != 'C' ||
         read(4) != 0x0 || read(4) != 0xC ||
@@ -699,7 +805,7 @@ public class BitcodeReader implements GVMaterializer {
           break;
       }
     }
-    return true;
+    return false;
   }
 
   private boolean readBlockInfoBlock() {
@@ -740,8 +846,8 @@ public class BitcodeReader implements GVMaterializer {
       record.clear();
       switch (readRecord(code, record)) {
         default:break;
-        case BLOCKINFO_BLOCK_ID:
-          if (record.size() < 1) return true;
+        case BLOCKINFO_CODE_SETBID:
+          if (record.isEmpty()) return true;
           curBlockInfo = getOrCreateBlcokInfo(record.get(0).intValue());
           break;
         case BLOCKINFO_CODE_BLOCKNAME: {
@@ -778,14 +884,88 @@ public class BitcodeReader implements GVMaterializer {
     return bi;
   }
 
-  private int readRecord(long code, ArrayList<Long> record) {
-
-    return 0;
+  private BitCodeAbbrev getAbbrev(int abbrevID) {
+    int abbrevNo = abbrevID - FIRST_APPLICATION_ABBREV;
+    Util.assertion(abbrevNo < curAbbrevs.size(), String.format("Invalid abbrev #'%d'!", abbrevNo));
+    return curAbbrevs.get(abbrevNo);
   }
+
+  private int readRecord(long abbrevID, ArrayList<Long> vals) {
+    if (abbrevID == UNABBREV_RECORD) {
+      int code = (int) readVBR(6);
+      int numElts = (int) readVBR(6);
+      for (int i = 0; i < numElts; ++i)
+        vals.add(readVBR(6));
+      return code;
+    }
+
+    BitCodeAbbrev abbv = getAbbrev((int) abbrevID);
+    for (int i = 0, e = abbv.getNumOperandInfos(); i < e; ++i) {
+      BitCodeAbbrevOp op = abbv.getOperandInfo(i);
+      if (op.isLiteral())
+        readAbbreviatedLiteral(op, vals);
+      else if (op.getEncoding() == Array) {
+        // for array, we have the number of elements and array element type.
+        int numElts = (int) readVBR(6);
+        Util.assertion(i+2 == e, "array op not second last?");
+        BitCodeAbbrevOp eltEnc = abbv.getOperandInfo(++i);
+        // read all elements
+        for (; numElts != 0; --numElts)
+          readAbbreviatedField(eltEnc, vals);
+      } else if (op.getEncoding() == Blob) {
+        // Blob case.  Read the number of bytes as a vbr6.
+        int numElts = (int) readVBR(6);
+        // 32 bits alignment
+        skipToWord();
+
+        int newEnd = curOffset + ((numElts+3)&~3);
+        if (newEnd >= buffer.length()) {
+          // input bitstream is not long enough, fill the vals with numElts zero.
+          vals.addAll(Collections.nCopies(numElts, 0L));
+          curOffset = newEnd;
+          break;
+        }
+
+        // Otherwise, read the number of bytes.
+        for (; numElts != 0; --numElts)
+          vals.add(read(32));
+        // skip trailing padding.
+        curOffset = newEnd;
+      } else {
+        readAbbreviatedField(op, vals);
+      }
+    }
+    long code = vals.get(0);
+    vals.remove(0);
+    return (int) code;
+  }
+
+  private void readAbbreviatedField(BitCodeAbbrevOp op, ArrayList<Long> vals) {
+    Util.assertion(!op.isLiteral(), "Use readAbbreviatedField for literal value?");
+    switch (op.getEncoding()) {
+      case Fixed:
+        vals.add(read((int) op.getEncodingData()));
+        break;
+      case VBR:
+        vals.add(readVBR((int) op.getEncodingData()));
+        break;
+      case Char6:
+        vals.add((long)BitCodeAbbrevOp.decodeChar6((int) read(6)));
+        break;
+      default:
+        Util.shouldNotReachHere("Unknown encoding");
+    }
+  }
+
+  private void readAbbreviatedLiteral(BitCodeAbbrevOp op, ArrayList<Long> vals) {
+    Util.assertion(op.isLiteral(), "Not a literal");
+    vals.add(op.getLiteralValue());
+  }
+
   private boolean hasEncodingData(int e) {
     switch (e) {
       default:
-        Util.assertion("Unknown encoding");
+        Util.assertion(String.format("Unknown encoding '%d'", e));
       case Fixed:
       case VBR:
         return true;
@@ -810,7 +990,7 @@ public class BitcodeReader implements GVMaterializer {
       if (hasEncodingData(encoding))
         abbv.add(new BitCodeAbbrevOp(encoding, readVBR(5)));
       else
-        abbv.add(new BitCodeAbbrevOp(encoding));
+        abbv.add(new BitCodeAbbrevOp(encoding, 0));
     }
     curAbbrevs.add(abbv);
   }
@@ -825,7 +1005,7 @@ public class BitcodeReader implements GVMaterializer {
     LinkedList<BitCodeAbbrev> temp = curAbbrevs;
     curAbbrevs = blockScope.getLast().prevAbbrevs;
     blockScope.getLast().prevAbbrevs = temp;
-    blockScope.pop();
+    blockScope.removeLast();
   }
 
   private boolean readBlockEnd() {
@@ -843,7 +1023,7 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private boolean enterSubBlock(int blockID, OutRef<Integer> numWordsP) {
-    blockScope.push(new Block(curCodeSize));
+    blockScope.addLast(new Block(curCodeSize));
     LinkedList<BitCodeAbbrev> temp = curAbbrevs;
     curAbbrevs = blockScope.getLast().prevAbbrevs;
     blockScope.getLast().prevAbbrevs = temp;
@@ -863,7 +1043,7 @@ public class BitcodeReader implements GVMaterializer {
       numWordsP.set(numWords);
 
     if (curCodeSize == 0 | atEndOfStream() ||
-        curOffset + numWords*4 > bitStream.size())
+        curOffset + numWords*4 > buffer.length())
       return true;
     return false;
   }
@@ -943,12 +1123,17 @@ public class BitcodeReader implements GVMaterializer {
             if (parseAttributeBlock())
               return true;
             break;
-          case TYPE_BLOCK_ID:
+          case TYPE_BLOCK_ID_NEW:
             if (parseTypeTable())
               return true;
             break;
-          case TYPE_SYMTAB_BLOCK_ID:
-            if (parseTypeSymbolTable())
+          case TYPE_BLOCK_ID_OLD:
+            // FIXME: Remove in LLVM 3.1
+            if (parseOldTypeTable())
+              return true;
+            break;
+          case TYPE_SYMTAB_BLOCK_ID_OLD:
+            if (parseOldTypeSymbolTable())
               return true;
             break;
           case VALUE_SYMTAB_BLOCK_ID:
@@ -1125,7 +1310,7 @@ public class BitcodeReader implements GVMaterializer {
           if (record.size() < 3)
             return error("Invalid MODULE_CODE_ALIAS");
           Type ty = getTypeByID(record.get(0).intValue());
-          if (!ty.isPointerType())
+          if (ty == null || !ty.isPointerType())
             return error("Alias not a pointer type");
           GlobalAlias ga = new GlobalAlias(ty, getDecodedLinkage(record.get(2).intValue()),
               "", null, theModule);
@@ -1246,20 +1431,26 @@ public class BitcodeReader implements GVMaterializer {
     }
   }
 
-  private Type getTypeByID(int id, boolean isTypeTable) {
-    // if the type id is in the range, return it.
-    if (id >= 0 && id < typeList.size())
-      return typeList.get(id);
-    if (!isTypeTable) return null;
-
-    while (typeList.size() <= id)
-      typeList.add(OpaqueType.get(context));
-    return typeList.get(typeList.size()-1);
-
+  /**
+   * FIXME: Only used for {@linkplain #parseOldTypeTable()} which will be removed in LLVM 3.1
+   * @param id
+   * @return
+   */
+  private Type getTypeByIDOrNull(int id) {
+    if (id >= typeList.size()) {
+      typeList.addAll(Collections.nCopies(id - typeList.size(), null));
+    }
+    return typeList.get(id);
   }
 
   private Type getTypeByID(int id) {
-    return getTypeByID(id, false);
+    if (id >= typeList.size()) return null;
+    // if the type id is in the range, return it.
+    Type res = typeList.get(id);
+    if (res != null) return res;
+    res = OpaqueType.get(context);
+    typeList.set(id, res);
+    return res;
   }
 
   /**
@@ -1301,12 +1492,150 @@ public class BitcodeReader implements GVMaterializer {
     return false;
   }
 
+  /**
+   * Return the number of bits we've read.
+   * @return
+   */
   private long getCurrentBitNo() {
-    return curOffset;
+    return curOffset * 8 - bitsInCurWord;
   }
 
   private boolean parseMetadata() {
-    Util.shouldNotReachHere("Metadata is unimplemented as yet!");
+    if (enterSubBlock(METADATA_BLOCK_ID))
+      return error("Malformed metadata block record");
+
+    int nextMDValueNo = mdValueList.size();
+    ArrayList<Long> record = new ArrayList<>();
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (readBlockEnd())
+          return error("Error at end of PARAMETER block");
+        return false;
+      }
+
+      if (code == ENTER_SUBBLOCK) {
+        // no known subblocks, skip them.
+        readSubBlockID();
+        if (skipBlock())
+          return error("Malformed block record");
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      boolean isFunctionLocal = false;
+      record.clear();
+      code = readRecord(code, record);
+      switch ((int) code) {
+        default: break;
+        case MetadataCodes.METADATA_NAME: {
+          // Read named of the named metadata.
+          StringBuilder name = new StringBuilder();
+          convertToString(record, 0, name);
+          record.clear();
+          code = readCode();
+          // METADATA_NAME is alwasy followed by METADATA_NAMED_NODE
+          int nextBitCode = readRecord(code, record);
+          Util.assertion(nextBitCode == MetadataCodes.METADATA_NAMED_NODE);
+          // read named metadata elements.
+          int size = record.size();
+          NamedMDNode nmd = theModule.getOrCreateNamedMetadata(name.toString());
+          for (int i = 0; i < size; ++i) {
+            MDNode md = (MDNode) mdValueList.getValueFwdRef(Math.toIntExact(record.get(i)));
+            if (md == null)
+              return error("Malformed metadata record");
+            nmd.addOperand(md);
+          }
+          break;
+        }
+        case MetadataCodes.METADATA_FN_NODE:
+          isFunctionLocal = true;
+          // fall through.
+        case MetadataCodes.METADATA_NODE: {
+          if ((record.size() % 2) == 1)
+            return error("Invalid METADATA_NODE record");
+          int size = record.size();
+          ArrayList<Value> elts = new ArrayList<>();
+          for (int i = 0; i < size; i+=2) {
+            Type ty = getTypeByID(Math.toIntExact(record.get(i)));
+            if (ty == null)
+              return error("Invalid METADATA_NODE record");
+            if (ty.isMetadataTy())
+              elts.add(mdValueList.getValueFwdRef(Math.toIntExact(record.get(i + 1))));
+            else if (!ty.isVoidType())
+              elts.add(valueList.getValueFwdRef(Math.toIntExact(record.get(i + 1)), ty));
+            else
+              elts.add(null);
+          }
+          Value v = MDNode.get(context, elts, isFunctionLocal);
+          isFunctionLocal = false;
+          mdValueList.assignValue(v, nextMDValueNo++);
+          break;
+        }
+        case MetadataCodes.METADATA_STRING: {
+          StringBuilder name = new StringBuilder();
+          convertToString(record, 0, name);
+          Value v = MDString.get(context, name.toString());
+          mdValueList.assignValue(v, nextMDValueNo++);
+          break;
+        }
+        case MetadataCodes.METADATA_KIND: {
+          int recordLength = record.size();
+          if (recordLength < 2)
+            return error("Invalid METADATA_KIND record");
+          StringBuilder name = new StringBuilder();
+          convertToString(record, 1, name);
+          int kind = Math.toIntExact(record.get(0));
+          int newKind = theModule.getMDKindID(name.toString());
+          if (mdKindMap.containsKey(kind))
+            return error("Conflicting METADATA_KIND record");
+          mdKindMap.put(kind, newKind);
+          break;
+        }
+      }
+    }
+  }
+
+  private boolean parseMetadataAttachment() {
+    if (enterSubBlock(METADATA_ATTACHMENT_ID))
+      return error("Malformed block record");
+
+    ArrayList<Long> record = new ArrayList<>();
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (readBlockEnd())
+          return error("Error at end of PARAMETER_BLOCK");
+        break;
+      }
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      record.clear();
+      switch (readRecord(code, record)) {
+        default: break;
+        case MetadataCodes.METADATA_ATTACHMENT: {
+          int recordLength = record.size();
+          if (record.isEmpty() || ((recordLength - 1) %2) == 1)
+            return error("Invalid METADATA_ATTACHMENT reader!");
+          Instruction inst = instructionList.get(record.get(0).intValue());
+          for (int i = 1; i < recordLength; i+=2) {
+            int kind = record.get(i).intValue();
+            if (!mdKindMap.containsKey(kind))
+              return error("Invalid metadata kind id");
+            Value node = mdValueList.getValueFwdRef(record.get(i+1).intValue());
+            inst.setMetadata(kind, (MDNode) node);
+          }
+          break;
+        }
+      }
+    }
     return false;
   }
 
@@ -1414,21 +1743,21 @@ public class BitcodeReader implements GVMaterializer {
           if (curTy instanceof StructType) {
             StructType sty = (StructType) curTy;
             for (int i = 0; i < size; i++)
-              elts.add(valueList.getConstantFwdRefs(record.get(0).intValue(), sty.getElementType(i)));
+              elts.add(valueList.getConstantFwdRef(record.get(0).intValue(), sty.getElementType(i)));
             v = ConstantStruct.get(sty, elts);
           }
           else if (curTy instanceof ArrayType) {
             ArrayType aty = (ArrayType) curTy;
             Type eltTy = aty.getElementType();
             for (int i = 0; i < size; i++)
-              elts.add(valueList.getConstantFwdRefs(record.get(i).intValue(), eltTy));
+              elts.add(valueList.getConstantFwdRef(record.get(i).intValue(), eltTy));
             v = ConstantArray.get(aty, elts);
           }
           else if (curTy instanceof VectorType) {
             VectorType vecTy = (VectorType) curTy;
             Type eltTy = vecTy.getElementType();
             for (int i = 0; i < size; i++)
-              elts.add(valueList.getConstantFwdRefs(record.get(i).intValue(), eltTy));
+              elts.add(valueList.getConstantFwdRef(record.get(i).intValue(), eltTy));
             v = ConstantVector.get(elts);
           }
           else
@@ -1473,8 +1802,8 @@ public class BitcodeReader implements GVMaterializer {
           if (opc == Operator.None)
             v = Value.UndefValue.get(curTy);
           else {
-            Constant lhs = valueList.getConstantFwdRefs(record.get(1).intValue(), curTy);
-            Constant rhs = valueList.getConstantFwdRefs(record.get(2).intValue(), curTy);
+            Constant lhs = valueList.getConstantFwdRef(record.get(1).intValue(), curTy);
+            Constant rhs = valueList.getConstantFwdRef(record.get(2).intValue(), curTy);
             int flags = 0;
             if (record.size() >= 4) {
               // Ignores all flags
@@ -1495,7 +1824,7 @@ public class BitcodeReader implements GVMaterializer {
             Type opTy = getTypeByID(record.get(1).intValue());
             if (opTy == null)
               return error("Invalid CE_CAST record");
-            Constant op = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+            Constant op = valueList.getConstantFwdRef(record.get(2).intValue(), opTy);
             v = ConstantExpr.getCast(opc, op, opTy);
           }
           break;
@@ -1509,7 +1838,7 @@ public class BitcodeReader implements GVMaterializer {
           for (int i = 0, e = record.size(); i < e; i+=2) {
             Type eltTy = getTypeByID(record.get(i).intValue());
             if (eltTy == null) return error("Invalid CE_GEP record");
-            elts.add(valueList.getConstantFwdRefs(record.get(i+1).intValue(), eltTy));
+            elts.add(valueList.getConstantFwdRef(record.get(i+1).intValue(), eltTy));
           }
           if (bitcode == CST_CODE_CE_INBOUNDS_GEP)
             v = ConstantExpr.getInBoundsGetElementPtr(elts.get(0), elts.subList(1, elts.size()));
@@ -1522,9 +1851,9 @@ public class BitcodeReader implements GVMaterializer {
           if (record.size() < 3)
             return error("Invalid CSE_CODE_CE_SELECT record");
           v = ConstantExpr.getSelect(
-              valueList.getConstantFwdRefs(record.get(0).intValue(), Type.getInt1Ty(context)),
-              valueList.getConstantFwdRefs(record.get(1).intValue(), curTy),
-              valueList.getConstantFwdRefs(record.get(2).intValue(), curTy));
+              valueList.getConstantFwdRef(record.get(0).intValue(), Type.getInt1Ty(context)),
+              valueList.getConstantFwdRef(record.get(1).intValue(), curTy),
+              valueList.getConstantFwdRef(record.get(2).intValue(), curTy));
           break;
         }
         case CST_CODE_CE_EXTRACTELT: {
@@ -1534,8 +1863,8 @@ public class BitcodeReader implements GVMaterializer {
           VectorType opTy = resTy instanceof VectorType ? (VectorType)resTy : null;
           if (opTy == null)
             return error("Invalid CE_EXTRACTELEMENT record");
-          Constant op0 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
-          Constant op1 = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+          Constant op0 = valueList.getConstantFwdRef(record.get(1).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRef(record.get(2).intValue(), opTy);
           v = ConstantExpr.getExtractElement(op0, op1);
           break;
         }
@@ -1543,9 +1872,9 @@ public class BitcodeReader implements GVMaterializer {
           // CE_INSERTELT: [opval, opval, opval]
           if (record.size() < 3) return error("Invalid CE_INSERTELT record");
           VectorType opTy = (VectorType) curTy;
-          Constant op0 = valueList.getConstantFwdRefs(record.get(0).intValue(), opTy);
-          Constant op1 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy.getElementType());
-          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), Type.getInt32Ty(context));
+          Constant op0 = valueList.getConstantFwdRef(record.get(0).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRef(record.get(1).intValue(), opTy.getElementType());
+          Constant op2 = valueList.getConstantFwdRef(record.get(2).intValue(), Type.getInt32Ty(context));
           v = ConstantExpr.getInsertElement(op0, op1, op2);
           break;
         }
@@ -1553,10 +1882,10 @@ public class BitcodeReader implements GVMaterializer {
           // CE_SHUFFLEVEC: [opval, opval, opval]
           if (record.size() < 3) return error("Invalid CE_SHUFFLEVEC record");
           VectorType opTy = (VectorType) curTy;
-          Constant op0 = valueList.getConstantFwdRefs(record.get(0).intValue(), opTy);
-          Constant op1 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
+          Constant op0 = valueList.getConstantFwdRef(record.get(0).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRef(record.get(1).intValue(), opTy);
           Type shufTy = VectorType.get(Type.getInt32Ty(context), opTy.getNumElements());
-          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), shufTy);
+          Constant op2 = valueList.getConstantFwdRef(record.get(2).intValue(), shufTy);
           v = ConstantExpr.getShuffleVector(op0, op1, op2);
           break;
         }
@@ -1569,10 +1898,10 @@ public class BitcodeReader implements GVMaterializer {
           VectorType rty = (VectorType) curTy;
           VectorType opTy = (VectorType)getTypeByID(record.get(0).intValue());
 
-          Constant op0 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
-          Constant op1 = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+          Constant op0 = valueList.getConstantFwdRef(record.get(1).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRef(record.get(2).intValue(), opTy);
           Type shufTy = VectorType.get(Type.getInt32Ty(context), rty.getNumElements());
-          Constant op2 = valueList.getConstantFwdRefs(record.get(2).intValue(), shufTy);
+          Constant op2 = valueList.getConstantFwdRef(record.get(2).intValue(), shufTy);
           v = ConstantExpr.getShuffleVector(op0, op1, op2);
           break;
         }
@@ -1582,8 +1911,8 @@ public class BitcodeReader implements GVMaterializer {
             return error("Invalid CST_CODE_CE_CMP record");
           Type opTy = getTypeByID(record.get(0).intValue());
 
-          Constant op0 = valueList.getConstantFwdRefs(record.get(1).intValue(), opTy);
-          Constant op1 = valueList.getConstantFwdRefs(record.get(2).intValue(), opTy);
+          Constant op0 = valueList.getConstantFwdRef(record.get(1).intValue(), opTy);
+          Constant op1 = valueList.getConstantFwdRef(record.get(2).intValue(), opTy);
           if (opTy.isFPOrFPVectorTy())
             v = ConstantExpr.getFCmp(getDecodedPredicate(record.get(3)), op0, op1);
           else
@@ -1623,7 +1952,7 @@ public class BitcodeReader implements GVMaterializer {
           Type fnTy = getTypeByID(record.get(0).intValue());
           if (fnTy == null)
             return error("Invalid CE_BLOCKADDRESS record");
-          Value val = valueList.getConstantFwdRefs(record.get(1).intValue(), fnTy);
+          Value val = valueList.getConstantFwdRef(record.get(1).intValue(), fnTy);
           if (!(val instanceof Function))
             return error("Invalid CE_BLOCKADDRESS record");
           Function fn = (Function) val;
@@ -1736,8 +2065,8 @@ public class BitcodeReader implements GVMaterializer {
     }
   }
 
-  private boolean parseTypeSymbolTable() {
-    if (enterSubBlock(TYPE_SYMTAB_BLOCK_ID))
+  private boolean parseOldTypeSymbolTable() {
+    if (enterSubBlock(TYPE_SYMTAB_BLOCK_ID_OLD))
       return error("Malformed block record");
 
     ArrayList<Long> record = new ArrayList<>();
@@ -1782,12 +2111,221 @@ public class BitcodeReader implements GVMaterializer {
     }
   }
 
+  private boolean parseTypeTable() {
+    if (enterSubBlock(TYPE_BLOCK_ID_NEW))
+      return error("malformed block record");
+    return parseTypeTableBody();
+  }
+
+  private boolean parseTypeTableBody() {
+    Util.assertion(typeList.isEmpty(), "Multiple TYPE_BLOCKs found!");
+
+    ArrayList<Long> record = new ArrayList<>();
+    int numRecords = 0;
+    StringBuilder typeName = new StringBuilder();
+    // read all records for this type table.
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (numRecords != typeList.size())
+          return error("Invalid type forward reference in TYPE_BLOCK");
+        if (readBlockEnd())
+          return error("Error at end of type table block");
+        return false;
+      }
+
+      if (code == ENTER_SUBBLOCK) {
+        // unknown subblock.
+        readSubBlockID();
+        if (skipBlock())
+          return error("Malformed block record");
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      // read a record.
+      record.clear();
+      Type resultTy = null;
+      switch (readRecord(code, record)) {
+        default: return error("Unknown type in type table!");
+        case TYPE_CODE_NUMENTRY:
+          if (record.isEmpty()) return error("Invalid TYPE_CODE_NUMENTRY record");
+          int len = Math.toIntExact(record.get(0));
+          if (typeList.size() < len)
+            typeList.addAll(Collections.nCopies(len - typeList.size(), null));
+          else {
+            while (typeList.size() > len)
+              typeList.remove(typeList.size() - 1);
+          }
+          continue;
+        case TYPE_CODE_VOID:
+          resultTy = Type.getVoidTy(context);
+          break;
+        case TYPE_CODE_FLOAT:
+          resultTy = Type.getFloatTy(context);
+          break;
+        case TYPE_CODE_DOUBLE:
+          resultTy = Type.getDoubleTy(context);
+          break;
+        case TYPE_CODE_X86_FP80:
+          resultTy = Type.getX86_FP80Ty(context);
+          break;
+        case TYPE_CODE_FP128:
+          resultTy = Type.getFP128Ty(context);
+          break;
+        case TYPE_CODE_PPC_FP128:
+          resultTy = Type.getPPC_FP128Ty(context);
+          break;
+        case TYPE_CODE_LABEL:
+          resultTy = Type.getLabelTy(context);
+          break;
+        case TYPE_CODE_METADATA:
+          resultTy = Type.getMetadataTy(context);
+          break;
+        case TYPE_CODE_INTEGER:
+          // INTEGER: [width]
+          if (record.isEmpty()) return error("Invalid integer type record");
+          resultTy = IntegerType.get(context, Math.toIntExact(record.get(0)));
+          break;
+        case TYPE_CODE_POINTER: {
+          // POINTER: [pointee type] or [pointee type, addres space]
+          if (record.isEmpty()) return error("Invalid pointer type record");
+          int addressSpace = 0;
+          if (record.size() == 2)
+            addressSpace = Math.toIntExact(record.get(1));
+          resultTy = getTypeByID(Math.toIntExact(record.get(0)));
+          if (resultTy == null) return error("Invalid element type in pointer type");
+          resultTy = PointerType.get(resultTy, addressSpace);
+          break;
+        }
+        case TYPE_CODE_FUNCTION: {
+          // FUNCTION: [vararg, attrid, retty, paramty x N]
+          if (record.size() < 3)
+            return error("Invalid FUNCTION type record");
+          ArrayList<Type> argTys = new ArrayList<>();
+          for (int i = 3, e = record.size(); i < e; ++i) {
+            Type t = getTypeByID(Math.toIntExact(record.get(i)));
+            if (t != null)
+              argTys.add(t);
+            else
+              break;
+          }
+          resultTy = getTypeByID(Math.toIntExact(record.get(2)));
+          if (resultTy == null || argTys.size() < record.size() - 3)
+            return error("Invalid argument type in function type");
+          resultTy = FunctionType.get(resultTy, argTys, record.get(0) != 0);
+          break;
+        }
+        case TYPE_CODE_STRUCT_ANON: {
+          // STRUCT: [ispacked, elety x N]
+          if (record.isEmpty())
+            return error("Invalid STRUCT type record");
+          ArrayList<Type> eltTys = new ArrayList<>();
+          for (int i = 1, e = record.size(); i < e; ++i) {
+            Type t = getTypeByID(Math.toIntExact(record.get(i)));
+            if (t != null)
+              eltTys.add(t);
+            else
+              break;
+          }
+          if (eltTys.size() != record.size() - 1)
+            return error("Invalid member type in struct type");
+          resultTy = StructType.get(context, eltTys, record.get(0) != 0);
+          break;
+        }
+        case TYPE_CODE_STRUCT_NAME: {
+          // STRUCT_NAME: [strchr x N]
+          if (convertToString(record, 0, typeName))
+            return error("Invalid STRUCT_NAME record");
+          continue;
+        }
+        case TYPE_CODE_STRUCT_NAMED: {
+          // STRUCT: [ispacked, eltty x N]
+          if (record.isEmpty()) return error("Invalid STRUCT type record");
+          if (numRecords >= typeList.size())
+            return error("Invalid TYPE table");
+
+          Type tmp = typeList.get(numRecords);
+          StructType res = tmp instanceof StructType ? (StructType) tmp : null;
+          if (res != null) {
+            res.setName(typeName.toString());
+            typeList.set(numRecords, null);
+          } else {
+            res = StructType.create(context, typeName.toString());
+          }
+          typeName.delete(0, typeName.length());
+          ArrayList<Type> eleTys = new ArrayList<>();
+          for (int i = 1, e = record.size(); i < e; ++i) {
+            Type t = getTypeByID(Math.toIntExact(record.get(i)));
+            if (t != null)
+              eleTys.add(t);
+            else
+              break;
+          }
+          if (eleTys.size() != record.size() - 1)
+            return error("Invalid member type in STRUCT type record");
+          res.setBody(eleTys, record.get(0) != 0);
+          resultTy = res;
+          break;
+        }
+        case TYPE_CODE_OPAQUE: {
+          // OPAQUE: []
+          if (record.isEmpty())
+            return error("Invalid OPAQUE type record");
+          if (numRecords >= typeList.size())
+            return error("invalid TYPE table");
+          Type tmp = typeList.get(numRecords);
+          StructType res = tmp instanceof StructType ? (StructType) tmp : null;
+          if (res != null) {
+            res.setName(typeName.toString());
+            typeList.set(numRecords, null);
+          } else {
+            res = StructType.create(context, typeName.toString());
+          }
+          typeName.delete(0, typeName.length());
+          resultTy = res;
+          break;
+        }
+        case TYPE_CODE_ARRAY: {
+          // ARRAY: [numelets, elety]
+          if (record.size() < 2) return error("Invalid ARRAY type record");
+          resultTy = getTypeByID(Math.toIntExact(record.get(1)));
+          if (resultTy != null)
+            resultTy = ArrayType.get(resultTy, record.get(0));
+          else
+            return error("Invalid ARRAY type record");
+          break;
+        }
+        case TYPE_CODE_VECTOR: {
+          // VECTOR: [numelets, elety]
+          if (record.size() < 2) return error("Invalid VECTOR type record");
+          resultTy = getTypeByID(Math.toIntExact(record.get(1)));
+          if (resultTy != null)
+            resultTy = VectorType.get(resultTy, record.get(0));
+          else
+            return error("Invalid VECTOR type record");
+          break;
+        }
+      }
+      if (numRecords >= typeList.size())
+        return error("invalid TYPE table");
+      Util.assertion(resultTy != null, "Didn't read a type?");
+      Util.assertion(typeList.get(numRecords) == null, "already read type?");
+      typeList.set(numRecords++, resultTy);
+    }
+  }
+
   /**
    * Parse the type table.
+   * FIXME: remove in LLVM 3.1
    * @return
    */
-  private boolean parseTypeTable() {
-    if (enterSubBlock(TYPE_BLOCK_ID))
+  private boolean parseOldTypeTable() {
+    if (enterSubBlock(TYPE_BLOCK_ID_OLD))
       return error("Malformed block record");
     if (!typeList.isEmpty())
       return error("Multiple TYPE_BLOCKs found!");
@@ -1874,7 +2412,7 @@ public class BitcodeReader implements GVMaterializer {
           int addressSpace = 0;
           if (record.size() == 2)
             addressSpace = record.get(1).intValue();
-          resultTy = PointerType.get(getTypeByID(record.get(0).intValue(), true),
+          resultTy = PointerType.get(getTypeByIDOrNull(record.get(0).intValue()),
               addressSpace);
           break;
         }
@@ -1885,20 +2423,20 @@ public class BitcodeReader implements GVMaterializer {
             return error("Invalid FUNCTION type record");
           ArrayList<Type> argTy = new ArrayList<>();
           for (int i = 3, e = record.size(); i < e; i++)
-            argTy.add(getTypeByID(record.get(i).intValue(), true));;
+            argTy.add(getTypeByIDOrNull(record.get(i).intValue()));;
 
-          resultTy = FunctionType.get(getTypeByID(record.get(2).intValue(), true),
+          resultTy = FunctionType.get(getTypeByIDOrNull(record.get(2).intValue()),
               argTy, record.get(0) != 0);
           break;
         }
-        case TYPE_CODE_STRUCT: {
+        case TYPE_CODE_STRUCT_ANON: {
           // STRUCT: [ispacked, eltty x N]
           if (record.isEmpty())
             return error("Invalid STRUCT type record");
 
           ArrayList<Type> eltTys = new ArrayList<>();
           for (int i = 1, e = record.size(); i < e; i++)
-            eltTys.add(getTypeByID(record.get(i).intValue(), true));
+            eltTys.add(getTypeByIDOrNull(record.get(i).intValue()));
           resultTy = StructType.get(context, eltTys, record.get(0) != 0);
           break;
         }
@@ -1911,10 +2449,10 @@ public class BitcodeReader implements GVMaterializer {
             return error(String.format("Invalid %s type record", isArray ? "ARRAY" : "VECTOR"));
 
           if (isArray)
-            resultTy = ArrayType.get(getTypeByID(record.get(1).intValue(), true),
+            resultTy = ArrayType.get(getTypeByIDOrNull(record.get(1).intValue()),
                 record.get(0));
           else
-            resultTy = VectorType.get(getTypeByID(record.get(1).intValue(), true),
+            resultTy = VectorType.get(getTypeByIDOrNull(record.get(1).intValue()),
                 record.get(0));
           break;
         }
@@ -2106,26 +2644,737 @@ public class BitcodeReader implements GVMaterializer {
     readVBR(CodeLenWidth);
     skipToWord();
     int numWords = (int) read(BlockSizeWidth);
-    if (atEndOfStream() || curOffset + numWords*4 > bitStream.size())
+    int skipTo = curOffset + numWords*4;
+    if (atEndOfStream() || skipTo > buffer.length())
       return true;
 
-    curOffset += numWords*4;
+    curOffset = skipTo;
     return false;
   }
 
   private void skipToWord() {
-    // ceiling the curOffset to the minimum value of power of 32 (4 bytes)
-    // we don't have to perform real read operation so as to make program
-    // more efficient.
-    int up = Util.roundUp(curCodeSize, 32);
-    int size = up - curCodeSize;
-    curOffset += size;
+    curWord = 0;
+    bitsInCurWord = 0;
   }
 
-  private long readVBR(int width) {
-    final long value = bitStream.readVBR(curOffset, width);
-    curOffset += BitStream.widthVBR(value, width);
-    return value;
+  private long readVBR(int numBits) {
+    long piece = read(numBits);
+    if ((piece & (1<<(numBits - 1))) == 0)
+      return piece;
+
+    long result = 0;
+    int nextBit = 0;
+    while (true) {
+      result |= (piece & ((1 << (numBits - 1)) - 1)) << nextBit;
+      if ((piece & (1<<(numBits - 1))) == 0)
+        return result;
+
+      nextBit += numBits - 1;
+      piece = read(numBits);
+    }
+  }
+
+  private void jumpToBit(long bitNo) {
+    long byteNo = (bitNo/8) & ~3;
+    long wordBitNo = bitNo & 31;
+    Util.assertion(byteNo <= buffer.length(), "Invalid location");
+    curOffset = (int) byteNo;
+    bitsInCurWord = 0;
+    curWord = 0;
+    if (wordBitNo != 0)
+      read((int) wordBitNo);
+  }
+
+  /**
+   * Parse the function body block of the specified function.
+   * @param f
+   * @return
+   */
+  private boolean parseFunctionBody(Function f) {
+    if (enterSubBlock(FUNCTION_BLOCK_ID))
+      return error("Malformed block record");
+
+    instructionList.clear();
+    int moduleValueListSize = valueList.size();
+    int moduleMDValueListSize = mdValueList.size();
+    // add all function arguments to value table.
+    for (Argument arg : f.getArgumentList())
+      valueList.add(arg);
+
+    int nextValueNo = valueList.size();
+    BasicBlock curBB = null;
+    int curBBNo = 0;
+    DebugLoc lastLoc = new DebugLoc();
+
+    // read all records.
+    ArrayList<Long> record = new ArrayList<>();
+    while (true) {
+      long code = readCode();
+      if (code == END_BLOCK) {
+        if (readBlockEnd())
+          return error("Error at end of function block");
+        break;
+      }
+      if (code == ENTER_SUBBLOCK) {
+        switch (readSubBlockID()) {
+          default:
+            if (skipBlock())
+              return error("Malformed block record");
+            break;
+          case CONSTANTS_BLOCK_ID:
+            if (parseConstants()) return true;
+            nextValueNo = valueList.size();
+            break;
+          case VALUE_SYMTAB_BLOCK_ID:
+            if (parseValueSymbolTable()) return true;
+            break;
+          case METADATA_ATTACHMENT_ID:
+            if (parseMetadataAttachment()) return true;
+            break;
+          case METADATA_BLOCK_ID:
+            if (parseMetadata()) return true;
+            break;
+        }
+        continue;
+      }
+
+      if (code == DEFINE_ABBREV) {
+        readAbbrevRecord();
+        continue;
+      }
+
+      record.clear();
+      Instruction inst = null;
+      int bitcode = readRecord(code, record);
+      switch (bitcode) {
+        default:
+          return error("Unknown instruction");
+        case FunctionCodes.FUNC_CODE_DECLAREBLOCKS:
+          // DECLAREBLOCKS: [nblocks]
+          if (record.isEmpty() || record.get(0) == 0)
+            return error("Malformed DECLAREBLOCKS record");
+          if (functionBBs.size() < record.get(0))
+            functionBBs.addAll(Collections.nCopies((int) (record.get(0) - functionBBs.size()), null));
+          else {
+            while (functionBBs.size() > record.get(0))
+              functionBBs.remove(functionBBs.size() - 1);
+          }
+          for (int i = 0, e = functionBBs.size(); i < e; ++i)
+            functionBBs.set(i, BasicBlock.createBasicBlock(context, "", f));
+          curBB = functionBBs.get(0);
+          continue;
+        case FunctionCodes.FUNC_CODE_DEBUG_LOC_AGAIN:
+          // This record indicates that the last instruction is at the same
+          // location as the previous instruction with a location.
+          inst = null;
+          if (curBB != null && !curBB.isEmpty())
+            inst = curBB.getLastInst();
+          else if (curBBNo != 0 && functionBBs.get(curBBNo-1) != null &&
+                  !functionBBs.get(curBBNo-1).isEmpty())
+            inst = functionBBs.get(curBBNo-1).getLastInst();
+
+          if (inst == null)
+            return error("Invalid DEBUG_LOC_AGAIN record");
+          inst.setDebugLoc(lastLoc);
+          inst = null;
+          continue;
+          case FunctionCodes.FUNC_CODE_DEBUG_LOC: {
+            // DEBUG_LOC: [line, col, scope, ia]
+            inst = null;
+            if (curBB != null && !curBB.isEmpty())
+              inst = curBB.getLastInst();
+            else if (curBBNo != 0 && functionBBs.get(curBBNo-1) != null &&
+                    !functionBBs.get(curBBNo-1).isEmpty())
+              inst = functionBBs.get(curBBNo-1).getLastInst();
+
+            if (inst == null || record.size() < 4)
+              return error("Invalid DEBUG_LOC record");
+            int line = Math.toIntExact(record.get(0)), col = Math.toIntExact(record.get(1));
+            int scopeID = Math.toIntExact(record.get(2)), iaid = Math.toIntExact(record.get(3));
+            MDNode scope = null, ia = null;
+            if (scopeID != 0) scope = (MDNode) mdValueList.getValueFwdRef(scopeID-1);
+            if (iaid != 0) ia = (MDNode) mdValueList.getValueFwdRef(iaid - 1);
+            lastLoc = DebugLoc.get(line, col, scope, ia);
+            inst.setDebugLoc(lastLoc);
+            inst = null;
+            continue;
+          }
+        case FunctionCodes.FUNC_CODE_INST_BINOP: {
+          // BINOP: [opval, ty, opval, opcode]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value lhs = getValueTypePair(record, opNum, nextValueNo);
+          Value rhs = null;
+          if (lhs == null || (rhs = getValue(record, opNum, lhs.getType())) == null ||
+                  opNum.get() + 1 > record.size()) {
+            return error("Invalid BINOP record");
+          }
+
+          Operator opc = getDecodedBinaryOpcode(record.get(opNum.get()).intValue(), lhs.getType());
+          opNum.set(opNum.get()+1);
+          if (opc == Operator.None) return error("Invalid BINOP record");
+          inst = Instruction.BinaryOperator.create(opc, lhs, rhs, "");
+          instructionList.add(inst);
+          if (opNum.get() < record.size()) {
+            switch (opc) {
+              case Add:
+              case Sub:
+              case Mul:
+              case Shl: {
+                int value = Math.toIntExact(record.get(opNum.get()));
+                if ((value & (1 << OverflowingBinaryOperatorOptionalFlags.OBO_NO_SIGNED_WRAP)) != 0)
+                  ((OverflowingBinaryOperator)inst).setHasNoSignedWrap(true);
+                if ((value & (1 << OverflowingBinaryOperatorOptionalFlags.OBO_NO_UNSIGNED_WRAP)) != 0)
+                  ((OverflowingBinaryOperator)inst).setHasNoUnsignedWrap(true);
+                break;
+              }
+              case SDiv:
+              case UDiv:
+              case LShr:
+              case AShr:
+                if ((record.get(opNum.get()) & (1 << PossiblyExactOperatorOptionalFlags.PEO_EXACT)) != 0)
+                  ((ExactBinaryOperator)inst).setIsExact(true);
+                break;
+            }
+          }
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_CAST: {
+          // CAST: [opval, opty, destty, castopc]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value op;
+          if ((op = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  opNum.get() + 2 != record.size())
+            return error("Invalid CAST record");
+          Type resTy = getTypeByID(Math.toIntExact(record.get(opNum.get())));
+          Operator opc = getDecodedCastOpcode(Math.toIntExact(record.get(opNum.get() + 1)));
+          if (opc == Operator.None || resTy == null)
+            return error("Invalid CAST record");
+          inst = Instruction.CastInst.create(opc, op, resTy, "", (Instruction) null);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_INBOUNDS_GEP:
+        case FunctionCodes.FUNC_CODE_INST_GEP: {
+          // GEP: [n x operands]
+          Value basePtr;
+          OutRef<Integer> opNum = new OutRef<>(0);
+          if ((basePtr = getValueTypePair(record, opNum, nextValueNo)) == null)
+            return error("Invalid GEP record");
+
+          ArrayList<Value> gepIdx = new ArrayList<>();
+          while (opNum.get() < record.size()) {
+            Value op = null;
+            if ((op = getValueTypePair(record, opNum, nextValueNo)) == null)
+              return error("Invalid GEP record");
+            gepIdx.add(op);
+          }
+          inst = new GetElementPtrInst(basePtr, gepIdx, "");
+          instructionList.add(inst);
+          if (bitcode == FunctionCodes.FUNC_CODE_INST_INBOUNDS_GEP)
+            ((GetElementPtrInst)inst).setIsInBounds(true);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_EXTRACTVAL: {
+          // EXTRACTVAL: [opty, opval, n x indices]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value agg;
+          if ((agg = getValueTypePair(record, opNum, nextValueNo)) == null)
+            return error("Invalid EXTRACTVAL record");
+          int[] idx = new int[record.size() - opNum.get()];
+          for (int i = opNum.get(), recSize = record.size(); i < recSize; ++i) {
+            long index = record.get(i);
+            if (index != (int)index)
+              return error("Invalid EXTRACTVAL index");
+            idx[i - opNum.get()] = (int) index;
+          }
+          inst = new Instruction.ExtractValueInst(agg, idx);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_INSERTVAL: {
+          // INSERTVAL: [opty, opval, opty, opval, n x indices]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value agg, val;
+          if ((agg = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  (val = getValueTypePair(record, opNum, nextValueNo)) == null)
+            return error("Invalid INSERTVAL record");
+          int[] idx = new int[record.size() - opNum.get()];
+          for (int i = opNum.get(), recSize = record.size(); i < recSize; ++i) {
+            long index = record.get(i);
+            if (index != (int)index)
+              return error("Invalid INSERTVAL index");
+            idx[i - opNum.get()] = (int) index;
+          }
+          inst = new Instruction.InsertValueInst(agg, val, idx);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_SELECT: {
+          // SELECT: [opval, ty, opval, opval]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value cond, trueVal, falseVal;
+          if ((trueVal = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  (falseVal = getValue(record, opNum, trueVal.getType())) == null ||
+                  (cond = getValue(record, opNum, Type.getInt1Ty(context))) == null)
+            return error("Invalid SELECT record");
+
+          inst = new SelectInst(cond, trueVal, falseVal, "");
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_VSELECT: {
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value cond, trueVal, falseVal;
+          if ((trueVal = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  (falseVal = getValue(record, opNum, trueVal.getType())) == null ||
+                  (cond = getValueTypePair(record, opNum, nextValueNo)) == null)
+            return error("Invalid SELECT record");
+
+          if (cond.getType() instanceof VectorType) {
+            VectorType vty = (VectorType) cond.getType();
+            if (!vty.getElementType().isIntegerTy(1))
+              return error("Invalid SELECT condition type");
+          } else {
+            // expect i1
+            if (!cond.getType().isIntegerTy(1))
+              return error("Invalid SELECT condition type");
+          }
+
+          inst = new SelectInst(cond, trueVal, falseVal, "");
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_EXTRACTELT: {
+          // EXTRACTELT: [opty, opval, opval]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value agg, val;
+          if ((agg = getValueTypePair(record, opNum, nextValueNo)) == null ||
+               (val = getValue(record, opNum, Type.getInt32Ty(context))) == null)
+            return error("Invalid EXTRACTELT record");
+          inst = new Instruction.ExtractElementInst(agg, val);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_INSERTELT: {
+          // INSERTELT: [ty, opval,opval,opval]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value vec, elt, idx;
+          if ((vec = getValueTypePair(record, opNum, nextValueNo)) == null ||
+               (elt = getValue(record, opNum, ((VectorType)vec.getType()).getElementType())) == null ||
+               (idx = getValue(record, opNum, Type.getInt32Ty(context))) == null)
+            return error("Invalid INSERTELT record");
+          inst = new Instruction.InsertElementInst(vec, elt, idx);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_SHUFFLEVEC: {
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value vec1, vec2, mask;
+          if ((vec1 = getValueTypePair(record, opNum, nextValueNo)) == null ||
+              (vec2 = getValue(record, opNum, vec1.getType())) == null ||
+              (mask = getValueTypePair(record, opNum, nextValueNo)) == null)
+            return error("Invalid SHUFFLEVEC record");
+          inst = new Instruction.ShuffleVectorInst(vec1, vec2, mask);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_CMP:
+        case FunctionCodes.FUNC_CODE_INST_CMP2: {
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value lhs, rhs;
+          if ((lhs = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  (rhs = getValue(record, opNum, lhs.getType())) == null)
+            return error("Invalid CMP record");
+          int pred = record.get(opNum.get()).intValue();
+          if (lhs.getType().isFPOrFPVectorTy())
+            inst = new Instruction.FCmpInst(Instruction.CmpInst.Predicate.values()[pred], lhs, rhs);
+          else
+            inst = new Instruction.ICmpInst(Instruction.CmpInst.Predicate.values()[pred], lhs, rhs);
+          instructionList.add(inst);
+          break;
+        }
+
+        case FunctionCodes.FUNC_CODE_INST_RET: {
+          // RET: [opty, opval<optional>]
+          int size = record.size();
+          if (size == 0) {
+            inst = new Instruction.ReturnInst(context);
+            instructionList.add(inst);
+            break;
+          }
+
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value op = null;
+          if ((op = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  opNum.get() != record.size())
+            return error("Invalid RET record");
+          inst = new Instruction.ReturnInst(context, op);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_BR: {
+          // BR: [bb#, bb#, opval] or [bb#]
+          if (record.size() != 1 && record.size() != 3)
+            return error("Invalid BR record");
+          BasicBlock trueDest = getBasicBlock(record.get(0).intValue());
+          if (trueDest == null) return error("Invalid true destination of BR record");
+          if (record.size() == 1) {
+            inst = new Instruction.BranchInst(trueDest);
+            instructionList.add(inst);
+          } else {
+            BasicBlock falseDest = getBasicBlock(record.get(1).intValue());
+            if (falseDest == null) return error("Invalid false destination of BR record");
+            Value cond = getFnValueByID(record.get(2).intValue(), Type.getInt1Ty(context));
+            if (cond == null)
+              return error("Invalid condition of BR record");
+            inst = new Instruction.BranchInst(trueDest, falseDest, cond);
+            instructionList.add(inst);
+          }
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_SWITCH: {
+          // SWITCH: [opty, op0, op1, ...]
+          if (record.size() < 3 || (record.size() & 1) == 0)
+            return error("Invalid SWITCH record");
+          Type opTy = getTypeByID(record.get(0).intValue());
+          Value cond = getFnValueByID(record.get(1).intValue(), opTy);
+          BasicBlock defaultBB = getBasicBlock(record.get(2).intValue());
+          if (opTy == null || cond == null || defaultBB == null)
+            return error("Invalid SWITCH record");
+          int numCases = (record.size() - 3) /2;
+          Instruction.SwitchInst si = new Instruction.SwitchInst(cond, defaultBB, numCases, "");
+          instructionList.add(si);
+          for (int i = 0; i < numCases; ++i) {
+            Value v = getFnValueByID(record.get(i*2+3).intValue(), opTy);
+            ConstantInt caseVal = v instanceof ConstantInt ? (ConstantInt) v : null;
+            BasicBlock destBB = getBasicBlock(record.get(1+3+i*2).hashCode());
+            if (caseVal == null || destBB == null)
+              return error("Invalid SWITCH record");
+            si.addCase(caseVal, destBB);
+          }
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_INDIRECTBR: {
+          // INDIRECTBR: [opty, op0, op1, ...]
+          if (record.size() < 2)
+            return error("Invalid INDIRECTBR record");
+          Type opTy = getTypeByID(record.get(0).intValue());
+          Value address = getFnValueByID(record.get(1).intValue(), opTy);
+          if (opTy == null || address == null)
+            return error("Invalid INDIRECTBR record");
+
+          int numDests = record.size() - 2;
+          IndirectBrInst ir = IndirectBrInst.create(address, numDests, (Instruction) null);
+          instructionList.add(ir);
+          for (int i = 0; i < numDests; ++i) {
+            BasicBlock destBB = getBasicBlock(record.get(2+i).intValue());
+            if (destBB == null)
+              return error("Invalid INDIRECTBR record");
+            ir.addDestination(destBB);
+          }
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_INVOKE: {
+          // INVOKE: [attrs, cc, normBB, unwindBB, fnty, op0,op1,op2, ...]
+          if (record.size() < 4)
+            return error("Invalid INVOKE record");
+
+          AttrList attr = getAttributes(record.get(0).intValue());
+          int cc = record.get(1).intValue();
+          BasicBlock normalBB = getBasicBlock(record.get(2).intValue());
+          BasicBlock unwindBB = getBasicBlock(record.get(3).intValue());
+          OutRef<Integer> opNum = new OutRef<>(4);
+          Value callee;
+          if ((callee = getValueTypePair(record, opNum, nextValueNo)) == null)
+            return error("Invalid INVOKE record");
+
+          PointerType calleeTy = callee.getType() instanceof PointerType ? (PointerType)callee.getType() : null;
+          FunctionType fty = calleeTy == null ? null : (FunctionType) calleeTy.getElementType();
+          if (fty == null || normalBB == null || unwindBB == null)
+            return error("Invalid INVOKE record");
+          ArrayList<Value> ops = new ArrayList<>();
+          int opIdx = opNum.get();
+          for (int i = 0, e = fty.getNumParams(); i < e; ++i, ++opIdx) {
+            Value arg = getFnValueByID(record.get(opIdx).intValue(), fty.getParamType(i));
+            if (arg == null)
+              return error("Invalid INVOKE record");
+            ops.add(arg);
+          }
+          if (!fty.isVarArg()) {
+            if (record.size() != opIdx)
+              return error("Invalid INVOKE record");
+          } else {
+            while (opIdx != record.size()) {
+              Value op;
+              opNum.set(opIdx);
+              if ((op = getValueTypePair(record, opNum, nextValueNo)) == null)
+                return error("Invalid INVOKE record");
+              opIdx = opNum.get();
+              ops.add(op);
+            }
+          }
+          inst = Instruction.InvokeInst.create(callee, normalBB, unwindBB, ops);
+          instructionList.add(inst);
+          ((Instruction.InvokeInst)inst).setCallingConv(CallingConv.values()[cc]);
+          ((Instruction.InvokeInst)inst).setAttributes(attr);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_RESUME: {
+          // RESUME: [opval]
+          OutRef<Integer> idx = new OutRef<>(0);
+          Value val;
+          if ((val = getValueTypePair(record, idx, nextValueNo)) == null)
+            return error("Invalid RESUME record");
+          inst = Instruction.ResumeInst.create(val);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_UNWIND:
+          // UNWIND:
+          inst = new Instruction.UnWindInst(context);
+          instructionList.add(inst);
+          break;
+        case FunctionCodes.FUNC_CODE_INST_UNREACHABLE:
+          inst = new UnreachableInst(context);
+          instructionList.add(inst);
+          break;
+        case FunctionCodes.FUNC_CODE_INST_PHI: {
+          // PHI: [ty, val0, bb0, ...]
+          if (record.isEmpty() || ((record.size() - 1)&1) != 0)
+            return error("Invalid PHI record");
+          Type ty = getTypeByID(record.get(0).intValue());
+          if (ty == null) return error("Invalid PHI record");
+          Instruction.PhiNode pn = new Instruction.PhiNode(ty, (record.size()-1)/2, "");
+          instructionList.add(pn);
+          for (int i = 1, e = record.size(); i < e; i += 2) {
+            Value v = getFnValueByID(record.get(i).intValue(), ty);
+            BasicBlock bb = getBasicBlock(record.get(i+1).intValue());
+            if (v == null || bb == null)
+              return error("Invalid PHI record");
+            pn.addIncoming(v, bb);
+          }
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_LANDINGPAD: {
+          // LANDINGPAD: [ty, val, val, num, (id0,val0 ...)?]
+          if (record.size() < 4)
+            return error("Invalid LANDINGPAD record");
+          Type ty = getTypeByID(record.get(0).intValue());
+          if (ty == null) return error("Invalid LANDINGPAD record");
+          Value persFn = null;
+          OutRef<Integer> idx = new OutRef<>(0);
+          if ((persFn = getValueTypePair(record, idx, nextValueNo)) == null)
+            return error("Invalid LANDINGPAD record");
+          boolean isCleanup = record.get(idx.get()) == 0;
+          idx.set(idx.get()+1);
+          int numClauses = record.get(idx.get()).intValue();
+          idx.set(idx.get()+1);
+          LandingPadInst lp = LandingPadInst.create(ty, persFn, numClauses);
+          lp.setCleanup(isCleanup);
+          for (int j = 0; j < numClauses; ++j) {
+            LandingPadInst.ClauseType ct = LandingPadInst.ClauseType.values()[record.get(idx.get()).intValue()];;
+            Value val;
+            if ((val = getValueTypePair(record, idx, nextValueNo)) == null)
+              return error("Invalid LANDINGPAD record");
+            Util.assertion(ct != LandingPadInst.ClauseType.Catch ||
+                    !(val.getType() instanceof ArrayType), "Catch clause has an invalid type");
+            Util.assertion(ct != LandingPadInst.ClauseType.Filter ||
+                    val.getType() instanceof ArrayType, "Filter clause has an invalid type");
+            lp.addClause(val);
+          }
+          instructionList.add(lp);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_ALLOCA: {
+          // ALLOCA: [instty, opty, op, align]
+          if (record.size() < 4)
+            return error("Invalid ALLOCA record");
+
+          Type ty = getTypeByID(Math.toIntExact(record.get(0)));
+          PointerType pty = ty instanceof PointerType ? (PointerType)ty : null;
+          Type opTy = getTypeByID(Math.toIntExact(record.get(1)));
+          Value size = getFnValueByID(record.get(2).intValue(), opTy);
+          if (pty == null || size == null) return error("Invalid ALLOCA record");
+          int align = record.get(3).intValue();
+          inst = new Instruction.AllocaInst(pty.getElementType(), size, (1<<align) >>> 1);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_LOAD: {
+          // LOAD: [opty, op, align, volatile]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value op;
+          if ((op = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  opNum.get() + 2 != record.size())
+            return error("Invalid LOAD record");
+
+          inst = new Instruction.LoadInst(op, "", record.get(opNum.get()+1).intValue() != 0,
+                  (1<<record.get(opNum.get()).intValue()) >>> 1);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_LOADATOMIC: {
+          Util.shouldNotReachHere("loadatomic is not supported yet!");
+        }
+        case FunctionCodes.FUNC_CODE_INST_STORE: {
+          // STORE2:[ptrty, ptr, val, align, volatile]
+          OutRef<Integer> opNum = new OutRef<>(0);
+          Value val, ptr;
+          if ((ptr = getValueTypePair(record, opNum, nextValueNo)) == null ||
+                  (val = getValue(record, opNum, ((PointerType)ptr.getType()).getElementType())) == null ||
+                  opNum.get() + 2 != record.size())
+            return error("Invalid STORE record");
+
+          int align = record.get(opNum.get()).intValue();
+          boolean isVol = record.get(opNum.get()+1) != 0;
+          inst = new Instruction.StoreInst(val, ptr, isVol , (1<<align) >>> 1);
+          instructionList.add(inst);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_STOREATOMIC:
+        case FunctionCodes.FUNC_CODE_INST_CMPXCHG:
+        case FunctionCodes.FUNC_CODE_INST_ATOMICRMW:
+        case FunctionCodes.FUNC_CODE_INST_FENCE:
+          Util.shouldNotReachHere("atomic instructions are not supported yet!");
+
+        case FunctionCodes.FUNC_CODE_INST_CALL: {
+          // CALL: [paramattrs, cc, fnty, fnid, arg0, arg1...]
+          if (record.size() < 3)
+            return error("Invalid CALL record");
+
+          AttrList attr = getAttributes(record.get(0).intValue());
+          int cc = record.get(1).intValue();
+          OutRef<Integer> opNum = new OutRef<>(2);
+          Value callee;
+          if ((callee = getValueTypePair(record, opNum, nextValueNo)) == null)
+            return error("Invalid CALL record");
+
+          PointerType calleeTy = callee.getType() instanceof PointerType ? (PointerType)callee.getType() : null;
+          FunctionType fty = calleeTy == null ? null : (FunctionType) calleeTy.getElementType();
+          if (fty == null || record.size() < fty.getNumParams() + opNum.get())
+            return error("Invalid CALL record");
+
+          ArrayList<Value> ops = new ArrayList<>();
+          int opIdx = opNum.get();
+          for (int i = 0, e = fty.getNumParams(); i < e; ++i, ++opIdx) {
+            Value arg;
+            if (fty.getParamType(i).isLabelTy())
+              arg = getBasicBlock(record.get(opIdx).intValue());
+            else
+              arg = getFnValueByID(record.get(opIdx).intValue(), fty.getParamType(i));
+
+            if (arg == null)
+              return error("Invalid CALL record");
+            ops.add(arg);
+          }
+          if (!fty.isVarArg()) {
+            if (record.size() != opIdx)
+              return error("Invalid CALL record");
+          } else {
+            while (opIdx != record.size()) {
+              Value op;
+              opNum.set(opIdx);
+              if ((op = getValueTypePair(record, opNum, nextValueNo)) == null)
+                return error("Invalid CALL record");
+              opIdx = opNum.get();
+              ops.add(op);
+            }
+          }
+          inst = CallInst.create(callee, ops, "", (Instruction) null);
+          instructionList.add(inst);
+          ((CallInst)inst).setCallingConv(CallingConv.values()[cc>>>1]);
+          ((CallInst)inst).setAttributes(attr);
+          ((CallInst)inst).setTailCall((cc&1) != 0);
+          break;
+        }
+        case FunctionCodes.FUNC_CODE_INST_VAARG: {
+          // VAARG: [valistty, valist, instty]
+          if (record.size() < 3)
+            return error("Invalid VAARG record");
+          Type opTy = getTypeByID(record.get(0).intValue());
+          Value op = getFnValueByID(record.get(1).intValue(), opTy);
+          Type resTy = getTypeByID(record.get(2).intValue());
+          if (opTy == null || op == null || resTy == null)
+            return error("Invalid VAARG record");
+          inst = new Instruction.VAArgInst(op, resTy);
+          instructionList.add(inst);
+          break;
+        }
+      }
+
+      // add instruction to the end of current block.
+      if (curBB == null) {
+        return error("Invalid instruction with no BB");
+      }
+
+      curBB.appendInst(inst);
+      if (inst instanceof Instruction.TerminatorInst) {
+        ++curBBNo;
+        curBB = curBBNo < functionBBs.size() ? functionBBs.get(curBBNo) : null;
+      }
+
+      if (inst != null && !inst.getType().isVoidType())
+        valueList.assignValue(inst, nextValueNo++);
+    }
+
+    Value val = valueList.get(valueList.size() - 1);
+    Argument arg = val instanceof Argument ? (Argument)val : null;
+    if (arg != null && arg.getParent() == null) {
+      for (int i = moduleValueListSize, e = valueList.size(); i < e; ++i) {
+        arg = (Argument) valueList.get(i);
+        if (arg != null && arg.getParent() == null)
+          arg.replaceAllUsesWith(Value.UndefValue.get(arg.getType()));
+      }
+    }
+
+    // See if there are anything take the address of blocks in this function. If so,
+    // resolve them now.
+    if (blockAddrFwdRefs.containsKey(f)) {
+      ArrayList<Pair<Long, GlobalVariable>> refList = blockAddrFwdRefs.get(f);
+      for (Pair<Long, GlobalVariable> pair : refList) {
+        int blockIdx = pair.first.intValue();
+        if (blockIdx >= functionBBs.size())
+          return error(String.format("Invalid blockaddress blcok #%d", blockIdx));
+        GlobalVariable fwdRef = pair.second;
+        fwdRef.replaceAllUsesWith(BlockAddress.get(f, functionBBs.get(blockIdx)));
+        fwdRef.eraseFromParent();
+      }
+      blockAddrFwdRefs.remove(f);
+    }
+
+    // trim the value list down to the size it was before we parsed this function.
+    valueList.shrinkTo(moduleValueListSize);
+    mdValueList.shrinkTo(moduleMDValueListSize);
+    functionBBs.clear();
+    return false;
+  }
+
+  private Value getValueTypePair(ArrayList<Long> record, OutRef<Integer> slot, int instNum) {
+    if (slot.get() >= record.size()) return null;
+    int valNo = Math.toIntExact(record.get(slot.get()));
+    slot.set(slot.get()+1);
+    if (valNo < instNum) {
+      return getFnValueByID(valNo, null);
+    }
+    else if (slot.get() >= record.size())
+      return null;
+
+    int typeNo = Math.toIntExact(record.get(slot.get()));
+    slot.set(slot.get()+1);
+    return getFnValueByID(valNo, getTypeByID(typeNo));
+  }
+
+  private Value getValue(ArrayList<Long> record, OutRef<Integer> slot, Type ty) {
+    if (slot.get() >= record.size()) return null;
+    int valNo = Math.toIntExact(record.get(slot.get()));
+    slot.set(slot.get() + 1);
+    return getFnValueByID(valNo, ty);
+  }
+
+  private Value getFnValueByID(int id, Type ty) {
+    if (ty != null && ty.isMetadataTy())
+      return mdValueList.getValueFwdRef(id);
+    return valueList.getValueFwdRef(id, ty);
   }
 
   /**
@@ -2146,6 +3395,8 @@ public class BitcodeReader implements GVMaterializer {
 
       return null;
     }
+    if (reader.materializeModule(m, errMsg))
+      return null;
     return m;
   }
 

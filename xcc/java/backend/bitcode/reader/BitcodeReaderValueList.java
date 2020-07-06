@@ -93,13 +93,13 @@ public class BitcodeReaderValueList {
       add(null);
   }
 
-  public Constant getConstantFwdRefs(int idx, Type ty) {
+  public Constant getConstantFwdRef(int idx, Type ty) {
     if (idx >= size())
       resize(idx + 1);
 
     Value v = values.get(idx);
     if (v != null) {
-      Util.assertion(ty.equals(v.getType()), "Type mismatch in constant table!");
+      Util.assertion(ty == null || ty.equals(v.getType()), "Type mismatch in constant table!");
       return (Constant) v;
     }
     Constant c = new ConstantPlaceHolder(ty);

@@ -11,6 +11,6 @@
 int main(int argc, char **argv)
 {
     std::string cmdPath = getpath();
-    invokeClass((char*)cmdPath.c_str(), "utils/llc/LLC", argc, argv);
+    invokeClass((char*)cmdPath.c_str(), "utils/dis/DIS", argc, argv);
     return 0;
 }
