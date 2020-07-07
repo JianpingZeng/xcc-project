@@ -108,7 +108,6 @@ public final class FormattedOutputStream implements AutoCloseable {
   }
 
   public void close() throws IOException {
-    flush();
     os.close();
   }
 

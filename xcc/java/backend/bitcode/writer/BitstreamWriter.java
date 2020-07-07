@@ -97,7 +97,7 @@ public class BitstreamWriter {
   }
 
   public void emit(int val, int numBits) {
-    Util.assertion(val != 0 && numBits <= 32, "Invalid value size!");
+    Util.assertion(numBits != 0 && numBits <= 32, "Invalid value size!");
     Util.assertion((val & ~(~0 >>> (32-numBits))) == 0, "High bits must not be set!");
     curValue |= val << curBit;
     if (curBit + numBits < 32) {
@@ -131,10 +131,10 @@ public class BitstreamWriter {
   public void flushToWord() {
     if (curBit != 0) {
       int v = curValue;
-      buffer.add((byte) (v >>> 0));
-      buffer.add((byte) (v >>> 8));
-      buffer.add((byte) (v >>> 16));
-      buffer.add((byte) (v >>> 24));
+      buffer.add((byte) (v&0xff));
+      buffer.add((byte) ((v >>> 8) & 0xff));
+      buffer.add((byte) ((v >>> 16) & 0xff));
+      buffer.add((byte) ((v >>> 24) & 0xff));
       curBit = 0;
       curValue = 0;
     }
@@ -144,7 +144,7 @@ public class BitstreamWriter {
     int threshold = 1 << (numBits - 1);
     // emit the bits with VBR encoding, numbits - 1 bits at a time.
     while (Integer.compareUnsigned(val, threshold) >= 0) {
-      emit((val & (1 << (numBits - 1))) | (1 << (numBits - 1)), numBits);
+      emit((val & ((1 << (numBits - 1)) - 1) )| (1 << (numBits - 1)), numBits);
       val >>>= numBits - 1;
     }
 
@@ -211,7 +211,6 @@ public class BitstreamWriter {
     if (info != null) {
       for (int i = 0, e = info.abbrevs.size(); i < e; i++) {
         curAbbrevs.add(info.abbrevs.get(i));
-        info.abbrevs.set(i, null);
       }
     }
   }
@@ -238,7 +237,7 @@ public class BitstreamWriter {
   private void emitAbbreviatedLiteral(BitCodeAbbrevOp op, long val) {
     Util.assertion(op.isLiteral(), "Not a literal");
     // if the abbrev specifies the literal value to use, don't emit.
-    Util.assertion(val == op.getLiteralValue(), "Invlaid abbrev for record!");
+    Util.assertion(val == op.getLiteralValue(), "Invalid abbrev for record!");
   }
 
   private void emitAbbreviatedField(BitCodeAbbrevOp op, long val) {
@@ -263,7 +262,7 @@ public class BitstreamWriter {
 
   private void emitRecordWithAbbrevImpl(int abbrev,
                                         TLongArrayList vals) {
-    emitRecordWithAbbrevImpl(abbrev, vals, null);
+    emitRecordWithAbbrevImpl(abbrev, vals, "");
   }
 
   private void emitRecordWithAbbrevImpl(int abbrev,
@@ -271,7 +270,7 @@ public class BitstreamWriter {
                                         String blob) {
     int blobLen = blob.length();
     int abbrevNo = abbrev - FIRST_APPLICATION_ABBREV;
-    Util.assertion(abbrevNo < curAbbrevs.size(), "Inlvalid abbrev #");
+    Util.assertion(abbrevNo < curAbbrevs.size(), "Invalid abbrev #");
     BitCodeAbbrev abbv = curAbbrevs.get(abbrevNo);
 
     emitCode(abbrev);
@@ -280,17 +279,17 @@ public class BitstreamWriter {
     for (int i = 0, e = abbv.getNumOperandInfos(); i < e; i++) {
       BitCodeAbbrevOp op = abbv.getOperandInfo(i);
       if (op.isLiteral()) {
-        Util.assertion(recordIdx < vals.size(), "Invlaid abbrev/record!");
+        Util.assertion(recordIdx < vals.size(), "Invalid abbrev/record!");
         emitAbbreviatedLiteral(op, vals.get(recordIdx));
         ++recordIdx;
       }
       else if (op.getEncoding() == Encoding.Array) {
         // Array case.
-        Util.assertion(i + 2 == 2, "array op not second to last");
+        Util.assertion(i + 2 == e, "array op not second to last");
         BitCodeAbbrevOp eltEnc = abbv.getOperandInfo(++i);
         // If this record has blob data, emit it, otherwise we
         // must have record entries to encode this way.
-        if (blob != null) {
+        if (blob != null && !blob.isEmpty()) {
           Util.assertion(recordIdx == vals.size(),
               "Blob data and record entries specified for array!");
           emitVBR(blobLen, 6);
@@ -313,7 +312,7 @@ public class BitstreamWriter {
         // If this record has blob data, emit it, otherwise we must have record
         // entries to encode this way.
         // Emit a vbr6 to indicate the number of elements present.
-        if (blob != null) {
+        if (blob != null && !blob.isEmpty()) {
           emitVBR(blobLen, 6);
           Util.assertion(recordIdx == vals.size(), "Blob data and record entries specified for blob operand");
         }
@@ -326,7 +325,7 @@ public class BitstreamWriter {
         Util.assertion((buffer.size() & 3) == 0, "Not 32-bit aligned");
 
         // Emit each field as a literal byte.
-        if (blob != null) {
+        if (blob != null && !blob.isEmpty()) {
           for (int j = 0; j < blobLen; j++)
             buffer.add((byte)blob.charAt(j));
 
@@ -354,7 +353,7 @@ public class BitstreamWriter {
 
     Util.assertion(recordIdx == vals.size(),
         "Not all record operands emitted");
-    Util.assertion(blob == null, "Blob data specified for record that doesn't use ti!");
+    Util.assertion(blob == null || blob.isEmpty(), "Blob data specified for record that doesn't use ti!");
   }
 
   public void emitRecord(int code, TLongArrayList vals) {

@@ -45,6 +45,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
   private ValueSymbolTable symTab;
 
   private AttrList attributeList;
+  private boolean unnamedAddr;
 
   public Function(FunctionType ty,
                   LinkageType linkage,
@@ -256,6 +257,9 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
   public void setAttributes(AttrList attrList) {
     this.attributeList = attrList;
   }
+
+  public void setUnnamedAddr(boolean val) { unnamedAddr = val; }
+  public boolean hasUnnamedAddr() { return unnamedAddr; }
 
   public boolean hasFnAttr(int n) {
     return attributeList.paramHasAttr(0, n);

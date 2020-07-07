@@ -969,15 +969,20 @@ public final class LLParser {
     }
 
     ArrayList<ArgInfo> argList = new ArrayList<>();
+    OutRef<Boolean> unnamedAddr = new OutRef<>(false);
+    OutRef<SMLoc> unnamedAddrLoc = new OutRef<>();
     OutRef<Boolean> isVarArg = new OutRef<>(false);
     OutRef<Integer> funcAttrs = new OutRef<>(0);
     OutRef<String> section = new OutRef<>("");
     OutRef<Integer> alignment = new OutRef<>(0);
     OutRef<String> gc = new OutRef<>("");
 
-    if (parseArgumentList(argList, isVarArg, false) || parseOptionalAttrs(
-        funcAttrs, 2) || (eatIfPresent(kw_section) && parseStringConstant(section)) || parseOptionalAlignment(
-        alignment) || (eatIfPresent(kw_gc) && parseStringConstant(gc))) {
+    if (parseArgumentList(argList, isVarArg, false) ||
+            parseOptionalToken(kw_unnamed_addr, unnamedAddr, unnamedAddrLoc) ||
+            parseOptionalAttrs(funcAttrs, 2) ||
+            (eatIfPresent(kw_section) && parseStringConstant(section)) ||
+            parseOptionalAlignment(alignment) ||
+            (eatIfPresent(kw_gc) && parseStringConstant(gc))) {
       return true;
     }
 
@@ -1078,6 +1083,7 @@ public final class LLParser {
     fn.setVisibility(visibility.get());
     fn.setCallingConv(cc.get());
     fn.setAttributes(alist);
+    fn.setUnnamedAddr(unnamedAddr.get());
     fn.setAlignment(align);
     fn.setSection(sec);
     // allowed GC but ignore it.
@@ -2031,8 +2037,8 @@ public final class LLParser {
                   InstNormal;
           }
           // Allow nsw and nuw, but ignores it.
-          ((OverflowingBinaryOperator)inst.get()).setHasNoUnsignedWrap(true);
-          ((OverflowingBinaryOperator)inst.get()).setHasNoSignedWrap(true);
+          if (nuw) ((OverflowingBinaryOperator)inst.get()).setHasNoUnsignedWrap(true);
+          if (nsw) ((OverflowingBinaryOperator)inst.get()).setHasNoSignedWrap(true);
         }
         return result ?
             InstError :

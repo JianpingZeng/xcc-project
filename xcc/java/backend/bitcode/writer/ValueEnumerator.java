@@ -10,6 +10,7 @@ package backend.bitcode.writer;
 
 import backend.support.AttrList;
 import backend.support.ValueSymbolTable;
+import backend.type.StructType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.CallInst;
@@ -143,33 +144,6 @@ public class ValueEnumerator {
 
     // Optimize constant ordering.
     optimizeConstants(firstConstants, values.size());
-    // Sort the type table by frequency so that most commonly used types are early
-    // in the table (have low bit-width).
-    types.sort(new Comparator<Pair<Type, Integer>>() {
-      @Override
-      public int compare(Pair<Type, Integer> o1, Pair<Type, Integer> o2) {
-        return o1.second - o2.second;
-      }
-    });
-
-    // Partition the Type ID's so that the single-value types occur before the
-    // aggregate types.  This allows the aggregate types to be dropped from the
-    // type table after parsing the global variable initializers.
-    ArrayList<Pair<Type, Integer>> singleTypes = new ArrayList<>();
-    ArrayList<Pair<Type, Integer>> aggregateTypes = new ArrayList<>();
-    for (Pair<Type, Integer> item : types)
-      if (item.first.isSingleValueType())
-        singleTypes.add(item);
-      else
-        aggregateTypes.add(item);
-
-    types.clear();
-    types.addAll(singleTypes);
-    types.addAll(aggregateTypes);
-
-    // Now that we rearranged the type table, rebuild TypeMap.
-    for (int i = 0, e = types.size(); i < e; i++)
-      typeMap.put(types.get(i).first, i+1);
   }
 
   public int getValueID(Value val) {
@@ -184,8 +158,8 @@ public class ValueEnumerator {
   }
 
   public int getTypeID(Type ty) {
-    Util.assertion(typeMap.containsKey(true), "Type not in ValueEnumerator!");
-    return typeMap.get(ty);
+    Util.assertion(typeMap.containsKey(ty), "Type not in ValueEnumerator!");
+    return typeMap.get(ty) - 1;
   }
 
   public int getInstructionID(Instruction inst) {
@@ -266,9 +240,9 @@ public class ValueEnumerator {
               || op instanceof InlineAsm)
             enumerateValue(op);
         }
-        basicBlocks.add(bb);
-        valueMap.put(bb, basicBlocks.size());
       }
+      basicBlocks.add(bb);
+      valueMap.put(bb, basicBlocks.size());
     }
 
     // Optimize the constant layout.
@@ -321,7 +295,7 @@ public class ValueEnumerator {
 
     for (int i = values.size() - 1; i >= numModuleValues; i--)
       values.remove(i);
-    for (int i = mdValues.size(); i >= numModuleMDValues; i--)
+    for (int i = mdValues.size() - 1; i >= numModuleMDValues; i--)
       mdValues.remove(i);
 
     basicBlocks.clear();
@@ -515,14 +489,22 @@ public class ValueEnumerator {
       return;
     }
 
+    if (t instanceof StructType) {
+      StructType sty = (StructType) t;
+      if (!sty.isLiteral())
+        typeMap.put(t, ~0);
+    }
+    // Iterate over all sub-types of Type t.
+    for (int i = 0, e = t.getNumContainedTypes(); i < e; ++i)
+      enumerateType(t.getContainedType(i));
+
+    // Check it again after enumerating it's sub-types.
+    if (typeMap.containsKey(t) && typeMap.get(t) != ~0)
+      return;
+
     // First time we saw this type, add it.
     types.add(Pair.get(t, 1));
     typeMap.put(t, types.size());
-
-    // Enumerate subtypes.
-    for (int i = 0, e = t.getNumContainedTypes(); i < e; i++) {
-      enumerateType(t.getContainedType(i));
-    }
   }
 
   private void enumerateOperandType(Value v) {

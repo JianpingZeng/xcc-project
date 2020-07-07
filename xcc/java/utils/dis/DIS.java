@@ -64,7 +64,7 @@ public class DIS {
             theModule.print(os);
         } else {
             if (OutputFilename.value.isEmpty()) {
-                OutputFilename.value = Paths.get(InputFilename.value).getParent().toString() + ".ll";
+                OutputFilename.value = InputFilename.value.split("\\.")[0] + ".ll";
             }
             try {
                 os = new FormattedOutputStream(new FileOutputStream(OutputFilename.value));

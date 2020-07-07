@@ -64,8 +64,8 @@ public class AS {
             OutputFilename.value = "-";
         }
         else if (OutputFilename.value.isEmpty())
-            OutputFilename.value = Paths.get(InputFilename.value).getParent().toString() + ".bc";
-        
+            OutputFilename.value = InputFilename.value.split("\\.")[0] + ".bc";
+
         BitcodeWriter.writeBitcodeToFile(theModule, OutputFilename.value);
     }
 }

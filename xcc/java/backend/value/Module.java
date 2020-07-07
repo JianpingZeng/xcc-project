@@ -324,6 +324,10 @@ public final class Module implements Iterable<Function> {
     return context.getMDKindID(name);
   }
 
+  public void getMDKindNames(ArrayList<String> result) {
+    context.getMDKindNames(result);
+  }
+
   public NamedMDNode getOrCreateNamedMetadata(String name) {
     if (namedMDSymTab.containsKey(name))
       return namedMDSymTab.get(name);

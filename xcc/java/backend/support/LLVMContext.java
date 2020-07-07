@@ -24,6 +24,7 @@ import backend.value.Instruction;
 import backend.value.MDNode;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
+import tools.Util;
 
 import java.util.*;
 
@@ -48,7 +49,9 @@ public class LLVMContext {
 
   // Pinned metadata names, which always have the same value. This is a compile-time performance
   // optimization, not a correctness optimization.
-  public static int MD_dbg = 0;
+  public static int MD_dbg = 0;   // "dbg"
+  public static int MD_tbaa = 1;  // "tbaa"
+  public static int MD_prof = 2;  // "prof"
 
   private static final TreeMap<String, Integer> customMDKindNamesMap = new TreeMap<>();
   public ArrayList<Pair<MDNode, MDNode>> scopeInlineAtRecords;
@@ -79,6 +82,17 @@ public class LLVMContext {
     FP128Ty = new Type(this, LLVMTypeID.FP128TyID);
     X86_FP80Ty = new Type(this, LLVMTypeID.X86_FP80TyID);
     PPC_FP128Ty = new Type(this, LLVMTypeID.PPC_FP128TyID);
+
+    // create the "dbg" metadata kind
+    int dbgID = getMDKindID("dbg");
+    Util.assertion(dbgID == MD_dbg, "dbg kind id drifted!");
+
+    // create the "tbaa" metadata kind
+    int tbaaID = getMDKindID("tbaa");
+    Util.assertion(tbaaID == MD_tbaa, "tbaa kind id drifted!");
+
+    int profID = getMDKindID("prof");
+    Util.assertion(profID == MD_prof, "prof kind if drifted!");
   }
 
   public int getMDKindID(String name) {

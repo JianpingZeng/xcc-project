@@ -44,7 +44,8 @@ public class MDString extends Value {
   }
 
   @Override
-  public String toString() {
-    return getString();
-  }
+  public String getName() { return name; }
+
+  @Override
+  public String toString() { return getString(); }
 }

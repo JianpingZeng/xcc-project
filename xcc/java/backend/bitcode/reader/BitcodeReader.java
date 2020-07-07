@@ -202,7 +202,6 @@ public class BitcodeReader implements GVMaterializer {
     TYPE_BLOCK_ID_NEW = METADATA_ATTACHMENT_ID + 1;
   }
 
-
   /// MODULE blocks have a number of optional fields and subblocks.
   public interface ModuleCodes {
     int MODULE_CODE_VERSION = 1,    // VERSION:     [version#]
@@ -283,20 +282,15 @@ public class BitcodeReader implements GVMaterializer {
 
   public interface MetadataCodes {
     int METADATA_STRING = 1,   // MDSTRING:      [values]
-    // FIXME: Remove NODE in favor of NODE2 in LLVM 3.0
-    METADATA_NODE = 2,   // NODE with potentially invalid metadata
-    // FIXME: Remove FN_NODE in favor of FN_NODE2 in LLVM 3.0
-    METADATA_FN_NODE = 3,   // FN_NODE with potentially invalid metadata
+        // 2 and 3 are not used
         METADATA_NAME = 4,   // STRING:        [values]
-    // FIXME: Remove NAMED_NODE in favor of NAMED_NODE2 in LLVM 3.0
-    METADATA_NAMED_NODE = 5,   // NAMED_NODE with potentially invalid metadata
+        // 5 is not used.
         METADATA_KIND = 6,   // [n x [id, name]]
-    // FIXME: Remove ATTACHMENT in favor of ATTACHMENT2 in LLVM 3.0
-    METADATA_ATTACHMENT = 7,   // ATTACHMENT with potentially invalid metadata
-        METADATA_NODE2 = 8,   // NODE2:         [n x (type num, value num)]
-        METADATA_FN_NODE2 = 9,   // FN_NODE2:      [n x (type num, value num)]
-        METADATA_NAMED_NODE2 = 10,  // NAMED_NODE2:   [n x mdnodes]
-        METADATA_ATTACHMENT2 = 11;   // [m x [value, [n x [id, mdnode]]]
+        // 7 is unused
+        METADATA_NODE = 8,   // NODE2:         [n x (type num, value num)]
+        METADATA_FN_NODE = 9,   // FN_NODE2:      [n x (type num, value num)]
+        METADATA_NAMED_NODE = 10,  // NAMED_NODE2:   [n x mdnodes]
+        METADATA_ATTACHMENT = 11;   // [m x [value, [n x [id, mdnode]]]
   }
 
   // The constants block (CONSTANTS_BLOCK_ID) describes emission for each
@@ -366,7 +360,7 @@ public class BitcodeReader implements GVMaterializer {
 
   /// OverflowingBinaryOperatorOptionalFlags - Flags for serializing
   /// OverflowingBinaryOperator's SubclassOptionalData contents.
-  interface OverflowingBinaryOperatorOptionalFlags {
+  public interface OverflowingBinaryOperatorOptionalFlags {
     int OBO_NO_UNSIGNED_WRAP = 0,
         OBO_NO_SIGNED_WRAP = 1;
   }
@@ -374,7 +368,7 @@ public class BitcodeReader implements GVMaterializer {
   /**
    * Flags for serializing PossiblyExactOperator's SubclassOptionalData contents.
    */
-  interface PossiblyExactOperatorOptionalFlags {
+  public interface PossiblyExactOperatorOptionalFlags {
     int PEO_EXACT = 0;
   }
 
@@ -466,8 +460,6 @@ public class BitcodeReader implements GVMaterializer {
       val = v;
       isLiteral = true;
     }
-
-    public BitCodeAbbrevOp(int e) { this(e, 0);}
 
     public BitCodeAbbrevOp(int e, long data) {
       val = data;
@@ -667,7 +659,8 @@ public class BitcodeReader implements GVMaterializer {
   private ArrayList<Type> typeList;
   private ArrayList<Instruction> instructionList;
 
-  private BitcodeReader(MemoryBuffer buffer) {
+  private BitcodeReader(MemoryBuffer buffer, LLVMContext ctx) {
+    context = ctx;
     errorString = null;
     theModule = null;
     this.buffer = ByteSequence.create(buffer);
@@ -3388,7 +3381,7 @@ public class BitcodeReader implements GVMaterializer {
                                             OutRef<String> errMsg,
                                             LLVMContext ctx) {
     Module m = new Module(buffer.getBufferIdentifier(), ctx);
-    BitcodeReader reader = new BitcodeReader(buffer);
+    BitcodeReader reader = new BitcodeReader(buffer, ctx);
     if (reader.parseBitcodeInfo(m)) {
       if (errMsg != null)
         errMsg.set(reader.getErrorString());

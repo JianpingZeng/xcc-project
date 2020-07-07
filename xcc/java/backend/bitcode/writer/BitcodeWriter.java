@@ -11,6 +11,8 @@ package backend.bitcode.writer;
 import backend.bitcode.reader.BitcodeReader;
 import backend.bitcode.reader.BitcodeReader.BitCodeAbbrev;
 import backend.bitcode.reader.BitcodeReader.BitCodeAbbrevOp;
+import backend.bitcode.reader.BitcodeReader.OverflowingBinaryOperatorOptionalFlags;
+import backend.bitcode.reader.BitcodeReader.PossiblyExactOperatorOptionalFlags;
 import backend.debug.DebugLoc;
 import backend.support.*;
 import backend.type.*;
@@ -33,9 +35,7 @@ import static backend.bitcode.reader.BitcodeReader.CastOpcodes.*;
 import static backend.bitcode.reader.BitcodeReader.ConstantsCodes.*;
 import static backend.bitcode.reader.BitcodeReader.FixedAbbrevIDs.FIRST_APPLICATION_ABBREV;
 import static backend.bitcode.reader.BitcodeReader.FunctionCodes.*;
-import static backend.bitcode.reader.BitcodeReader.MetadataCodes.METADATA_FN_NODE2;
-import static backend.bitcode.reader.BitcodeReader.MetadataCodes.METADATA_NODE2;
-import static backend.bitcode.reader.BitcodeReader.MetadataCodes.METADATA_STRING;
+import static backend.bitcode.reader.BitcodeReader.MetadataCodes.*;
 import static backend.bitcode.reader.BitcodeReader.ModuleCodes.*;
 import static backend.bitcode.reader.BitcodeReader.TypeCodes.*;
 import static backend.bitcode.reader.BitcodeReader.ValueSymtabCodes.VST_CODE_BBENTRY;
@@ -79,6 +79,7 @@ public class BitcodeWriter {
     try {
       BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(file));
       writeBitcodeToFile(m, os);
+      os.close();
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -86,8 +87,8 @@ public class BitcodeWriter {
 
   public static void writeBitcodeToFile(Module m, OutputStream os) throws IOException {
     BitstreamWriter stream = new BitstreamWriter();
-    byte[] buffer = stream.getBuffer();
     writeBitcodeToStream(m, stream);
+    byte[] buffer = stream.getBuffer();
     os.write(buffer);
   }
 
@@ -158,23 +159,31 @@ public class BitcodeWriter {
     // Emit metadata
     writeModuleMetadataStore(m, stream);
 
-    // Emit the type symbol table information.
-    writeTypeSymbolTable(m.getTypeSymbolTable(), ve, stream);
-
     // Emit names for globals/functions etc.
     writeValueSymbolTable(m.getValueSymbolTable(), ve, stream);
     stream.exitBlock();
   }
 
-  private static void writeTypeSymbolTable(TreeMap<String, Type> typeSymbolTable,
-                                           ValueEnumerator ve,
-                                           BitstreamWriter stream) {
-    // TODO: 7/2/19
-  }
-
   private static void writeModuleMetadataStore(Module m,
                                                BitstreamWriter stream) {
-    // TODO: 7/2/19
+    TLongArrayList record = new TLongArrayList();
+    ArrayList<String> names = new ArrayList<>();
+    // Write metadata kinds
+    // METADATA_KIND - [n x [id, name]]
+    m.getMDKindNames(names);
+    if (names.isEmpty()) return;
+
+    stream.enterSubBlock(METADATA_BLOCK_ID, 3);
+    for (int id = 0, e = names.size(); id < e; ++id) {
+      record.add(id);
+      String name = names.get(id);
+      for (char ch : name.toCharArray())
+        record.add((byte)ch);
+
+      stream.emitRecord(METADATA_KIND, record, 0);
+      record.clear();
+    }
+    stream.exitBlock();
   }
 
   /**
@@ -333,8 +342,12 @@ public class BitcodeWriter {
             abbrevToUse = FUNCTION_INST_BINOP_ABBREV;
           vals.add(ve.getValueID(inst.operand(1)));
           vals.add(getEncodedBinaryOpcode(inst.getOpcode()));
-          // Flags. TODO implements the FLAGS
-          vals.add(0);
+          long flags = getOptimizationFlags(inst);
+          if (flags != 0) {
+            if (abbrevToUse == FUNCTION_INST_BINOP_ABBREV)
+              abbrevToUse = FUNCTION_INST_BINOP_FLAGS_ABBREV;
+            vals.add(flags);
+          }
         }
         break;
       case GetElementPtr:
@@ -483,6 +496,22 @@ public class BitcodeWriter {
     vals.clear();
   }
 
+  private static long getOptimizationFlags(Value val) {
+    long flags = 0;
+    if (val instanceof OverflowingBinaryOperator) {
+      OverflowingBinaryOperator obo = (OverflowingBinaryOperator) val;
+      if (obo.getHasNoSignedWrap())
+        flags |= 1 << OverflowingBinaryOperatorOptionalFlags.OBO_NO_SIGNED_WRAP;
+      if (obo.getHasNoUnsignedWrap())
+        flags |= 1 << OverflowingBinaryOperatorOptionalFlags.OBO_NO_UNSIGNED_WRAP;
+    } else if (val instanceof ExactBinaryOperator) {
+      ExactBinaryOperator ebo = (ExactBinaryOperator) val;
+      if (ebo.isExact())
+        flags |= 1 << PossiblyExactOperatorOptionalFlags.PEO_EXACT;
+    }
+    return flags;
+  }
+
   private static boolean pushValueAndType(Value v,
                                        int instID,
                                        TLongArrayList vals,
@@ -531,8 +560,8 @@ public class BitcodeWriter {
         records.add(0);
       }
     }
-    int mdCode = node.isFunctionLocal() ? METADATA_FN_NODE2 :
-        METADATA_NODE2;
+    int mdCode = node.isFunctionLocal() ? METADATA_FN_NODE :
+            METADATA_NODE;
     stream.emitRecord(mdCode, records, 0);
     records.clear();
   }
@@ -559,7 +588,7 @@ public class BitcodeWriter {
           record.add(entry.first);
           record.add(ve.getValueID(entry.second));
         }
-        stream.emitRecord(METADATA_ATTACHMENT_ID, record, 0);
+        stream.emitRecord(METADATA_ATTACHMENT, record, 0);
         record.clear();
       }
     }
@@ -582,29 +611,29 @@ public class BitcodeWriter {
       // Abbrev for CST_CODE_AGGREGATE.
       BitCodeAbbrev abbv = new BitCodeAbbrev();
       abbv.add(new BitCodeAbbrevOp(CST_CODE_AGGREGATE));
-      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
       abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, Util.log2Ceil(lastVal+1)));;
       aggregateAbbrev = stream.emitAbbrev(abbv);
 
       // Abbrev for CST_CODE_STRING.
       abbv = new BitCodeAbbrev();
       abbv.add(new BitCodeAbbrevOp(CST_CODE_STRING));
-      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
       abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 8));
       string8Abbrev = stream.emitAbbrev(abbv);
 
       // Abbrev for CST_CODE_CSTRING.
       abbv = new BitCodeAbbrev();
       abbv.add(new BitCodeAbbrevOp(CST_CODE_CSTRING));
-      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
       abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 7));
       cstring7Abbrev = stream.emitAbbrev(abbv);
 
       // Abbrev for CST_CODE_CSTRING.
       abbv = new BitCodeAbbrev();
       abbv.add(new BitCodeAbbrevOp(CST_CODE_CSTRING));
-      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
-      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Char6));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Char6, 0));
       cstring6Abbrev = stream.emitAbbrev(abbv);
     }
 
@@ -758,7 +787,8 @@ public class BitcodeWriter {
               record.add(getEncodedBinaryOpcode(ce.getOpcode()));
               record.add(ve.getValueID(ce.operand(0)));
               record.add(ve.getValueID(ce.operand(1)));
-              // Flags as 0 currently, TODO 6/24/2019.
+              long flags = getOptimizationFlags(ce);
+              if (flags != 0) record.add(flags);
             }
             break;
           case GetElementPtr:
@@ -856,7 +886,7 @@ public class BitcodeWriter {
           stream.enterSubBlock(METADATA_BLOCK_ID, 3);;
           BitCodeAbbrev abbv = new BitCodeAbbrev();
           abbv.add(new BitCodeAbbrevOp(METADATA_STRING));;
-          abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
+          abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
           abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 8));
           mdsAbbrev = stream.emitAbbrev(abbv);
           startedMetadataBlock = true;
@@ -873,7 +903,24 @@ public class BitcodeWriter {
     }
 
     // Write named metadata.
-    // TODO 6/24/2019, write named metadata in module
+    for (NamedMDNode nmd : m.getNamedMDList()) {
+      if (!startedMetadataBlock) {
+        stream.enterSubBlock(METADATA_BLOCK_ID, 3);
+        startedMetadataBlock = true;
+      }
+      // write name
+      String name = nmd.getName();
+      for (int i = 0, e = name.length(); i < e; ++i)
+        record.add((byte)name.charAt(i));
+      stream.emitRecord(METADATA_NAME, record, 0/*addrev*/);
+      record.clear();
+
+      // write named metadata operands.
+      for (int i = 0, e = nmd.getNumOfOperands(); i < e; ++i)
+        record.add(ve.getValueID(nmd.getOperand(i)));
+      stream.emitRecord(METADATA_NAMED_NODE, record, 0/*abbrev*/);
+      record.clear();
+    }
     if (startedMetadataBlock)
       stream.exitBlock();
   }
@@ -1015,6 +1062,10 @@ public class BitcodeWriter {
       vals.add(ve.getAttributeID(fn.getAttributes()));
       vals.add(Util.log2(fn.getAlignment()) + 1);
       vals.add(fn.hasSection() ? sectionMap.get(fn.getSection()) : 0);
+      vals.add(getEncodingVisibility(fn));
+      // Don't support GC now!
+      vals.add(0);
+      vals.add(fn.hasUnnamedAddr()?1:0);
       int abbrevToUse = 0;
       stream.emitRecord(MODULE_CODE_FUNCTION, vals, abbrevToUse);
       vals.clear();
@@ -1084,7 +1135,7 @@ public class BitcodeWriter {
                                      BitstreamWriter stream) {
     ArrayList<Pair<Type, Integer>> typeList = ve.getTypes();
 
-    stream.enterSubBlock(TYPE_BLOCK_ID_OLD, 4 /*count from # abbrevs */);
+    stream.enterSubBlock(TYPE_BLOCK_ID_NEW, 4 /*count from # abbrevs */);
     TLongArrayList typeVals = new TLongArrayList();
 
     // Abbrev for TYPE_CODE_POINTER.
@@ -1100,7 +1151,7 @@ public class BitcodeWriter {
     abbv.add(new BitCodeAbbrevOp(TYPE_CODE_FUNCTION));
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 1));  // isvararg
     abbv.add(new BitCodeAbbrevOp(0));  // FIXME: DEAD value, remove in LLVM 3.0
-    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
+    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,
         Util.log2Ceil(ve.getTypes().size()+1)));
     int FunctionAbbrev = stream.emitAbbrev(abbv);
@@ -1109,18 +1160,34 @@ public class BitcodeWriter {
     abbv = new BitCodeAbbrev();
     abbv.add(new BitCodeAbbrevOp(TYPE_CODE_STRUCT_ANON));
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 1));  // ispacked
-    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array));
+    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,
         Util.log2Ceil(ve.getTypes().size()+1)));
-    int StructAbbrev = stream.emitAbbrev(abbv);
+    int structAnonAbbrev = stream.emitAbbrev(abbv);
 
+    // Abbrev for TYPE_CODE_STRUCT_NAME.
+    abbv = new BitCodeAbbrev();
+    abbv.add(new BitCodeAbbrevOp(TYPE_CODE_STRUCT_NAME));
+    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
+    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Char6, 0));
+    int structNameAbbrev = stream.emitAbbrev(abbv);
+
+    // Abbrev for TYPE_CODE_STRUCT_NAMED.
+    abbv = new BitCodeAbbrev();
+    abbv.add(new BitCodeAbbrevOp(TYPE_CODE_STRUCT_NAMED));
+    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 1));  // ispacked
+    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
+    abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,
+            Util.log2Ceil(ve.getTypes().size()+1)));
+    int structNamedAbbrev = stream.emitAbbrev(abbv);
+    
     // Abbrev for TYPE_CODE_ARRAY.
     abbv = new BitCodeAbbrev();
     abbv.add(new BitCodeAbbrevOp(TYPE_CODE_ARRAY));
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 8));   // size
     abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,
         Util.log2Ceil(ve.getTypes().size()+1)));
-    int ArrayAbbrev = stream.emitAbbrev(abbv);
+    int arrayAbbrev = stream.emitAbbrev(abbv);
 
     // Emit an entry count so the reader can reserve space.
     typeVals.add(typeList.size());
@@ -1128,31 +1195,32 @@ public class BitcodeWriter {
     typeVals.clear();
 
     // Loop over all of the types, emitting each in turn.
+    // We should have 6 types in typeList and first type is integral.
     for (int i = 0, e = typeList.size(); i != e; ++i) {
      Type T = typeList.get(i).first;
       int abbrevToUse = 0;
-      int Code = 0;
+      int code = 0;
 
       switch (T.getTypeID()) {
         default: Util.shouldNotReachHere("Unknown type!");
-        case VoidTyID:   Code = TYPE_CODE_VOID;   break;
-        case FloatTyID:  Code = TYPE_CODE_FLOAT;  break;
-        case DoubleTyID: Code = TYPE_CODE_DOUBLE; break;
-        case X86_FP80TyID: Code = TYPE_CODE_X86_FP80; break;
-        case FP128TyID: Code = TYPE_CODE_FP128; break;
-        case PPC_FP128TyID: Code = TYPE_CODE_PPC_FP128; break;
-        case LabelTyID:  Code = TYPE_CODE_LABEL;  break;
-        case OpaqueTyID: Code = TYPE_CODE_OPAQUE; break;
-        case MetadataTyID: Code = TYPE_CODE_METADATA; break;
+        case VoidTyID:   code = TYPE_CODE_VOID;   break;
+        case FloatTyID:  code = TYPE_CODE_FLOAT;  break;
+        case DoubleTyID: code = TYPE_CODE_DOUBLE; break;
+        case X86_FP80TyID: code = TYPE_CODE_X86_FP80; break;
+        case FP128TyID: code = TYPE_CODE_FP128; break;
+        case PPC_FP128TyID: code = TYPE_CODE_PPC_FP128; break;
+        case LabelTyID:  code = TYPE_CODE_LABEL;  break;
+        case MetadataTyID: code = TYPE_CODE_METADATA; break;
+        case X86_MMXTyID: code = TYPE_CODE_X86_MMX; break;
         case IntegerTyID:
           // INTEGER: [width]
-          Code = TYPE_CODE_INTEGER;
+          code = TYPE_CODE_INTEGER;
           typeVals.add(((IntegerType)(T)).getBitWidth());
           break;
         case PointerTyID: {
        PointerType PTy = (PointerType) T; 
           // POINTER: [pointee type, address space]
-          Code = TYPE_CODE_POINTER;
+          code = TYPE_CODE_POINTER;
           typeVals.add(ve.getTypeID(PTy.getElementType()));
           int AddressSpace = PTy.getAddressSpace();
           typeVals.add(AddressSpace);
@@ -1162,7 +1230,7 @@ public class BitcodeWriter {
         case FunctionTyID: {
        FunctionType FT = (FunctionType) T;
           // FUNCTION: [isvararg, attrid, retty, paramty x N]
-          Code = TYPE_CODE_FUNCTION;
+          code = TYPE_CODE_FUNCTION;
           typeVals.add(FT.isVarArg() ? 1 : 0);
           typeVals.add(0);  // FIXME: DEAD: remove in llvm 3.0
           typeVals.add(ve.getTypeID(FT.getReturnType()));
@@ -1180,25 +1248,34 @@ public class BitcodeWriter {
             typeVals.add(ve.getTypeID(st.getElementType(j)));
 
           if (st.isLiteral()) {
-            Code = TYPE_CODE_STRUCT_ANON;
-            // TODO 2020/7/6
+            code = TYPE_CODE_STRUCT_ANON;
+            abbrevToUse = structAnonAbbrev;
+          } else {
+            if (st.isOpaque()) {
+              code = TYPE_CODE_OPAQUE;
+            } else {
+              code = TYPE_CODE_STRUCT_NAMED;
+              abbrevToUse = structNamedAbbrev;
+            }
+            // emit the name if it presents.
+            if (!st.getName().isEmpty())
+              writeStringRecord(TYPE_CODE_STRUCT_NAME, st.getName(), structNameAbbrev, stream);
           }
-          abbrevToUse = StructAbbrev;
           break;
         }
         case ArrayTyID: {
           ArrayType AT = (ArrayType) T;
           // ARRAY: [numelts, eltty]
-          Code = TYPE_CODE_ARRAY;
+          code = TYPE_CODE_ARRAY;
           typeVals.add(AT.getNumElements());
           typeVals.add(ve.getTypeID(AT.getElementType()));
-          abbrevToUse = ArrayAbbrev;
+          abbrevToUse = arrayAbbrev;
           break;
         }
         case VectorTyID: {
           VectorType VT = (VectorType) T;
           // VECTOR [numelts, eltty]
-          Code = TYPE_CODE_VECTOR;
+          code = TYPE_CODE_VECTOR;
           typeVals.add(VT.getNumElements());
           typeVals.add(ve.getTypeID(VT.getElementType()));
           break;
@@ -1206,7 +1283,7 @@ public class BitcodeWriter {
       }
 
       // Emit the finished record.
-      stream.emitRecord(Code, typeVals, abbrevToUse);
+      stream.emitRecord(code, typeVals, abbrevToUse);
       typeVals.clear();
     }
 
@@ -1244,12 +1321,155 @@ public class BitcodeWriter {
     // instances: CONSTANTS_BLOCK, FUNCTION_BLOCK and VALUE_SYMTAB_BLOCK.  Other
     // blocks can defined their abbrevs inline.
     stream.enterBlockInfoBlock(2);
-
+    // 8-bit fixed-width VST_ENTRY/VST_BBENTRY strings.
     {
-      // 8-bit fixed-width VST_ENTRY/VST_BBENTRY strings.
       BitCodeAbbrev abbv = new BitCodeAbbrev();
       abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 3));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 8));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 8));
+      if (stream.emitBlockInfoAbbrev(VALUE_SYMTAB_BLOCK_ID, abbv) != VST_ENTRY_8_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
     }
+
+    { // 7-bit fixed width VST_ENTRY strings.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(VST_CODE_ENTRY));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 8));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 7));
+      if (stream.emitBlockInfoAbbrev(VALUE_SYMTAB_BLOCK_ID,
+              abbv) != VST_ENTRY_7_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // 6-bit char6 VST_ENTRY strings.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(VST_CODE_ENTRY));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 8));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Char6, 0));
+      if (stream.emitBlockInfoAbbrev(VALUE_SYMTAB_BLOCK_ID,
+              abbv) != VST_ENTRY_6_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // 6-bit char6 VST_BBENTRY strings.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(VST_CODE_BBENTRY));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 8));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Array, 0));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Char6, 0));
+      if (stream.emitBlockInfoAbbrev(VALUE_SYMTAB_BLOCK_ID,
+              abbv) != VST_BBENTRY_6_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+
+    { // SETTYPE abbrev for CONSTANTS_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(CST_CODE_SETTYPE));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,
+              Util.log2Ceil(ve.getTypes().size()+1)));
+      if (stream.emitBlockInfoAbbrev(CONSTANTS_BLOCK_ID,
+              abbv) != CONSTANTS_SETTYPE_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+
+    { // INTEGER abbrev for CONSTANTS_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(CST_CODE_INTEGER));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 8));
+      if (stream.emitBlockInfoAbbrev(CONSTANTS_BLOCK_ID,
+              abbv) != CONSTANTS_INTEGER_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+
+    { // CE_CAST abbrev for CONSTANTS_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(CST_CODE_CE_CAST));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 4));  // cast opc
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,       // typeid
+              Util.log2Ceil(ve.getTypes().size()+1)));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 8));    // value id
+
+      if (stream.emitBlockInfoAbbrev(CONSTANTS_BLOCK_ID,
+              abbv) != CONSTANTS_CE_CAST_Abbrev)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // NULL abbrev for CONSTANTS_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(CST_CODE_NULL));
+      if (stream.emitBlockInfoAbbrev(CONSTANTS_BLOCK_ID,
+              abbv) != CONSTANTS_NULL_Abbrev)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+
+    // FIXME: This should only use space for first class types!
+
+    { // INST_LOAD abbrev for FUNCTION_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(FUNC_CODE_INST_LOAD));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 6)); // Ptr
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 4)); // Align
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 1)); // volatile
+      if (stream.emitBlockInfoAbbrev(FUNCTION_BLOCK_ID,
+              abbv) != FUNCTION_INST_LOAD_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // INST_BINOP abbrev for FUNCTION_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(FUNC_CODE_INST_BINOP));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 6)); // LHS
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 6)); // RHS
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 4)); // opc
+      if (stream.emitBlockInfoAbbrev(FUNCTION_BLOCK_ID,
+              abbv) != FUNCTION_INST_BINOP_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // INST_BINOP_FLAGS abbrev for FUNCTION_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(FUNC_CODE_INST_BINOP));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 6)); // LHS
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 6)); // RHS
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 4)); // opc
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 7)); // flags
+      if (stream.emitBlockInfoAbbrev(FUNCTION_BLOCK_ID,
+              abbv) != FUNCTION_INST_BINOP_FLAGS_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // INST_CAST abbrev for FUNCTION_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(FUNC_CODE_INST_CAST));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 6));    // OpVal
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed,       // dest ty
+              Util.log2Ceil(ve.getTypes().size()+1)));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.Fixed, 4));  // opc
+      if (stream.emitBlockInfoAbbrev(FUNCTION_BLOCK_ID,
+              abbv) != FUNCTION_INST_CAST_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+
+    { // INST_RET abbrev for FUNCTION_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(FUNC_CODE_INST_RET));
+      if (stream.emitBlockInfoAbbrev(FUNCTION_BLOCK_ID,
+              abbv) != FUNCTION_INST_RET_VOID_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // INST_RET abbrev for FUNCTION_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(FUNC_CODE_INST_RET));
+      abbv.add(new BitCodeAbbrevOp(BitcodeReader.Encoding.VBR, 6)); // ValID
+      if (stream.emitBlockInfoAbbrev(FUNCTION_BLOCK_ID,
+              abbv) != FUNCTION_INST_RET_VAL_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    { // INST_UNREACHABLE abbrev for FUNCTION_BLOCK.
+      BitCodeAbbrev abbv = new BitCodeAbbrev();
+      abbv.add(new BitCodeAbbrevOp(FUNC_CODE_INST_UNREACHABLE));
+      if (stream.emitBlockInfoAbbrev(FUNCTION_BLOCK_ID,
+              abbv) != FUNCTION_INST_UNREACHABLE_ABBREV)
+        Util.shouldNotReachHere("Unexpected abbrev ordering!");
+    }
+    stream.exitBlock();
   }
 
   /**
@@ -1347,10 +1567,9 @@ public class BitcodeWriter {
       cpuType = DARWIN_CPU_TYPE_ARM;
 
     // Traditional bitcode starts after header.
-    int bcOffset = DarwinBCHeaderSize;
     stream.emit(0x0B17C0DE, 32);
     stream.emit(0         , 32);
-    stream.emit(bcOffset      , 32);
+    stream.emit(DarwinBCHeaderSize, 32);
     stream.emit(0         , 32);
     stream.emit(cpuType       , 32);
   }
