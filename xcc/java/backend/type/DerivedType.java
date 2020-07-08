@@ -75,10 +75,6 @@ public class DerivedType extends Type {
     unlockRefineAbstractTypeTo(newType);
   }
 
-  public void dump() {
-    super.dump();
-  }
-
   public Type getForwardType() {
     return forwardType;
   }

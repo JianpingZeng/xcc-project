@@ -1835,41 +1835,50 @@ public abstract class Instruction extends User {
      */
     public enum Predicate {
       // Opcode             U L G E    Intuitive operation
-      FCMP_FALSE,  /// 0 0 0 0    Always false (always folded)
-      FCMP_OEQ,  /// 0 0 0 1    True if ordered and equal
-      FCMP_OGT,  /// 0 0 1 0    True if ordered and greater than
-      FCMP_OGE,  /// 0 0 1 1    True if ordered and greater than or equal
-      FCMP_OLT,  /// 0 1 0 0    True if ordered and less than
-      FCMP_OLE,  /// 0 1 0 1    True if ordered and less than or equal
-      FCMP_ONE,  /// 0 1 1 0    True if ordered and operands are unequal
-      FCMP_ORD,  /// 0 1 1 1    True if ordered (no nans)
-      FCMP_UNO,  /// 1 0 0 0    True if unordered: isnan(X) | isnan(Y)
-      FCMP_UEQ,  /// 1 0 0 1    True if unordered or equal
-      FCMP_UGT,  /// 1 0 1 0    True if unordered or greater than
-      FCMP_UGE,  /// 1 0 1 1    True if unordered, greater than, or equal
-      FCMP_ULT,  /// 1 1 0 0    True if unordered or less than
-      FCMP_ULE,  /// 1 1 0 1    True if unordered, less than, or equal
-      FCMP_UNE,  /// 1 1 1 0    True if unordered or not equal
-      FCMP_TRUE,  /// 1 1 1 1    Always true (always folded)
-      ICMP_EQ,  /// equal
-      ICMP_NE,  /// not equal
-      ICMP_UGT,  /// unsigned greater than
-      ICMP_UGE,  /// unsigned greater or equal
-      ICMP_ULT,  /// unsigned less than
-      ICMP_ULE,  /// unsigned less or equal
-      ICMP_SGT,  /// signed greater than
-      ICMP_SGE,  /// signed greater or equal
-      ICMP_SLT,  /// signed less than
-      ICMP_SLE,  /// signed less or equal
-      BAD_ICMP_PREDICATE;
+      FCMP_FALSE(0),  /// 0 0 0 0    Always false (always folded)
+      FCMP_OEQ(1),  /// 0 0 0 1    True if ordered and equal
+      FCMP_OGT(2),  /// 0 0 1 0    True if ordered and greater than
+      FCMP_OGE(3),  /// 0 0 1 1    True if ordered and greater than or equal
+      FCMP_OLT(4),  /// 0 1 0 0    True if ordered and less than
+      FCMP_OLE(5),  /// 0 1 0 1    True if ordered and less than or equal
+      FCMP_ONE(6),  /// 0 1 1 0    True if ordered and operands are unequal
+      FCMP_ORD(7),  /// 0 1 1 1    True if ordered (no nans)
+      FCMP_UNO(8),  /// 1 0 0 0    True if unordered: isnan(X) | isnan(Y)
+      FCMP_UEQ(9),  /// 1 0 0 1    True if unordered or equal
+      FCMP_UGT(10),  /// 1 0 1 0    True if unordered or greater than
+      FCMP_UGE(11),  /// 1 0 1 1    True if unordered, greater than, or equal
+      FCMP_ULT(12),  /// 1 1 0 0    True if unordered or less than
+      FCMP_ULE(13),  /// 1 1 0 1    True if unordered, less than, or equal
+      FCMP_UNE(14),  /// 1 1 1 0    True if unordered or not equal
+      FCMP_TRUE(15),  /// 1 1 1 1    Always true (always folded)
+      FIRST_FCMP_PREDICATE(FCMP_FALSE.enumValue()),
+      LAST_FCMP_PREDICATE(FCMP_TRUE.enumValue()),
+      BAD_FCMP_PREDICATE(FCMP_TRUE.enumValue()+1),
 
-      public static final Predicate FIRST_FCMP_PREDICATE = FCMP_FALSE;
-      public static final Predicate LAST_FCMP_PREDICATE = FCMP_TRUE;
-      public static final Predicate BAD_FCMP_PREDICATE = ICMP_EQ;
+      ICMP_EQ(32),  /// equal
+      ICMP_NE(33),  /// not equal
+      ICMP_UGT(34),  /// unsigned greater than
+      ICMP_UGE(35),  /// unsigned greater or equal
+      ICMP_ULT(36),  /// unsigned less than
+      ICMP_ULE(37),  /// unsigned less or equal
+      ICMP_SGT(38),  /// signed greater than
+      ICMP_SGE(39),  /// signed greater or equal
+      ICMP_SLT(40),  /// signed less than
+      ICMP_SLE(41),  /// signed less or equal
+      FIRST_ICMP_PREDICATE(ICMP_EQ.enumValue()),
+      LAST_ICMP_PREDICATE(ICMP_SLE.enumValue()),
+      BAD_ICMP_PREDICATE(ICMP_SLE.enumValue() + 1);
 
-      public static final Predicate FIRST_ICMP_PREDICATE = ICMP_EQ;
-      public static final Predicate LAST_ICMP_PREDICATE = ICMP_SLE;
+      public final int id;
+      Predicate(int id) { this.id = id; }
+      public int enumValue() { return id; }
 
+      public static Predicate getPred(int val) {
+        for (Predicate p : values())
+          if(p.id == val)
+            return p;
+        return null;
+      }
     }
   }
 

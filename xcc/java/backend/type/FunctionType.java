@@ -42,10 +42,7 @@ public class FunctionType extends DerivedType {
 
     @Override
     public int hashCode() {
-      return retTy.hashCode() << 23 + argTypes.hashCode() << 11 + (
-          isVarArg ?
-              1 :
-              0);
+      return retTy.hashCode() << 23 + argTypes.hashCode() << 11 + (isVarArg ? 1 : 0);
     }
 
     @Override

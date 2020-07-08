@@ -29,6 +29,7 @@ import backend.value.Instruction.CmpInst.Predicate;
 import tools.*;
 
 import java.io.PrintStream;
+import java.sql.Struct;
 import java.util.ArrayList;
 import java.util.function.BiConsumer;
 
@@ -196,7 +197,7 @@ public class AssemblyWriter {
   }
 
   /**
-   * Output all global variables into ouput stream.
+   * Output all global variables into output stream.
    *
    * @param gv
    */
@@ -233,6 +234,7 @@ public class AssemblyWriter {
       out.printf(", align %d", align);
     }
     printInfoComment(gv);
+    out.println();
   }
 
   private void printInfoComment(Value val) {
@@ -1044,6 +1046,9 @@ public class AssemblyWriter {
     }
 
     out.print(')');
+    if (f.hasUnnamedAddr())
+      out.print(" unnamed_addr");
+
     int fnAttrs = attrs.getFnAttribute();
     if (fnAttrs != Attribute.None)
       out.printf(" %s", Attribute.getAsString(fnAttrs));
@@ -1467,7 +1472,7 @@ public class AssemblyWriter {
       out.printf("target datalayout = \"%s\"\n", m.getDataLayout());
     }
     if (m.getTargetTriple() != null && !m.getTargetTriple().isEmpty()) {
-      out.printf("target triple = \"%s\"\n\n", m.getTargetTriple());
+      out.printf("target triple = \"%s\"\n", m.getTargetTriple());
     }
     if (m.getModuleInlineAsm() != null && !m.getModuleInlineAsm().isEmpty()) {
       String[] temp = m.getModuleInlineAsm().split("\\n");
@@ -1480,8 +1485,7 @@ public class AssemblyWriter {
     }
 
     // Loop over all symbol, emitting all id's types.
-    if (!m.getTypeSymbolTable().isEmpty() || !numberedTypes.isEmpty())
-      printTypeSymbolTable();
+    printTypeIdentities();
 
     // Emitting all globals.
     if (!m.getGlobalVariableList().isEmpty())
@@ -1513,6 +1517,32 @@ public class AssemblyWriter {
     if (!slotTracker.getMdnMap().isEmpty()) {
       out.println();
       writeAllMDNodes();
+    }
+  }
+
+  private void printTypeIdentities() {
+    if (typePrinter.numberedTypes.isEmpty() && typePrinter.namedTypes.isEmpty())
+      return;
+    out.println();
+    StructType[] numberedTypes = new StructType[typePrinter.numberedTypes.size()];
+    for (StructType sty : typePrinter.numberedTypes.keySet()) {
+      int value = typePrinter.numberedTypes.get(sty);
+      Util.assertion(value < numberedTypes.length, "Didn't get a dense numbering");
+      numberedTypes[value] = sty;
+    }
+
+    // emit all numbered types.
+    for (int i = 0; i < numberedTypes.length; ++i) {
+      out.printf("%%d = type ", i);
+      typePrinter.printStructBody(numberedTypes[i], out);
+      out.println();
+    }
+
+    for (int i = 0, e = typePrinter.namedTypes.size(); i < e; ++i) {
+      printLLVMName(out, typePrinter.namedTypes.get(i).getName(), LocalPrefix);
+      out.print(" = type ");
+      typePrinter.printStructBody(typePrinter.namedTypes.get(i), out);
+      out.println();
     }
   }
 

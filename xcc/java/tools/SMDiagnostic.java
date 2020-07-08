@@ -47,7 +47,7 @@ public final class SMDiagnostic {
       os.printf("%s: ", progName);
 
     if (filename.equals("-"))
-      os.printf("<stdin>");
+      os.print("<stdin>");
     else
       os.print(filename);
 

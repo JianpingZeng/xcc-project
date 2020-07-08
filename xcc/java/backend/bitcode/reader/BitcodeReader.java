@@ -1983,9 +1983,7 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private Instruction.CmpInst.Predicate getDecodedPredicate(long val) {
-    if (val < 0 || val > Instruction.CmpInst.Predicate.values().length - 1)
-      return null;
-    return Instruction.CmpInst.Predicate.values()[(int) val];
+    return Instruction.CmpInst.Predicate.getPred((int) val);
   }
 
   /**
@@ -2980,9 +2978,9 @@ public class BitcodeReader implements GVMaterializer {
             return error("Invalid CMP record");
           int pred = record.get(opNum.get()).intValue();
           if (lhs.getType().isFPOrFPVectorTy())
-            inst = new Instruction.FCmpInst(Instruction.CmpInst.Predicate.values()[pred], lhs, rhs);
+              inst = new Instruction.FCmpInst(Instruction.CmpInst.Predicate.getPred(pred), lhs, rhs);
           else
-            inst = new Instruction.ICmpInst(Instruction.CmpInst.Predicate.values()[pred], lhs, rhs);
+            inst = new Instruction.ICmpInst(Instruction.CmpInst.Predicate.getPred(pred), lhs, rhs);
           instructionList.add(inst);
           break;
         }

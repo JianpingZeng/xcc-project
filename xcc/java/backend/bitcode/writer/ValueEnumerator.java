@@ -19,14 +19,11 @@ import tools.OutRef;
 import tools.Pair;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 public class ValueEnumerator {
   private TObjectIntHashMap<Type> typeMap;
-  private ArrayList<Pair<Type, Integer>> types;
+  private ArrayList<Type> types;
   private TObjectIntHashMap<Value> valueMap;
   private ArrayList<Pair<Value, Integer>> values;
   private ArrayList<Pair<Value, Integer>> mdValues;
@@ -95,7 +92,7 @@ public class ValueEnumerator {
       enumerateValue(ga.getAliasee());
 
     // enumerate types used by type symbol table.
-    enumerateTypeSymbolTable(m.getTypeSymbolTable());;
+    enumerateTypeSymbolTable(m.getTypeSymbolTable());
 
     enumerateValueSymbolTable(m.getValueSymbolTable());
     enumerateNamedMetadata(m);
@@ -116,9 +113,8 @@ public class ValueEnumerator {
               if (md.isFunctionLocal() && md.getFunction() != null)
                 // Remember what is the cutoff between globalvalue's and other constants.
                 continue;
-
-              enumerateOperandType(op);
             }
+            enumerateOperandType(op);
           }
 
           enumerateType(inst.getType());
@@ -143,6 +139,10 @@ public class ValueEnumerator {
     }
 
     // Optimize constant ordering.
+    for (int i = firstConstants, e = values.size(); i < e; ++i) {
+      values.get(i).first.dump();
+      System.err.println();
+    }
     optimizeConstants(firstConstants, values.size());
   }
 
@@ -173,6 +173,7 @@ public class ValueEnumerator {
   }
 
   public int getAttributeID(AttrList al) {
+    if (al.isEmpty()) return 0;
     Util.assertion(attributeMap.containsKey(al), "Attributes is not mapped!");
     return attributeMap.get(al);
   }
@@ -193,9 +194,7 @@ public class ValueEnumerator {
     return functionLocalMDs;
   }
 
-  public ArrayList<Pair<Type, Integer>> getTypes() {
-    return types;
-  }
+  public ArrayList<Type> getTypes() { return types; }
 
   public ArrayList<BasicBlock> getBasicBlocks() {
     return basicBlocks;
@@ -303,13 +302,8 @@ public class ValueEnumerator {
   }
 
   private static class CstSortPredicate implements Comparator<Pair<Value, Integer>> {
-
     private ValueEnumerator ve;
-
-    CstSortPredicate(ValueEnumerator ve) {
-      this.ve = ve;
-    }
-
+    CstSortPredicate(ValueEnumerator ve) { this.ve = ve; }
     @Override
     public int compare(Pair<Value, Integer> o1, Pair<Value, Integer> o2) {
       if (!o1.first.getType().equals(o2.first.getType()))
@@ -318,11 +312,8 @@ public class ValueEnumerator {
       // then by frequency.
       return o2.second - o1.second;
     }
-
     @Override
-    public boolean equals(Object obj) {
-      return false;
-    }
+    public boolean equals(Object obj) { return false; }
   }
 
   private void optimizeConstants(int cstStart, int cstEnd) {
@@ -330,21 +321,34 @@ public class ValueEnumerator {
 
     // Optimize constant ordering.
     CstSortPredicate p = new CstSortPredicate(this);
-    values.subList(cstStart, cstEnd).sort(p);
+    Pair<Value, Integer>[] temp = new Pair[values.size()];
+    values.toArray(temp);
+    Arrays.sort(temp, cstStart, cstEnd, p);
 
     // Ensure that integer constants are at the start of the constant pool.  This
     // is important so that GEP structure indices come before gep constant exprs.
-    ArrayList<Pair<Value, Integer>> integers = new ArrayList<>();
-    ArrayList<Pair<Value, Integer>> nonIntegers = new ArrayList<>();
-    for (Pair<Value, Integer> entry : values)
-      if (entry.first.getType().isIntegerTy())
-        integers.add(entry);
-      else
-        nonIntegers.add(entry);
+    int first = 0;
+    for (int i = cstStart; i < cstEnd; ++i) {
+        if (!temp[i].first.getType().isIntegerTy()) {
+          first = i;
+          break;
+        }
+    }
+
+    if (first < cstEnd) {
+      for (int i = first + 1; i < cstEnd; ++i) {
+        if (temp[i].first.getType().isIntegerTy()) {
+          // swap the element at index i and at first
+          Pair<Value, Integer> t = temp[first];
+          temp[first] = temp[i];
+          temp[i] = t;
+          ++first;
+        }
+      }
+    }
 
     values.clear();
-    values.addAll(integers);
-    values.addAll(nonIntegers);
+    values.addAll(Arrays.asList(temp));
 
     // Rebuild the modified portion of ValueMap.
     for (; cstStart != cstEnd; cstStart++)
@@ -485,7 +489,6 @@ public class ValueEnumerator {
   private void enumerateType(Type t) {
     if (typeMap.containsKey(t)) {
       // If we've already seen this type, just increase its occurrence count.
-      types.get(typeMap.get(t)-1).second++;
       return;
     }
 
@@ -503,7 +506,7 @@ public class ValueEnumerator {
       return;
 
     // First time we saw this type, add it.
-    types.add(Pair.get(t, 1));
+    types.add(t);
     typeMap.put(t, types.size());
   }
 

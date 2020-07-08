@@ -20,6 +20,7 @@ import tools.Util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @author Jianping Zeng
@@ -81,11 +82,20 @@ public final class AttrList {
     // TODO: 2017/11/27
   }
 
-  public int size() {
-    return attrs != null ? attrs.size() : 0;
+  public int size() { return attrs != null ? attrs.size() : 0; }
+
+  public AttributeWithIndex getSlot(int i) { return attrs.get(i); }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    AttrList attrList = (AttrList) o;
+    return Objects.equals(attrs, attrList.attrs);
   }
 
-  public AttributeWithIndex getSlot(int i) {
-    return attrs.get(i);
+  @Override
+  public int hashCode() {
+    return Objects.hash(attrs);
   }
 }

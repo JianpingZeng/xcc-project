@@ -138,7 +138,7 @@ public class MemoryBuffer implements Cloneable {
 
                 offset += sz;
 
-                byte[] newArray = new byte[buf.length * 2];
+                byte[] newArray = new byte[buf.length + sz];
                 System.arraycopy(buf, 0, newArray, 0, buf.length);
                 buf = newArray;
             } while (true);
@@ -152,10 +152,8 @@ public class MemoryBuffer implements Cloneable {
             buffer.setFilename(filename);
             return buffer;
         } catch (Exception e) {
-            System.err.printf("error when reading input file '%s'\n", filename);
-            System.exit(1);
+            throw new CompilerException(String.format("error when reading input file '%s'\n", filename));
         }
-        return null;
     }
 
     public static MemoryBuffer getFile(String filename) {

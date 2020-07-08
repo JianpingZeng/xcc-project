@@ -136,7 +136,7 @@ public class StructType extends CompositeType {
   }
 
   public void setBody(ArrayList<Type> eltTypes, boolean isPacked) {
-    Util.assertion(isOpaque(), "struct body already set");
+    Util.assertion(isOpaqueTy(), "struct body already set");
     hasBody = true;
     containedTys = new PATypeHandle[eltTypes.size()];
     for (int i = 0, e = eltTypes.size(); i < e; i++) {
@@ -178,7 +178,7 @@ public class StructType extends CompositeType {
     if (!v.getType().isIntegerTy(32)) return false;
     int idx = (int) ((ConstantInt) v).getZExtValue();
 
-    return idx < containedTys.length;
+    return idx < getNumOfElements();
   }
 
   @Override
@@ -192,10 +192,11 @@ public class StructType extends CompositeType {
   }
 
   public int getNumOfElements() {
-    return containedTys.length;
+    return containedTys == null ? 0: containedTys.length;
   }
 
   public Type getElementType(int idx) {
+    Util.assertion(idx >= 0 && idx < getNumOfElements(), "index out of range");
     return containedTys[idx].getType();
   }
 
@@ -224,16 +225,8 @@ public class StructType extends CompositeType {
     super.typeBecameConcrete(absTy);
   }
 
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public boolean isOpaque() {
-    return !hasBody;
-  }
+  public String getName() { return name;  }
+  public void setName(String name) { this.name = name; }
+  @Override
+  public boolean isOpaqueTy() { return !hasBody; }
 }

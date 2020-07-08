@@ -850,6 +850,7 @@ public final class LLParser {
     gv.setLinkage(linkage);
     gv.setVisibility(visibility);
     gv.setThreadLocal(threadLocal);
+    gv.setUnnamedAddr(unnamedAddr.get());
 
     while (lexer.getTokKind() == comma) {
       lexer.lex();
@@ -1905,7 +1906,6 @@ public final class LLParser {
     if (bb == null)
       return false;
 
-    pfs.getFunction().addBasicBlock(bb);
     // Parse the instructions in this block until we get a terminator.
     String nameStr;
 

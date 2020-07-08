@@ -330,7 +330,7 @@ public class BitcodeWriter {
       default:
         if (inst.isCast()) {
           code = FUNC_CODE_INST_CAST;
-          if (pushValueAndType(inst.operand(0), instID, vals, ve))
+          if (!pushValueAndType(inst.operand(0), instID, vals, ve))
             abbrevToUse = FUNCTION_INST_CAST_ABBREV;
           vals.add(ve.getTypeID(inst.getType()));
           vals.add(getEncodedCastOpcode(inst.getOpcode()));
@@ -356,6 +356,12 @@ public class BitcodeWriter {
           code = FUNC_CODE_INST_INBOUNDS_GEP;
         for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
           pushValueAndType(inst.operand(i), instID, vals, ve);
+        break;
+      case Select:
+        code = FUNC_CODE_INST_VSELECT;
+        pushValueAndType(inst.operand(1), instID, vals, ve);
+        vals.add(ve.getValueID(inst.operand(2)));
+        pushValueAndType(inst.operand(0), instID, vals, ve);
         break;
       case ExtractValue:
         code = FUNC_CODE_INST_EXTRACTVAL;
@@ -396,7 +402,7 @@ public class BitcodeWriter {
         code = FUNC_CODE_INST_CMP2;
         pushValueAndType(inst.operand(0), instID, vals, ve);
         vals.add(ve.getValueID(inst.operand(1)));
-        vals.add(((Instruction.CmpInst)inst).getPredicate().ordinal());
+        vals.add(((Instruction.CmpInst)inst).getPredicate().enumValue());
         break;
       case Ret: {
         code = FUNC_CODE_INST_RET;
@@ -470,7 +476,7 @@ public class BitcodeWriter {
         code = FUNC_CODE_INST_CALL;
 
         vals.add(ve.getAttributeID(ci.getAttributes()));
-        vals.add(ci.getCallingConv().ordinal() << 1);
+        vals.add((ci.getCallingConv().ordinal() << 1) | (ci.isTailCall() ? 1 : 0));
         pushValueAndType(ci.getCalledValue(), instID, vals, ve);
 
         // Emit the value for the fixed parameter.
@@ -688,7 +694,7 @@ public class BitcodeWriter {
           if (v >= 0)
             record.add(v << 1);
           else
-            record.add((-1 << 1) | 1);
+            record.add((-v << 1) | 1);
           code = CST_CODE_INTEGER;
           abbrevToUse = CONSTANTS_INTEGER_ABBREV;
         }
@@ -840,7 +846,7 @@ public class BitcodeWriter {
             record.add(ve.getTypeID(ce.operand(0).getType()));
             record.add(ve.getValueID(ce.operand(0)));
             record.add(ve.getValueID(ce.operand(1)));
-            record.add(ce.getPredicate().ordinal());
+            record.add(ce.getPredicate().enumValue());
             break;
         }
       }
@@ -1040,9 +1046,11 @@ public class BitcodeWriter {
       vals.add(Util.log2(gv.getAlignment()) + 1);
       vals.add(gv.hasSection() ? sectionMap.get(gv.getSection()) : 0);
       if (gv.isThreadLocal() ||
-          gv.getVisibility() != GlobalValue.VisibilityTypes.DefaultVisibility) {
+          gv.getVisibility() != GlobalValue.VisibilityTypes.DefaultVisibility ||
+          gv.hasUnnamedAddr()) {
         vals.add(getEncodingVisibility(gv));
         vals.add(gv.isThreadLocal() ? 1 : 0);
+        vals.add(gv.hasUnnamedAddr() ? 1 : 0);
       }
       else
         abbrevToUse = simpleGVarAbbrev;
@@ -1133,8 +1141,7 @@ public class BitcodeWriter {
 
   private static void writeTypeTable(ValueEnumerator ve,
                                      BitstreamWriter stream) {
-    ArrayList<Pair<Type, Integer>> typeList = ve.getTypes();
-
+    ArrayList<Type>typeList = ve.getTypes();
     stream.enterSubBlock(TYPE_BLOCK_ID_NEW, 4 /*count from # abbrevs */);
     TLongArrayList typeVals = new TLongArrayList();
 
@@ -1197,11 +1204,11 @@ public class BitcodeWriter {
     // Loop over all of the types, emitting each in turn.
     // We should have 6 types in typeList and first type is integral.
     for (int i = 0, e = typeList.size(); i != e; ++i) {
-     Type T = typeList.get(i).first;
+     Type ty = typeList.get(i);
       int abbrevToUse = 0;
       int code = 0;
 
-      switch (T.getTypeID()) {
+      switch (ty.getTypeID()) {
         default: Util.shouldNotReachHere("Unknown type!");
         case VoidTyID:   code = TYPE_CODE_VOID;   break;
         case FloatTyID:  code = TYPE_CODE_FLOAT;  break;
@@ -1215,10 +1222,10 @@ public class BitcodeWriter {
         case IntegerTyID:
           // INTEGER: [width]
           code = TYPE_CODE_INTEGER;
-          typeVals.add(((IntegerType)(T)).getBitWidth());
+          typeVals.add(((IntegerType)(ty)).getBitWidth());
           break;
         case PointerTyID: {
-       PointerType PTy = (PointerType) T; 
+       PointerType PTy = (PointerType) ty;
           // POINTER: [pointee type, address space]
           code = TYPE_CODE_POINTER;
           typeVals.add(ve.getTypeID(PTy.getElementType()));
@@ -1228,7 +1235,7 @@ public class BitcodeWriter {
           break;
         }
         case FunctionTyID: {
-       FunctionType FT = (FunctionType) T;
+       FunctionType FT = (FunctionType) ty;
           // FUNCTION: [isvararg, attrid, retty, paramty x N]
           code = TYPE_CODE_FUNCTION;
           typeVals.add(FT.isVarArg() ? 1 : 0);
@@ -1240,7 +1247,7 @@ public class BitcodeWriter {
           break;
         }
         case StructTyID: {
-          StructType st = (StructType) T;
+          StructType st = (StructType) ty;
           // STRUCT: [ispacked, eltty x N]
           typeVals.add(st.isPacked() ? 1 : 0);
           // Output all of the element types.
@@ -1251,7 +1258,7 @@ public class BitcodeWriter {
             code = TYPE_CODE_STRUCT_ANON;
             abbrevToUse = structAnonAbbrev;
           } else {
-            if (st.isOpaque()) {
+            if (st.isOpaqueTy()) {
               code = TYPE_CODE_OPAQUE;
             } else {
               code = TYPE_CODE_STRUCT_NAMED;
@@ -1264,7 +1271,7 @@ public class BitcodeWriter {
           break;
         }
         case ArrayTyID: {
-          ArrayType AT = (ArrayType) T;
+          ArrayType AT = (ArrayType) ty;
           // ARRAY: [numelts, eltty]
           code = TYPE_CODE_ARRAY;
           typeVals.add(AT.getNumElements());
@@ -1273,7 +1280,7 @@ public class BitcodeWriter {
           break;
         }
         case VectorTyID: {
-          VectorType VT = (VectorType) T;
+          VectorType VT = (VectorType) ty;
           // VECTOR [numelts, eltty]
           code = TYPE_CODE_VECTOR;
           typeVals.add(VT.getNumElements());

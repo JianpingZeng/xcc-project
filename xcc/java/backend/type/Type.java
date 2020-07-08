@@ -18,6 +18,7 @@ package backend.type;
 
 import backend.support.LLVMContext;
 import backend.support.TypePrinting;
+import tools.FormattedOutputStream;
 import tools.Util;
 
 import java.io.ByteArrayOutputStream;
@@ -94,7 +95,16 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
   }
 
   public void print(PrintStream os) {
-    new TypePrinting().print(this, os);
+    TypePrinting tp = new TypePrinting();
+    tp.print(this, os);
+    if (this instanceof StructType) {
+      StructType sty = (StructType) this;
+      if (!sty.isLiteral()) {
+        System.err.print(" = type ");
+        FormattedOutputStream fos = new FormattedOutputStream(os);
+        tp.printStructBody(sty, fos);
+      }
+    }
   }
 
   public void dump() {
@@ -243,9 +253,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser {
     return id == VectorTyID;
   }
 
-  public boolean isOpaqueTy() {
-    return id == OpaqueTyID;
-  }
+  public boolean isOpaqueTy() { return false; }
 
   /**
    * Return true if the type is "first class", meaning it

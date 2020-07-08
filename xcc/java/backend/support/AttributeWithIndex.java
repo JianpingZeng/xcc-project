@@ -16,6 +16,8 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import java.util.Objects;
+
 /**
  * @author Jianping Zeng
  * @version 0.4
@@ -29,5 +31,19 @@ public final class AttributeWithIndex {
     res.index = index;
     res.attrs = attrs;
     return res;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    AttributeWithIndex that = (AttributeWithIndex) o;
+    return attrs == that.attrs &&
+            index == that.index;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(attrs, index);
   }
 }

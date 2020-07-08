@@ -59,6 +59,8 @@ public abstract class GlobalValue extends Constant {
 
   private int alignment;
 
+  private boolean unnamedAddr;
+
   /**
    * Constructs a new instruction representing the specified constant.
    *
@@ -303,4 +305,6 @@ public abstract class GlobalValue extends Constant {
   public void setVisibility(VisibilityTypes v) {
     visibility = v;
   }
+  public void setUnnamedAddr(boolean val) { unnamedAddr = val; }
+  public boolean hasUnnamedAddr() { return unnamedAddr; }
 }

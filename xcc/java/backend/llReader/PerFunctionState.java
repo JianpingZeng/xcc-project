@@ -104,6 +104,11 @@ public final class PerFunctionState {
     if (bb == null)
       return null;    // already diagnosed error.
 
+    // Move the basic block to the end of function so that the recently referred
+    // basic block is in the end of basic block list of funtion.
+    fn.getBasicBlockList().remove(bb);
+    fn.getBasicBlockList().addLast(bb);
+
     // Remove bb from forward refs list.
     if (name == null || name.isEmpty()) {
       forwardRefValIDs.remove(numberedVals.size());
@@ -254,8 +259,7 @@ public final class PerFunctionState {
     if (ty.equals(Type.getLabelTy(context))) {
       // just create a new block but not insert it into the basic blocks list of function
       // so as to preserve the block order as input file.
-      fwdVal = BasicBlock.createBasicBlock(context, name, (Function) null);
-      // fn.getValueSymbolTable().createValueName(name, fwdVal);
+      fwdVal = BasicBlock.createBasicBlock(context, name, fn);
     }
     else
       fwdVal = new Argument(ty, name, fn);
