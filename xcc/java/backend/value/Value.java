@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Objects;
 
 import static backend.support.AssemblyWriter.*;
 import static backend.value.Operator.BitCast;
@@ -454,5 +455,10 @@ public class Value implements Cloneable {
         u.setValue(newVal);
       }
     }
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, subclassID, usesList, ty);
   }
 }

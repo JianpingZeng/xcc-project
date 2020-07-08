@@ -210,9 +210,6 @@ public final class LLParser {
             return true;
           break;
         case kw_type:
-          if (parseUnnamedType())
-            return true;
-          break;
         case LocalVarID:
           if (parseUnnamedType())
             return true;

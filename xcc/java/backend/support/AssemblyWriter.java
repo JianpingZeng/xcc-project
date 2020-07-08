@@ -1301,7 +1301,7 @@ public class AssemblyWriter {
       }
 
       out.print('(');
-      for (int op = 0, e = inst.getNumOfOperands(); op < e; op++) {
+      for (int op = 0, e = ((CallInst) inst).getNumArgOperands(); op < e; op++) {
         if (op != 0)
           out.print(", ");
         writeParamOperand(((CallInst) inst).getArgOperand(op));
@@ -1353,10 +1353,10 @@ public class AssemblyWriter {
       }
 
       out.print('(');
-      for (int op = 0, e = inst.getNumOfOperands(); op < e; op++) {
+      for (int op = 0, e = ((InvokeInst) inst).getNumArgOperands(); op < e; op++) {
         if (op != 0)
           out.print(", ");
-        writeParamOperand(inst.operand(op));
+        writeParamOperand(((InvokeInst) inst).getArgOperand(op));
       }
       out.print(')');
       if (attrs.getFnAttribute() != Attribute.None)

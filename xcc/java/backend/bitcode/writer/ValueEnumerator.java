@@ -139,10 +139,6 @@ public class ValueEnumerator {
     }
 
     // Optimize constant ordering.
-    for (int i = firstConstants, e = values.size(); i < e; ++i) {
-      values.get(i).first.dump();
-      System.err.println();
-    }
     optimizeConstants(firstConstants, values.size());
   }
 
@@ -327,7 +323,7 @@ public class ValueEnumerator {
 
     // Ensure that integer constants are at the start of the constant pool.  This
     // is important so that GEP structure indices come before gep constant exprs.
-    int first = 0;
+    int first = cstEnd;
     for (int i = cstStart; i < cstEnd; ++i) {
         if (!temp[i].first.getType().isIntegerTy()) {
           first = i;
@@ -361,7 +357,7 @@ public class ValueEnumerator {
       if (v != null) {
         if (v instanceof MDNode || v instanceof MDString)
           enumerateMetadata(v);
-        else if (v instanceof Instruction)
+        else if (!(v instanceof Instruction) && !(v instanceof Argument))
           enumerateValue(v);
       }
       else
@@ -450,7 +446,7 @@ public class ValueEnumerator {
     // Enumerate the type of this value.
     if (val instanceof Constant) {
       Constant c = (Constant) val;
-      if (val instanceof GlobalVariable) {
+      if (val instanceof GlobalValue) {
         // Enumerate the type of this value.
       } else if (c instanceof ConstantArray &&
           ((ConstantArray) c).isString()) {

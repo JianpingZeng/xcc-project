@@ -110,7 +110,7 @@ public class CallSite {
   }
 
   public int getNumOfOperands() {
-    return isCall() ? getCallInst().getNumOfOperands() : getInvokeInst().getNumsOfArgs();
+    return isCall() ? getCallInst().getNumOfOperands() : getInvokeInst().getNumArgOperands();
   }
 
   public boolean doesNotAccessMemory() {

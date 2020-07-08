@@ -10,7 +10,7 @@ project(XCC)
 
 set(PACKAGE_NAME "xcc")
 set(XCC_MAJOR_VERSION 0)
-set(XCC_MINOR_VERSION 4)
+set(XCC_MINOR_VERSION 6)
 set(PACKAGE_VERSION "${XCC_MAJOR_VERSION}.${XCC_MINOR_VERSION}")
 set(PACKAGE_STRING "${PACKAGE_NAME}-${PACKAGE_VERSION}")
 
@@ -147,9 +147,10 @@ set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
 set(TARGET_SELECT_SRC "${GEN_SOURCES_DIR}/backend/target/TargetSelect.java"
 "${SRC_DIR}/utils/llc/LLC.java"
 "${SRC_DIR}/utils/llvmcheck/LLVMChecker.java")
+set(CPUInfoUtility_SRC "${SRC_DIR}/tools/CPUInfoUtility.java")
 
 add_custom_target(XccConfig
-    COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
+    COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC} ${CPUInfoUtility_SRC}
     DEPENDS ${CONFIG_SRC}
     COMMENT "Compiling XCC configuration file...")
 
@@ -264,7 +265,7 @@ file(MAKE_DIRECTORY ${CLASSES_DIR})
 # target-specific codes.
 add_custom_target(CommonBackend
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${TROVE_SRCS} ${SRCS_NO_TARGET}
-    DEPENDS GenCpuInfoHeader
+    DEPENDS ${CPUInfoUtility_NAME}
     COMMENT "Building CommonBackend"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/java)
 
@@ -323,7 +324,6 @@ add_xcc_target(llvm-dis ${LLVM_DIS_SRCS})
 
 set(CPU_ID_SRCS "${XCC_SOURCE_DIR}/cpp/GetCpuIDAndInfo.cpp")
 add_library(${CPUInfoUtility_NAME} SHARED ${CPU_ID_SRCS})
-add_dependencies(${CPUInfoUtility_NAME} jar)
 add_dependencies(${CPUInfoUtility_NAME} GenCpuInfoHeader)
 
 target_link_libraries(tblgen jvm)

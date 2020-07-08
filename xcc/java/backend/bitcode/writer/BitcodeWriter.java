@@ -486,7 +486,7 @@ public class BitcodeWriter {
 
         // Emit the type/value pairs for vaargs parameters.
         if (fty.isVarArg()) {
-          for (int i = fty.getNumParams(), e = ci.getNumOfOperands(); i < e; i++)
+          for (int i = fty.getNumParams(), e = ci.getNumArgOperands(); i < e; i++)
             pushValueAndType(ci.getArgOperand(i), instID, vals, ve);
         }
         break;
@@ -756,7 +756,7 @@ public class BitcodeWriter {
         boolean isCStr7 = code == CST_CODE_CSTRING;
         boolean isCStrChar6 = code == CST_CODE_CSTRING;
         for (int j = 0; j < numOps; j++) {
-          long v = ((ConstantInt)ca.operand(i)).getZExtValue();
+          long v = ((ConstantInt)ca.operand(j)).getZExtValue();
           record.add(v);
           isCStr7 &= (v & 128) == 0;
           if (isCStrChar6)

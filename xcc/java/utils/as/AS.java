@@ -10,22 +10,17 @@ package utils.as;
 
 import backend.bitcode.writer.BitcodeWriter;
 import backend.support.LLVMContext;
-import backend.target.TargetSelect;
 import backend.value.Module;
 import tools.*;
 import tools.commandline.CL;
 import tools.commandline.FormattingFlagsApplicator;
 import tools.commandline.StringOpt;
 
-import java.io.FileOutputStream;
-import java.nio.file.Paths;
-
 import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionNameApplicator.optionName;
 import static tools.commandline.ValueDesc.valueDesc;
-import static utils.llc.LLC.DebugMode;
 
 public class AS {
     private static final StringOpt InputFilename =
@@ -51,7 +46,6 @@ public class AS {
         new PrintStackTraceProgram(temp);
         CL.parseCommandLineOptions(args, "The LLVM IR Assembler");
 
-        Util.DEBUG = DebugMode.value;
         OutRef<SMDiagnostic> diag = new OutRef<>();
         Module theModule = backend.llReader.Parser.parseAssemblyFile(InputFilename.value, diag,
                 LLVMContext.getGlobalContext());

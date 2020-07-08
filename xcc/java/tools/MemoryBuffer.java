@@ -159,7 +159,7 @@ public class MemoryBuffer implements Cloneable {
     public static MemoryBuffer getFile(String filename) {
         Path path = Paths.get(filename);
         if (!Files.exists(path)) {
-            System.err.println("File '" + filename + "' is not exists");
+            System.err.println("File '" + filename + "' does not exist");
             System.exit(1);
         }
         return read(filename);

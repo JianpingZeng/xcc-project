@@ -408,7 +408,7 @@ public final class TGLexer {
         return returnError(mb2, "End of file in string literal");
       }
       if (ch != '\\') {
-        sb.append(ch);
+        sb.append((char)ch);
         ++curPtr;
         ch = curBuf.getCharAt(curPtr);
         continue;
@@ -419,7 +419,7 @@ public final class TGLexer {
         case '\\':
         case '\'':
         case '"':
-          sb.append(ch);
+          sb.append((char)ch);
           ++curPtr;
           ch = curBuf.getCharAt(curPtr);
           break;

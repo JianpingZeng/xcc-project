@@ -2519,49 +2519,14 @@ public abstract class Instruction extends User {
       operandList[0] = new Use(func, this);
       operandList[1] = new Use(ifNormal, this);
       operandList[2] = new Use(ifException, this);
-      int i = 0;
+      int i = 3;
       for (Value arg : args)
         setOperand(i++, arg, this);
       setName(name);
     }
 
-    @Override
-    public Value operand(int index) {
-      return super.operand(index+3);
-    }
-
-    @Override
-    public Use getOperand(int index) {
-      return super.getOperand(index+3);
-    }
-
-    @Override
-    public void setOperand(int index, Use use) {
-      super.setOperand(index+3, use);
-    }
-
-    @Override
-    public void setOperand(int index, Value opVal) {
-      super.setOperand(index+3, opVal);
-    }
-
-    @Override
-    public void setOperand(int index, Value val, User user) {
-      super.setOperand(index+3, val, user);
-    }
-
-    @Override
-    public void removeOperand(int index) {
-      super.removeOperand(index+3);
-    }
-
-    public int getNumsOfArgs() {
-      return getNumOfOperands();
-    }
-
-    @Override
-    public int getNumOfOperands() {
-      return super.getNumOfOperands() - 3;
+    public int getNumArgOperands() {
+      return getNumOfOperands() - 3;
     }
 
     public BasicBlock getNormalDest() {
@@ -2617,8 +2582,14 @@ public abstract class Instruction extends User {
       setOperand(index + 1, bb);
     }
 
-    public Value getArgOperand(int i) { return operand(i); }
-    public void setArgOperand(int i, Value v) { setOperand(i, v);}
+    public Value getArgOperand(int i) {
+      Util.assertion(i >= 0 && i < getNumArgOperands(), "index out of range");
+      return operand(i+3);
+    }
+    public void setArgOperand(int i, Value v) {
+      Util.assertion(i >= 0 && i < getNumArgOperands(), "index out of range");
+      setOperand(i+3, v);
+    }
     public void setCallingConv(CallingConv cc) { this.cc = cc; }
     public CallingConv getCallingConv() { return cc; }
     public AttrList getAttributes() { return attributes; }
@@ -3004,49 +2975,26 @@ public abstract class Instruction extends User {
 
     private void init(Value target, Value[] args) {
       reserve(1 + args.length);
-      Util.assertion((getNumOfOperands() == args.length), "NumOperands not set up?");
+      Util.assertion((getNumOfOperands() == args.length+1), "NumOperands not set up?");
       operandList[0] = new Use(target, this);
-      int idx = 0;
+      int idx = 1;
       for (Value arg : args) {
         setOperand(idx++, arg, this);
       }
       attributes = new AttrList();
     }
 
-    @Override
-    public Value operand(int index) {
-      return super.operand(index+1);
+    public Value getArgOperand(int index) {
+      Util.assertion(index >= 0 && index < getNumArgOperands());
+      return operand(index+1);
     }
 
-    @Override
-    public Use getOperand(int index) {
-      return super.getOperand(index+1);
+    public void setArgOperand(int index, Value val) {
+      Util.assertion(index >= 0 && index < getNumArgOperands());
+      setOperand(index+1, val);
     }
 
-    @Override
-    public void setOperand(int index, Value val, User user) {
-      super.setOperand(index+1, val, user);
-    }
-
-    @Override
-    public void setOperand(int index, Value opVal) {
-      super.setOperand(index+1, opVal);
-    }
-
-    @Override
-    public void setOperand(int index, Use use) {
-      super.setOperand(index+1, use);
-    }
-
-    @Override
-    public void removeOperand(int index) {
-      super.removeOperand(index+1);
-    }
-
-    @Override
-    public int getNumOfOperands() {
-      return super.getNumOfOperands() - 1;
-    }
+    public int getNumArgOperands() { return getNumOfOperands() - 1; }
 
     /**
      * Return the called function, if return null indicates this is an indirect call.
@@ -3056,17 +3004,11 @@ public abstract class Instruction extends User {
       return operandList[0].getValue()  instanceof Function ? (Function)operandList[0].getValue() : null;
     }
 
-    public void setCalledFunction(Value fn) {
-      operandList[0].setValue(fn);
-    }
+    public void setCalledFunction(Value fn) { operandList[0].setValue(fn); }
 
-    public Value getCalledValue() {
-      return operandList[0].getValue();
-    }
+    public Value getCalledValue() { return operandList[0].getValue(); }
 
-    public void setCalledValue(Value val) {
-      operandList[0].setValue(val);
-    }
+    public void setCalledValue(Value val) { operandList[0].setValue(val); }
 
     public static CallSite get(Value val) {
       if (val instanceof CallInst) {
@@ -3229,14 +3171,6 @@ public abstract class Instruction extends User {
 
     public boolean isTailCall() {
       return tailCall;
-    }
-
-    public Value getArgOperand(int i) {
-      return operand(i);
-    }
-
-    public void setArgOperand(int i, Value val) {
-      setOperand(i, val);
     }
   }
 
