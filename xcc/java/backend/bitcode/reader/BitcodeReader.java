@@ -1441,7 +1441,8 @@ public class BitcodeReader implements GVMaterializer {
     // if the type id is in the range, return it.
     Type res = typeList.get(id);
     if (res != null) return res;
-    res = OpaqueType.get(context);
+    // we encounter a forward reference, just create placeholder here.
+    res = StructType.create(context);
     typeList.set(id, res);
     return res;
   }
