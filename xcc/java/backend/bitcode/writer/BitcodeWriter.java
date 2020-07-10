@@ -782,7 +782,7 @@ public class BitcodeWriter {
             if (ce.getOpcode().isCastOps()) {
               code = CST_CODE_CE_CAST;
               record.add(getEncodedCastOpcode(ce.getOpcode()));
-              record.add(ve.getTypeID(ce.getType()));
+              record.add(ve.getTypeID(ce.operand(0).getType()));
               record.add(ve.getValueID(ce.operand(0)));
               abbrevToUse = CONSTANTS_CE_CAST_Abbrev;
             }
