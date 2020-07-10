@@ -476,7 +476,7 @@ public class BitcodeWriter {
         code = FUNC_CODE_INST_CALL;
 
         vals.add(ve.getAttributeID(ci.getAttributes()));
-        vals.add((ci.getCallingConv().ordinal() << 1) | (ci.isTailCall() ? 1 : 0));
+        vals.add((ci.getCallingConv().enumValue << 1) | (ci.isTailCall() ? 1 : 0));
         pushValueAndType(ci.getCalledValue(), instID, vals, ve);
 
         // Emit the value for the fixed parameter.
@@ -1064,7 +1064,7 @@ public class BitcodeWriter {
       // FUNCTION:  [type, callingconv, isproto, paramattr,
       //             linkage, alignment, section, visibility, gc]
       vals.add(ve.getTypeID(fn.getType()));
-      vals.add(fn.getCallingConv().ordinal());
+      vals.add(fn.getCallingConv().enumValue);
       vals.add(fn.isDeclaration() ? 1 : 0);
       vals.add(getEncodingLinkage(fn));
       vals.add(ve.getAttributeID(fn.getAttributes()));
