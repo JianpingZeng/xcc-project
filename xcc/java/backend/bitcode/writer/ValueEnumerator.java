@@ -352,8 +352,8 @@ public class ValueEnumerator {
   }
 
   private void enumerateMDNodeOperands(MDNode n) {
-    for (int i = 0, e = n.getNumOperands(); i < e; i++) {
-      Value v = n.getOperand(i);
+    for (int i = 0, e = n.getNumOfOperands(); i < e; i++) {
+      Value v = n.operand(i);
       if (v != null) {
         if (v instanceof MDNode || v instanceof MDString)
           enumerateMetadata(v);
@@ -406,8 +406,8 @@ public class ValueEnumerator {
 
     // To incoroporate function-local information visit all function-local
     // MDNodes and all function-local values they reference.
-    for (int i = 0, e = n.getNumOperands(); i< e; i++) {
-      Value v = n.getOperand(i);
+    for (int i = 0, e = n.getNumOfOperands(); i< e; i++) {
+      Value v = n.operand(i);
       if (v != null) {
         if (v instanceof MDNode) {
           MDNode md = (MDNode) v;
@@ -528,9 +528,9 @@ public class ValueEnumerator {
 
       if (v instanceof MDNode) {
         MDNode md = (MDNode) v;
-        for (int i = 0, e = md.getNumOperands(); i < e; i++)
-          if (md.getOperand(i) != null)
-            enumerateOperandType(md.getOperand(i));;
+        for (int i = 0, e = md.getNumOfOperands(); i < e; i++)
+          if (md.operand(i) != null)
+            enumerateOperandType(md.operand(i));;
       }
     }
     else if (v instanceof MDString || v instanceof MDNode)

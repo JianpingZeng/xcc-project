@@ -254,7 +254,10 @@ public class Function extends GlobalValue implements Iterable<BasicBlock> {
   }
 
   public void setAttributes(AttrList attrList) {
-    this.attributeList = attrList;
+    if (attrList == null)
+      this.attributeList = new AttrList();
+    else
+      this.attributeList = attrList;
   }
 
   public boolean hasFnAttr(int n) {

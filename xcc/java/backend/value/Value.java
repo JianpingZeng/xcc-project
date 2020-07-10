@@ -298,7 +298,7 @@ public class Value implements Cloneable {
       MDNode node = (MDNode) this;
       Function f = node.getFunction();
       SlotTracker slotTracker = new SlotTracker(f);
-      AssemblyWriter writer = new AssemblyWriter(os, f.getParent(), slotTracker);
+      AssemblyWriter writer = new AssemblyWriter(os, f != null ? f.getParent() : null, slotTracker);
       writer.writeMDNodeBody(node);
     } else if (this instanceof Constant) {
       Constant c = (Constant) this;

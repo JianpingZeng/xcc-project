@@ -37,7 +37,7 @@ public class DIArray extends DIDescriptor {
   public DIArray(MDNode n) { super(n);}
   public int getNumElements() {
     if (dbgNode == null) return 0;
-    return dbgNode.getNumOperands();
+    return dbgNode.getNumOfOperands();
   }
   public DIDescriptor getElement(int idx) {
     return getDescriptorField(idx);

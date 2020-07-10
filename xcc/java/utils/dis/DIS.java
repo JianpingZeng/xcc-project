@@ -67,6 +67,7 @@ public class DIS {
                 theModule.print(os);
                 os.close();
             } catch (Exception e) {
+                e.printStackTrace();
                 System.err.println("error on write LLVM bitcode to text IR");
             }
         }

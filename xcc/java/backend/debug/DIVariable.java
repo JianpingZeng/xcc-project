@@ -64,7 +64,7 @@ public class DIVariable extends DIDescriptor {
   }
 
   public int getNumAddrElement() {
-    return dbgNode.getNumOperands() - 6;
+    return dbgNode.getNumOfOperands() - 6;
   }
 
   public long getAddrElement(int idx) {

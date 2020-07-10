@@ -28,7 +28,7 @@ import static backend.value.ValueKind.MDStringVal;
  * @version 0.4
  */
 public class MDString extends Value {
-  private String name;
+  private final String name;
 
   MDString(LLVMContext context, String str) {
     super(Type.getMetadataTy(context), MDStringVal);

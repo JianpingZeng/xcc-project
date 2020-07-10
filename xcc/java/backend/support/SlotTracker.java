@@ -138,8 +138,8 @@ public final class SlotTracker {
       mdnMap.put(node, slot);
     }
 
-    for (int i = 0, e = node.getNumOperands(); i < e; i++) {
-      Value val = node.getOperand(i);
+    for (int i = 0, e = node.getNumOfOperands(); i < e; i++) {
+      Value val = node.operand(i);
       if (val instanceof MDNode)
         createMetadataSlot((MDNode) val);
     }

@@ -129,7 +129,7 @@ public class IntrinsicInst extends Instruction.CallInst {
     }
 
     public Value getValue() {
-      return ((MDNode)getArgOperand(0)).getOperand(0);
+      return ((MDNode)getArgOperand(0)).operand(0);
     }
     public long getOffset() { return ((ConstantInt)getArgOperand(1)).getZExtValue(); }
     public MDNode getVariable() { return (MDNode) getArgOperand(2); }

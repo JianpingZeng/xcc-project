@@ -20,7 +20,6 @@ package backend.value;
 import backend.support.LLVMContext;
 import backend.type.Type;
 import backend.value.UniqueConstantValueImpl.MDNodeKeyType;
-import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,11 +30,10 @@ import static backend.value.ValueKind.MDNodeVal;
 
 /**
  * @author Jianping Zeng
- * @version 0.4
+ * @version 0.6
  */
-public class MDNode extends Value {
-  private ArrayList<Value> nodes;
-  private boolean functionLocal;
+public class MDNode extends User {
+  private final boolean functionLocal;
   private int slotID;
 
   /**
@@ -52,9 +50,10 @@ public class MDNode extends Value {
 
   MDNode(LLVMContext ctx, List<Value> vals, boolean isFunctionLocal) {
     super(Type.getMetadataTy(ctx), MDNodeVal);
-    nodes = new ArrayList<>();
-    nodes.addAll(vals);
+    reserve(vals.size());
     functionLocal = isFunctionLocal;
+    for (int i = 0, e = vals.size(); i <  e; ++i)
+      setOperand(i, vals.get(i));
   }
 
   public static MDNode get(LLVMContext context, List<Value> vals) {
@@ -95,8 +94,8 @@ public class MDNode extends Value {
    */
   public Function getFunction() {
     if (!isFunctionLocal()) return null;
-    for (int i = 0, e = getNumOperands(); i < e; i++) {
-      Function f = getFunctionForValue(getOperand(i));
+    for (int i = 0, e = getNumOfOperands(); i < e; i++) {
+      Function f = getFunctionForValue(operand(i));
       if (f != null) return f;
     }
     return null;
@@ -121,23 +120,7 @@ public class MDNode extends Value {
     return null;
   }
 
-  public int getNumOperands() {
-    return nodes.size();
-  }
-
-  public Value getOperand(int index) {
-    Util.assertion(index >= 0 && index < getNumOperands());
-    return nodes.get(index);
-  }
-
-  public void setOperand(int idx, MDNode node) {
-    Util.assertion(idx >= 0 && idx < getNumOperands());
-    nodes.set(idx, node);
-  }
-
-  public boolean isTemporary() {
-    return isTemporary;
-  }
+  public boolean isTemporary() { return isTemporary; }
 
   public void setSlotID(int slotID) { this.slotID = slotID; }
 

@@ -76,11 +76,97 @@ public class AutoUpgrade {
     Util.assertion(f != null, "Illegal to upgrade a on-existent function.");
 
     String name = f.getName();
-    FunctionType fty = f.getFunctionType();
     // quickly eliminate it, if it's not a candidate.
     if (name.length() <= 8 || !name.startsWith("llvm."))
       return false;
-    Util.shouldNotReachHere("Unimplemented");
+    // strip the leading 5 letters - 'llvm.'
+    name = name.substring(5);
+    FunctionType fty = f.getFunctionType();
+    Module m = f.getParent();
+    switch (name.charAt(0)) {
+      default: break;
+      case 'a':
+        if (name.startsWith("atomic.cmp.swap") ||
+                name.startsWith("atomic.swap") ||
+                name.startsWith("atomic.load.add") ||
+                name.startsWith("atomic.load.sub") ||
+                name.startsWith("atomic.load.and") ||
+                name.startsWith("atomic.load.nand") ||
+                name.startsWith("atomic.load.or") ||
+                name.startsWith("atomic.load.xor") ||
+                name.startsWith("atomic.load.max") ||
+                name.startsWith("atomic.load.min") ||
+                name.startsWith("atomic.load.umax") ||
+                name.startsWith("atomic.load.umin"))
+          return true;
+        break;
+      case 'i':
+        if (name.equals("init.trampoline")) {
+          // new llvm.init.trampoline returns nothing.
+          if (fty.getReturnType().isVoidType())
+            break;
+          Util.assertion(fty.getNumParams() == 1, "old init.trampoline must has only on parameter");
+          String nameTemp = f.getName();
+          f.setName("");
+          newFn.set((Function) m.getOrInsertFunction(nameTemp,
+                  Type.getVoidTy(m.getContext()),
+                  fty.getParamType(0),
+                  fty.getParamType(1),
+                  fty.getParamType(2), null));
+          return true;
+        }
+        break;
+      case 'm':
+        if (name.equals("memory.barrier"))
+          return true;
+        break;
+      case 'p':
+        if (name.equals("prefetch")) {
+          if (fty.getNumParams() == 4) break;
+          Util.assertion(fty.getNumParams() == 3, "old prefetch must take 3 parameters");
+          String nameTemp = f.getName();
+          f.setName("");
+          newFn.set((Function)m.getOrInsertFunction(nameTemp,
+                  fty.getReturnType(),
+                  fty.getParamType(0),
+                  fty.getParamType(1),
+                  fty.getParamType(2),
+                  fty.getParamType(2), null));
+          return true;
+        }
+        break;
+      case 'x':
+        String newFnName = null;
+        if (name.equals("x86.sse43.crc32.8"))
+          newFnName = "llvm.x86.sse42.crc32.32.8";
+        else if (name.equals("x86.sse42.crc32.16"))
+          newFnName = "llvm.x86.sse42.crc32.32.16";
+        else if (name.equals("x86.sse42.crc32.32"))
+          newFnName = "llvm.x86.sse42.crc32.32.32";
+        else if (name.equals("x86.sse42.crc64.8"))
+          newFnName = "llvm.x86.sse42.crc32.64.8";
+        else if (name.equals("x86.sse42.crc64.64"))
+          newFnName = "llvm.x86.sse42.crc32.64.64";
+        if (newFnName != null) {
+          f.setName(newFnName);
+          newFn.set(f);
+          return true;
+        }
+
+        // Calls to these instructions are transformed into unaligned loads.
+        if (name.equals("x86.sse.loadu.ps") ||
+                name.equals("x86.sse2.loadu.dq") ||
+                name.equals("x86.sse2.loadu.pd"))
+          return true;
+
+        // Calls to these instructions are transformed into nontemporal stores.
+        if (name.equals("x86.sse.movnt.ps") ||
+                name.equals("x86.sse2.movnt.dq") ||
+                name.equals("x86.sse2.movnt.pd") ||
+                name.equals("x86.sse2.movnt.i"))
+          return true;
+        break;
+    }
     return false;
   }
 

@@ -29,7 +29,6 @@ import backend.value.Instruction.CmpInst.Predicate;
 import tools.*;
 
 import java.io.PrintStream;
-import java.sql.Struct;
 import java.util.ArrayList;
 import java.util.function.BiConsumer;
 
@@ -217,6 +216,7 @@ public class AssemblyWriter {
     int addressSpace = gv.getType().getAddressSpace();
     if (addressSpace != 0)
       out.printf("addrspace(%d) ", addressSpace);
+    if (gv.hasUnnamedAddr()) out.print("unnamed_addr ");
     out.print(gv.isConstant() ? "constant " : "global ");
     typePrinter.print(gv.getType().getElementType(), out);
 
@@ -1004,8 +1004,17 @@ public class AssemblyWriter {
       case X86_FastCall:
         out.print("x86_fastcallcc ");
         break;
+      case ARM_APCS:
+        out.print("arm_apcscc ");
+        break;
+      case ARM_AAPCS:
+        out.print("arm_aapcscc ");
+        break;
+      case ARM_AAPCS_VFP:
+        out.print("arm_aapcs_vfpcc ");
+        break;
       default:
-        out.print("cc " + f.getCallingConv().name());
+        out.print("cc " + f.getCallingConv().name() + " ");
         break;
     }
 
@@ -1027,6 +1036,9 @@ public class AssemblyWriter {
         if (i != 0)
           out.print(", ");
         printArgument(f.argAt(i));
+        int attr = attrs.getParamAlignment(i);
+        if (attr != Attribute.None)
+          out.printf(", %s", Attribute.getAsString(attr));
       }
     } else {
       // Otherwise, just print the argument type if this function is a
@@ -1273,6 +1285,14 @@ public class AssemblyWriter {
         case X86_FastCall:
           out.print(" x86_fastcallcc");
           break;
+        case ARM_APCS:
+          out.print("arm_apcscc");
+          break;
+        case ARM_AAPCS:
+          out.print("arm_aapcscc");
+          break;
+        case ARM_AAPCS_VFP:
+          out.print("arm_aapcs_vfpcc");
         default:
           out.print(" cc" + cc.name());
           break;
@@ -1330,6 +1350,14 @@ public class AssemblyWriter {
         case X86_FastCall:
           out.print(" x86_fastcallcc");
           break;
+        case ARM_APCS:
+          out.print("arm_apcscc");
+          break;
+        case ARM_AAPCS:
+          out.print("arm_aapcscc");
+          break;
+        case ARM_AAPCS_VFP:
+          out.print("arm_aapcs_vfpcc");
         default:
           out.print(" cc" + cc.name());
           break;
@@ -1577,14 +1605,14 @@ public class AssemblyWriter {
                                               SlotTracker slotTracker,
                                               Module context) {
     out.print("!{");
-    for (int i = 0, e = node.getNumOperands(); i < e; i++) {
-      Value v = node.getOperand(i);
+    for (int i = 0, e = node.getNumOfOperands(); i < e; i++) {
+      Value v = node.operand(i);
       if (v == null)
         out.print("null");
       else {
         typePrinter.print(v.getType(), out);
         out.print(' ');
-        writeAsOperandInternal(out, node.getOperand(i), typePrinter, slotTracker, context);
+        writeAsOperandInternal(out, node.operand(i), typePrinter, slotTracker, context);
       }
       if (i + 1 != e)
         out.print(", ");
@@ -1593,12 +1621,12 @@ public class AssemblyWriter {
   }
 
   private static void writeMDNodeComment(MDNode node, FormattedOutputStream out) {
-    if (node.getNumOperands() < 1)
+    if (node.getNumOfOperands() < 1)
       return;
 
-    if (!(node.getOperand(0) instanceof ConstantInt))
+    if (!(node.operand(0) instanceof ConstantInt))
       return;
-    ConstantInt ci = (ConstantInt) node.getOperand(0);
+    ConstantInt ci = (ConstantInt) node.operand(0);
     APInt val = ci.getValue();
     APInt tag = val.and(new APInt(val.getBitWidth(), Dwarf.LLVMDebugVersionMask).not());
     if (val.ult(Dwarf.LLVMDebugVersion))
@@ -1678,8 +1706,8 @@ public class AssemblyWriter {
       os.printf("!%d = metadata ", i);
       MDNode node = nodes[i];
       os.printf("!{");
-      for (int j = 0, e = node.getNumOperands(); j < e; j++) {
-        Value val = node.getOperand(j);
+      for (int j = 0, e = node.getNumOfOperands(); j < e; j++) {
+        Value val = node.operand(j);
         if (val == null) os.printf("null");
         else if (val instanceof MDNode) {
           MDNode n = (MDNode) val;

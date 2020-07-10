@@ -364,9 +364,9 @@ public final class LLParser {
 
     MDNode init = MDNode.get(context, elts);
     init.setSlotID(metadataID.get());
-    for (int i = 0, e = init.getNumOperands(); i < e; i++) {
-      if (init.getOperand(i) instanceof MDNode) {
-        MDNode n = (MDNode) init.getOperand(i);
+    for (int i = 0, e = init.getNumOfOperands(); i < e; i++) {
+      if (init.operand(i) instanceof MDNode) {
+        MDNode n = (MDNode) init.operand(i);
         if (n.isTemporary()) {
           if (!mdNodeOpRecordMap.containsKey(n.getSlotID()))
             mdNodeOpRecordMap.put(n.getSlotID(), new ArrayList<>());

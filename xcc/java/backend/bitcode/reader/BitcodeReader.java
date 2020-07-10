@@ -1223,7 +1223,7 @@ public class BitcodeReader implements GVMaterializer {
           if (record.size() < 6)
             return error("Invalid MODULE_CODE_GLOBALVAR record");
           Type ty = getTypeByID(record.get(0).intValue());
-          if (!ty.isPointerType())
+          if (ty == null || !ty.isPointerType())
             return error("Invalid MODULE_CODE_GLOBALVAR record");
           PointerType pty = (PointerType) ty;
           int addrSpace = pty.getAddressSpace();
@@ -1266,7 +1266,7 @@ public class BitcodeReader implements GVMaterializer {
           if (record.size() < 8)
             return error("Invalid MODULE_CODE_FUNCTION record");
           Type ty = getTypeByID(record.get(0).intValue());
-          if (!ty.isPointerType())
+          if (ty == null || !ty.isPointerType())
             return error("Function not a pointer type");
           Type eltTy = ((PointerType)ty).getElementType();
           if (!eltTy.isFunctionType())
@@ -1330,18 +1330,11 @@ public class BitcodeReader implements GVMaterializer {
   }
 
   private static CallingConv getDecodedCallingConv(int val) {
-    switch (val) {
-      default:
-      case 0: return CallingConv.C;
-      case 8: return CallingConv.Fast;
-      case 9: return CallingConv.Cold;
-      case 64: return CallingConv.X86_StdCall;
-      case 65: return CallingConv.X86_FastCall;
-    }
+    return CallingConv.getCallingConv(val);
   }
 
   private AttrList getAttributes(int val) {
-    if (val - 1 < mattributes.size())
+    if (val - 1 < mattributes.size() && val - 1 >= 0)
       return mattributes.get(val - 1);
     return null;
   }
@@ -1819,7 +1812,7 @@ public class BitcodeReader implements GVMaterializer {
             if (opTy == null)
               return error("Invalid CE_CAST record");
             Constant op = valueList.getConstantFwdRef(record.get(2).intValue(), opTy);
-            v = ConstantExpr.getCast(opc, op, opTy);
+            v = ConstantExpr.getCast(opc, op, curTy);
           }
           break;
         }
@@ -2979,7 +2972,7 @@ public class BitcodeReader implements GVMaterializer {
             return error("Invalid CMP record");
           int pred = record.get(opNum.get()).intValue();
           if (lhs.getType().isFPOrFPVectorTy())
-              inst = new Instruction.FCmpInst(Instruction.CmpInst.Predicate.getPred(pred), lhs, rhs);
+            inst = new Instruction.FCmpInst(Instruction.CmpInst.Predicate.getPred(pred), lhs, rhs);
           else
             inst = new Instruction.ICmpInst(Instruction.CmpInst.Predicate.getPred(pred), lhs, rhs);
           instructionList.add(inst);
@@ -3044,6 +3037,7 @@ public class BitcodeReader implements GVMaterializer {
               return error("Invalid SWITCH record");
             si.addCase(caseVal, destBB);
           }
+          inst = si;
           break;
         }
         case FunctionCodes.FUNC_CODE_INST_INDIRECTBR: {
@@ -3145,6 +3139,7 @@ public class BitcodeReader implements GVMaterializer {
               return error("Invalid PHI record");
             pn.addIncoming(v, bb);
           }
+          inst = pn;
           break;
         }
         case FunctionCodes.FUNC_CODE_INST_LANDINGPAD: {
@@ -3274,7 +3269,7 @@ public class BitcodeReader implements GVMaterializer {
           }
           inst = CallInst.create(callee, ops, "", (Instruction) null);
           instructionList.add(inst);
-          ((CallInst)inst).setCallingConv(CallingConv.values()[cc>>>1]);
+          ((CallInst)inst).setCallingConv(CallingConv.getCallingConv(cc>>>1));
           ((CallInst)inst).setAttributes(attr);
           ((CallInst)inst).setTailCall((cc&1) != 0);
           break;

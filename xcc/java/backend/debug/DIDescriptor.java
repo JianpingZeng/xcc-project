@@ -44,9 +44,9 @@ public class DIDescriptor {
   protected String getStringField(int elt) {
     if (dbgNode == null) return "";
 
-    if (elt < dbgNode.getNumOperands()) {
-      if (dbgNode.getOperand(elt) instanceof MDString)
-        return ((MDString)dbgNode.getOperand(elt)).getString();
+    if (elt < dbgNode.getNumOfOperands()) {
+      if (dbgNode.operand(elt) instanceof MDString)
+        return ((MDString)dbgNode.operand(elt)).getString();
     }
     return "";
   }
@@ -56,45 +56,45 @@ public class DIDescriptor {
   long getInt64Field(int elt) {
     if (dbgNode == null) return 0;
 
-    if (elt < dbgNode.getNumOperands()) {
-      if (dbgNode.getOperand(elt) instanceof ConstantInt)
-        return ((ConstantInt)dbgNode.getOperand(elt)).getZExtValue();
+    if (elt < dbgNode.getNumOfOperands()) {
+      if (dbgNode.operand(elt) instanceof ConstantInt)
+        return ((ConstantInt)dbgNode.operand(elt)).getZExtValue();
     }
     return 0;
   }
   protected DIDescriptor getDescriptorField(int elt) {
     if (dbgNode == null) return new DIDescriptor();
 
-    if (elt < dbgNode.getNumOperands()) {
-      if (dbgNode.getOperand(elt) instanceof MDNode)
-        return new DIDescriptor((MDNode)dbgNode.getOperand(elt));
+    if (elt < dbgNode.getNumOfOperands()) {
+      if (dbgNode.operand(elt) instanceof MDNode)
+        return new DIDescriptor((MDNode)dbgNode.operand(elt));
     }
     return new DIDescriptor();
   }
   protected GlobalVariable getGlobalVariableField(int elt) {
     if (dbgNode == null) return null;
 
-    if (elt < dbgNode.getNumOperands()) {
-      if (dbgNode.getOperand(elt) instanceof GlobalVariable)
-        return ((GlobalVariable)dbgNode.getOperand(elt));
+    if (elt < dbgNode.getNumOfOperands()) {
+      if (dbgNode.operand(elt) instanceof GlobalVariable)
+        return ((GlobalVariable)dbgNode.operand(elt));
     }
     return null;
   }
   protected Constant getConstantField(int elt) {
     if (dbgNode == null) return null;
 
-    if (elt < dbgNode.getNumOperands()) {
-      if (dbgNode.getOperand(elt) instanceof Constant)
-        return ((Constant)dbgNode.getOperand(elt));
+    if (elt < dbgNode.getNumOfOperands()) {
+      if (dbgNode.operand(elt) instanceof Constant)
+        return ((Constant)dbgNode.operand(elt));
     }
     return null;
   }
   protected Function getFunctionField(int elt) {
     if (dbgNode == null) return null;
 
-    if (elt < dbgNode.getNumOperands()) {
-      if (dbgNode.getOperand(elt) instanceof Function)
-        return ((Function)dbgNode.getOperand(elt));
+    if (elt < dbgNode.getNumOfOperands()) {
+      if (dbgNode.operand(elt) instanceof Function)
+        return ((Function)dbgNode.operand(elt));
     }
     return null;
   }

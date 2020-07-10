@@ -556,10 +556,10 @@ public class BitcodeWriter {
                                   ValueEnumerator ve,
                                   BitstreamWriter stream,
                                   TLongArrayList records) {
-    for (int i = 0, e = node.getNumOperands(); i < e; i++) {
-      if (node.getOperand(i) != null) {
-        records.add(ve.getTypeID(node.getOperand(i).getType()));
-        records.add(ve.getValueID(node.getOperand(i)));
+    for (int i = 0, e = node.getNumOfOperands(); i < e; i++) {
+      if (node.operand(i) != null) {
+        records.add(ve.getTypeID(node.operand(i).getType()));
+        records.add(ve.getValueID(node.operand(i)));
       }
       else {
         records.add(ve.getTypeID(Type.getVoidTy(node.getContext())));

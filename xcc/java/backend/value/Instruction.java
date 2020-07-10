@@ -1989,11 +1989,9 @@ public abstract class Instruction extends User {
                     Value rhs) {
       super(Type.getInt1Ty(lhs.getContext()), ICmp, pred, lhs, rhs, "", (Instruction) null);
       Util.assertion(pred.compareTo(Predicate.LAST_ICMP_PREDICATE) <= 0, "Invalid ICmp predicate value");
-
       Util.assertion(lhs.getType() == rhs.getType(), "Both operands to ICmp instruction are not of the same type!");
-
-      Util.assertion(lhs.getType().isIntegerTy(), "Invalid operand types for ICmp instruction");
-
+      Util.assertion(lhs.getType().isIntOrIntVectorTy() ||
+              lhs.getType().isPointerType(), "Invalid operand types for ICmp instruction");
     }
 
     public ICmpInst(Predicate pred, Value lhs,
@@ -3029,7 +3027,10 @@ public abstract class Instruction extends User {
     }
 
     public void setAttributes(AttrList attributes) {
-      this.attributes = attributes;
+      if (attributes == null)
+        this.attributes = new AttrList();
+      else
+        this.attributes = attributes;
     }
 
     public AttrList getAttributes() {

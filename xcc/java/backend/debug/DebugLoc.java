@@ -74,22 +74,22 @@ public class DebugLoc {
    * @return
    */
   public static DebugLoc getFromDILocation(MDNode n) {
-    if (n == null || n.getNumOperands() != 4)
+    if (n == null || n.getNumOfOperands() != 4)
       return new DebugLoc();
 
-    if (!(n.getOperand(2) instanceof MDNode))
+    if (!(n.operand(2) instanceof MDNode))
       return new DebugLoc();
-    MDNode scope = (MDNode)n.getOperand(2);
+    MDNode scope = (MDNode)n.operand(2);
     int lineNo = 0, colNo = 0;
-    if (n.getOperand(0) instanceof ConstantInt) {
-      ConstantInt ci = (ConstantInt) n.getOperand(0);
+    if (n.operand(0) instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) n.operand(0);
       lineNo = (int) ci.getZExtValue();
     }
-    if (n.getOperand(1) instanceof ConstantInt) {
-      ConstantInt ci = (ConstantInt) n.getOperand(1);
+    if (n.operand(1) instanceof ConstantInt) {
+      ConstantInt ci = (ConstantInt) n.operand(1);
       colNo = (int) ci.getZExtValue();
     }
-    MDNode ia = n.getOperand(3) != null && n.getOperand(3) instanceof MDNode ? (MDNode)n.getOperand(3) : null;
+    MDNode ia = n.operand(3) != null && n.operand(3) instanceof MDNode ? (MDNode)n.operand(3) : null;
     return get(lineNo, colNo, scope, ia);
   }
 

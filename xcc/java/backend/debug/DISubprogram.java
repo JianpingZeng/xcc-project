@@ -85,7 +85,7 @@ public class DISubprogram extends DIScope {
   public int isArtificial() { return getUnsignedField(14); }
   public int isOptimized() {
     Util.assertion(dbgNode != null, "Invalid subprogram descriptor!");
-    if (dbgNode.getNumOperands() == 16)
+    if (dbgNode.getNumOfOperands() == 16)
       return getUnsignedField(15);
     return 0;
   }

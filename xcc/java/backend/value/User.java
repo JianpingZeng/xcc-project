@@ -28,9 +28,9 @@ public abstract class User extends Value {
   }
 
   protected void reserve(int numOperands) {
-    Util.assertion(numOperands > 0);
+    Util.assertion(numOperands >= 0);
     numOps = numOperands;
-    if (operandList == null)
+    if (operandList == null && numOperands > 0)
       operandList = new Use[numOperands];
   }
 
@@ -69,7 +69,10 @@ public abstract class User extends Value {
   }
 
   public void setOperand(int index, Value opVal) {
-    operandList[index].setValue(opVal);
+    if (operandList[index] == null)
+      operandList[index] = new Use(opVal, this);
+    else
+      operandList[index].setValue(opVal);
   }
 
   public Use getOperand(int index) {
