@@ -1,6 +1,6 @@
 package backend.bitcode.reader;
 /*
- * Extremely C language Compiler
+ * Extremely Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng.
  * All rights reserved.
 
@@ -1219,7 +1219,7 @@ public class BitcodeReader implements GVMaterializer {
         }
         case MODULE_CODE_GLOBALVAR: {
           // GLOBALVAR: [pointer type, isconst, initid,
-          //             linkage, alignment, section, visibility, threadlocal]
+          //             linkage, alignment, section, visibility, threadlocal, unnamed_addr]
           if (record.size() < 6)
             return error("Invalid MODULE_CODE_GLOBALVAR record");
           Type ty = getTypeByID(record.get(0).intValue());
@@ -1245,11 +1245,17 @@ public class BitcodeReader implements GVMaterializer {
           if (record.size() > 7)
             isThreadLocal = record.get(7) != 0;
 
+          boolean unnamedAddr = false;
+          if (record.size() > 8)
+            unnamedAddr = record.get(8) != 0;
+
           GlobalVariable newGV = new GlobalVariable(theModule, ty, isConstant,
               linkage, null, "", null, addrSpace);
           newGV.setAlignment(alignment);
           newGV.setThreadLocal(isThreadLocal);
           newGV.setVisibility(visibility);
+          newGV.setUnnamedAddr(unnamedAddr);
+
           if (!section.isEmpty())
             newGV.setSection(section);
 

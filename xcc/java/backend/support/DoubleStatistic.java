@@ -1,6 +1,6 @@
 package backend.support;
 /*
- * Extremely C language Compiler
+ * Extremely Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

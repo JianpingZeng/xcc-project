@@ -1,6 +1,6 @@
 package backend.support;
 /*
- * Extremely C language Compiler
+ * Extremely Compiler Collection
  * Copyright (c) 2015-2018, Jianping Zeng.
  * All rights reserved.
  

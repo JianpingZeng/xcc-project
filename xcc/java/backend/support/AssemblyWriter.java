@@ -1,5 +1,5 @@
 /*
- * Extremely C language Compiler.
+ * Extremely Compiler Collection.
  * Copyright (c) 2015-2020, Jianping Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1327,6 +1327,8 @@ public class AssemblyWriter {
         writeParamOperand(((CallInst) inst).getArgOperand(op));
       }
       out.print(')');
+      if (attrs.getFnAttribute() != Attribute.None)
+        out.printf(" %s", Attribute.getAsString(attrs.getFnAttribute()));
     } else if (inst instanceof InvokeInst) {
       InvokeInst ii = (InvokeInst) inst;
       operand = ii.getCalledValue();
