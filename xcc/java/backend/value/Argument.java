@@ -1,6 +1,6 @@
 package backend.value;
 /*
- * Extremely C language CompilerInstance
+ * Extremely C Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,8 @@ package backend.value;
 import backend.support.Attribute;
 import backend.type.Type;
 import tools.Util;
+
+import java.util.Objects;
 
 /**
  * @author Jianping Zeng

@@ -27,18 +27,6 @@ public class PseudoSourceValue extends Value {
     super(Type.getInt8Ty(LLVMContext.getGlobalContext()), PseudoSourceValueVal);
   }
 
-  @Override
-  public void dump() {
-    print(System.err);
-    System.err.println();
-  }
-
-  @Override
-  public void print(PrintStream os) {
-    FormattedOutputStream out = new FormattedOutputStream(os);
-    print(out);
-  }
-
   public static final String PSVNames[] =
       {
           "Stack",

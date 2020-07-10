@@ -1662,36 +1662,6 @@ public class AssemblyWriter {
     out.println();
   }
 
-  private void printTypeSymbolTable() {
-    if (theModule.getTypeSymbolTable().isEmpty() &&
-        numberedTypes.isEmpty())
-          return;
-
-    // Emit all numbered types.
-    StructType[] numberedTypes = new StructType[typePrinter.numberedTypes.size()];
-    typePrinter.numberedTypes.forEachEntry((key, val) -> {
-      numberedTypes[val] = key;
-      return true;
-    });
-
-    for (int i = 0, e = numberedTypes.length; i != e; i++) {
-      out.printf("%%%d = type ", i);
-
-      typePrinter.printStructBody(numberedTypes[i], out);
-      out.println();
-    }
-
-    // print named types.
-
-    for (StructType sty : typePrinter.namedTypes) {
-      printLLVMName(out, sty.getName(), LocalPrefix);
-      out.print(" = type ");
-
-      typePrinter.printStructBody(sty, out);
-      out.println();
-    }
-  }
-
   public static void writeMDNodes(FormattedOutputStream os,
                                   TypePrinting printer,
                                   SlotTracker slotTable,

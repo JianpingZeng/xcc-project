@@ -8,6 +8,7 @@ import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
@@ -184,5 +185,26 @@ public class ConstantArray extends Constant {
       sb.append((char)((ConstantInt) operand(i)).getZExtValue());
     }
     return sb.toString();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    ConstantArray ca = (ConstantArray) obj;
+    if (ca.getNumOfOperands() != getNumOfOperands() ||
+            Objects.deepEquals(getType(), ca.getType())) return false;
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      if (!Objects.deepEquals(operand(i), ca.operand(i)))
+        return false;
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int res = Util.hash1(getNumOfOperands(), getType());
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      res = Util.hash1(res, operand(i));
+    return res;
   }
 }

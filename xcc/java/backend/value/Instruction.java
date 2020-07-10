@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
 import static backend.value.Operator.*;
@@ -444,6 +445,7 @@ public abstract class Instruction extends User {
       if (!getContext().metadataStore.containsKey(this))
         getContext().metadataStore.put(this, new ArrayList<>());
 
+      Util.assertion(getContext().metadataStore.containsKey(this), "must exist in metadataStore map!");
       ArrayList<Pair<Integer, MDNode>> entries = getContext().metadataStore.get(this);
       if (entries.isEmpty()) {
         setHasMetadataHashEntry(true);
@@ -539,6 +541,31 @@ public abstract class Instruction extends User {
     }
   }
 
+/*  @Override
+  public int hashCode() {
+    int res = Util.hash2(getOpcode().index, getNumOfOperands(), opcode);
+    res = Util.hash2(res, hasMetadataHashEntry, dbgLoc);
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      res = Util.hash1(res, operand(i));
+    return res;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other == this)
+      return true;
+    if (!(other instanceof Instruction))
+      return false;
+
+    Instruction op = (Instruction)other;
+    if (op.getOpcode() != getOpcode() ||
+            getNumOfOperands() != op.getNumOfOperands()) return false;
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      if (!Objects.equals(operand(i), op.operand(i)))
+        return false;
+    return true;
+  }*/
+
   /**
    * The abstract base class definition for unary operator.
    */
@@ -594,11 +621,6 @@ public abstract class Instruction extends User {
                             BasicBlock insertAtEnd) {
       super(ty, opcode, name, insertAtEnd);
       initialize(op, this);
-    }
-
-    @Override
-    public int valueNumber() {
-      return Util.hash1(getOpcode().index, operand(0));
     }
   }
 
@@ -981,29 +1003,6 @@ public abstract class Instruction extends User {
       setOperand(0, operand(1), this);
       setOperand(1, temp, this);
       return false;
-    }
-
-    @Override
-    public int valueNumber() {
-      return Util.hash2(getOpcode().index, operand(0), operand(1));
-    }
-
-    @Override
-    public boolean equals(Object other) {
-      if (other == null)
-        return false;
-      if (other == this)
-        return true;
-      if (!(other instanceof BinaryOperator))
-        return false;
-
-      BinaryOperator op = (BinaryOperator) other;
-      Value x = operand(0);
-      Value y = operand(1);
-      return getType() == op.getType() && getOpcode()
-          .equals(op.getOpcode())
-          && x.equals(op.operand(0))
-          && y.equals(op.operand(1));
     }
 
     private static boolean isConstantAllOnes(Value val) {

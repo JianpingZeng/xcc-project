@@ -329,11 +329,7 @@ public class Value implements Cloneable {
    */
   public void dump() {
     print(System.err);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return super.equals(obj);
+    System.err.println();
   }
 
   public void intersectOptionalDataWith(Instruction val) {
@@ -416,7 +412,7 @@ public class Value implements Cloneable {
 
     @Override
     public void replaceUsesOfWithOnConstant(Value from, Value to, Use u) {
-      Util.assertion(false, "Should not reaching here!");
+      Util.assertion("Should not reaching here!");
     }
 
     @Override
@@ -431,16 +427,15 @@ public class Value implements Cloneable {
       if (this == obj)
         return true;
 
-      if (getClass() != obj.getClass())
-        return false;
-
-      UndefValue o = (UndefValue) obj;
-      return o == this;
+      return getClass() == obj.getClass() && getType().equals(((UndefValue)obj).getType());
     }
+
+    @Override
+    public int hashCode() { return Objects.hashCode(getType()); }
   }
 
   public int valueNumber() {
-    return 0;
+    return hashCode();
   }
 
   public void uncheckedReplaceAllUsesWith(Value newVal) {
@@ -455,10 +450,5 @@ public class Value implements Cloneable {
         u.setValue(newVal);
       }
     }
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(name, subclassID, usesList, ty);
   }
 }

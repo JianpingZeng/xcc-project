@@ -38,7 +38,7 @@ public class ValueEnumerator {
 
   private ArrayList<BasicBlock> basicBlocks;
 
-  private int numModuleValues;
+  int numModuleValues;
   private int numModuleMDValues;
   private int firstFuncConstantID;
   private int firstInstID;
@@ -434,7 +434,7 @@ public class ValueEnumerator {
         "Can't insert void values!");
     Util.assertion(!(val instanceof MDNode) &&
         !(val instanceof MDString), "enumerateValue can't handle Metadata!");
-    // Check to see if it's alreay in!
+    // Check to see if it's already in the valueMap
     if (valueMap.containsKey(val)) {
       // Increment use count.
       values.get(valueMap.get(val) - 1).second++;
@@ -450,8 +450,8 @@ public class ValueEnumerator {
         // Enumerate the type of this value.
       } else if (c instanceof ConstantArray &&
           ((ConstantArray) c).isString()) {
-        // Do not enumerate the initializers for an array of simple characters.
-        // The initializers just polute the value table, and we emit the strings
+        // Do not enumerate the initializer for an array of simple characters.
+        // The initializer just populate the value table, and we emit the strings
         // specially.
       }
       else if (c.getNumOfOperands() != 0) {

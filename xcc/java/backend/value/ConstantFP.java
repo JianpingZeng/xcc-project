@@ -1,6 +1,6 @@
 package backend.value;
 /*
- * Extremely C language CompilerInstance
+ * Extremely C Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@ import backend.value.UniqueConstantValueImpl.APFloatKeyType;
 import tools.*;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import static backend.type.LLVMTypeID.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
@@ -108,6 +109,11 @@ public class ConstantFP extends Constant {
       return false;
     ConstantFP o = (ConstantFP) obj;
     return new APFloatKeyType(val).equals(new APFloatKeyType(o.val));
+  }
+
+  @Override
+  public int hashCode() {
+    return getValueAPF().hashCode();
   }
 
   public static boolean isValueValidForType(Type ty, APFloat val) {

@@ -503,9 +503,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     MachineModuleInfo mmi = funcInfo.mf.getMMI();
     MCSymbol beginLabel = null;
 
-    ArrayList<ArgListEntry> args = new ArrayList<>(cs.getNumOfOperands());
+    ArrayList<ArgListEntry> args = new ArrayList<>(cs.getNumArgOperands());
 
-    for (int i = 0, e = cs.getNumOfOperands(); i < e; i++) {
+    for (int i = 0, e = cs.getNumArgOperands(); i < e; i++) {
       ArgListEntry entry = new ArgListEntry();
       entry.node = getValue(cs.getArgOperand(i));
       entry.ty = cs.getArgOperand(i).getType();

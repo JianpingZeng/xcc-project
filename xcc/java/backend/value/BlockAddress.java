@@ -15,13 +15,13 @@ import tools.Pair;
 import tools.Util;
 
 import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public class BlockAddress extends Constant {
-
   private static final HashMap<Pair<Function, BasicBlock>, BlockAddress> UniqueBlockAddresses =
       new HashMap<>();
   /**
@@ -88,4 +88,20 @@ public class BlockAddress extends Constant {
     uncheckedReplaceAllUsesWith(newBA);
     destroyConstant();
   }
+
+  /*@Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    BlockAddress ba = (BlockAddress) obj;
+    return Objects.deepEquals(getNumOfOperands(), ba.getNumOfOperands()) &&
+            getNumOfOperands() == 2 &&
+            Objects.deepEquals(operand(0), ba.operand(0)) &&
+            Objects.deepEquals(operand(1), ba.operand(1));
+  }
+
+  @Override
+  public int hashCode() {
+    return Util.hash2(getNumOfOperands(), operand(0), operand(1));
+  }*/
 }

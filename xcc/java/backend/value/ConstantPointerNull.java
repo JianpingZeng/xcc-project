@@ -1,6 +1,6 @@
 package backend.value;
 /*
- * Extremely C language CompilerInstance
+ * Extremely C Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,8 @@ package backend.value;
 
 import backend.type.PointerType;
 import backend.type.Type;
+
+import java.util.Objects;
 
 import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
@@ -53,5 +55,17 @@ public class ConstantPointerNull extends Constant {
   @Override
   public PointerType getType() {
     return (PointerType) super.getType();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    return Objects.deepEquals(((ConstantPointerNull) obj).getType(), getType());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(getType());
   }
 }

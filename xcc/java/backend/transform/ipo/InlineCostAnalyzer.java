@@ -241,7 +241,7 @@ public class InlineCostAnalyzer {
     if (afterInst != null && afterInst instanceof UnreachableInst)
       cost += 10000;
 
-    for (int i = 0, e = cs.getNumOfOperands(); i < e; i++) {
+    for (int i = 0, e = cs.getNumArgOperands(); i < e; i++) {
       Value arg = cs.getArgOperand(i);
       // decrease by 20.
       cost -= 20;

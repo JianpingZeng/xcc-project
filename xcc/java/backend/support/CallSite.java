@@ -109,8 +109,8 @@ public class CallSite {
       getInvokeInst().setArgOperand(idx, newVal);
   }
 
-  public int getNumOfOperands() {
-    return isCall() ? getCallInst().getNumOfOperands() : getInvokeInst().getNumArgOperands();
+  public int getNumArgOperands() {
+    return isCall() ? getCallInst().getNumArgOperands() : getInvokeInst().getNumArgOperands();
   }
 
   public boolean doesNotAccessMemory() {

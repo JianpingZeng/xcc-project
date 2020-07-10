@@ -270,7 +270,7 @@ public class AliasAnalysis implements ModulePass {
       mask = Ref;
     else if (mrb == AccessArguments) {
       boolean doesAlias = false;
-      for (int i = 0, e = cs.getNumOfOperands(); i < e; i++) {
+      for (int i = 0, e = cs.getNumArgOperands(); i < e; i++) {
         Value arg = cs.getArgOperand(i);
         if (alias(arg, ~0, ptr, size) != NoAlias) {
           doesAlias = true;

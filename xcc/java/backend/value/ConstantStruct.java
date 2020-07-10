@@ -1,6 +1,6 @@
 package backend.value;
 /*
- * Extremely C language CompilerInstance
+ * Extremely C Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -152,7 +152,26 @@ public class ConstantStruct extends Constant {
   }
 
   public void destroyConstant() {
-
     getUniqueImpl().remove(this);
+  }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    ConstantStruct st = (ConstantStruct) obj;
+    if (st.getNumOfOperands() != getNumOfOperands() ||
+            Objects.deepEquals(getType(), st.getType())) return false;
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      if (!Objects.deepEquals(operand(i), st.operand(i)))
+        return false;
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int res = Util.hash1(getNumOfOperands(), getType());
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      res = Util.hash1(res, operand(i));
+    return res;
   }
 }

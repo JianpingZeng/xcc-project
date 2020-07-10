@@ -1,6 +1,6 @@
 package backend.value;
 /*
- * Extremely C language CompilerInstance
+ * Extremely C Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@ import tools.Util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static backend.transform.utils.ConstantFolder.constantFoldCastInstruction;
 import static backend.value.Instruction.CmpInst.Predicate.*;
@@ -612,6 +613,25 @@ public abstract class ConstantExpr extends Constant {
     argVec.add(rhs);
     ExprMapKeyType key = new ExprMapKeyType(Operator.Select, argVec, reqTy);
     return getUniqueImpl().getOrCreate(key);
+  }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ConstantExpr that = (ConstantExpr) o;
+    if (opcode != that.opcode || getNumOfOperands() != that.getNumOfOperands()) return false;
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      if (!Objects.equals(operand(i), that.operand(i)))
+        return false;
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int res = Util.hash2(super.hashCode(), opcode, getNumOfOperands());
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      res = Util.hash1(res, operand(i));
+    return res;
   }
 }

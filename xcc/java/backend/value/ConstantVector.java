@@ -20,10 +20,7 @@ package backend.value;
 import backend.type.VectorType;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static backend.value.ValueKind.ConstantVectorVal;
 
@@ -121,14 +118,10 @@ public class ConstantVector extends Constant {
   }
 
   @Override
-  public VectorType getType() {
-    return (VectorType) super.getType();
-  }
+  public VectorType getType() {  return (VectorType) super.getType();}
 
   @Override
-  public boolean isNullValue() {
-    return false;
-  }
+  public boolean isNullValue() { return false; }
 
   public boolean isAllOnesValue() {
     Constant c = operand(0);
@@ -166,5 +159,26 @@ public class ConstantVector extends Constant {
     Constant replacement = get(getType(), values);
     Util.assertion(!replacement.equals(this));
     destroyConstant();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    ConstantVector vec = (ConstantVector) obj;
+    if (vec.getNumOfOperands() != getNumOfOperands() ||
+        Objects.deepEquals(getType(), vec.getType())) return false;
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      if (!Objects.deepEquals(operand(i), vec.operand(i)))
+        return false;
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int res = Util.hash1(getNumOfOperands(), getType());
+    for (int i = 0, e = getNumOfOperands(); i < e; ++i)
+      res = Util.hash1(res, operand(i));
+    return res;
   }
 }

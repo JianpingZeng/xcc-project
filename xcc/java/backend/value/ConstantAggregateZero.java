@@ -1,6 +1,6 @@
 package backend.value;
 /*
- * Extremely C language CompilerInstance
+ * Extremely C Compiler Collection
  * Copyright (c) 2015-2020, Jianping Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@ import backend.type.Type;
 import tools.Util;
 
 import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * @author Jianping Zeng
@@ -54,5 +55,17 @@ public class ConstantAggregateZero extends Constant {
   @Override
   public boolean isNullValue() {
     return true;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    return Objects.deepEquals(((ConstantAggregateZero) obj).getType(), getType());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(getType());
   }
 }
