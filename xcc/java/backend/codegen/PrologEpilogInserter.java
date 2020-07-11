@@ -233,7 +233,7 @@ public class PrologEpilogInserter extends MachineFunctionPass {
       // later.
       TargetFrameLowering tfl = mf.getSubtarget().getFrameLowering();
       if (tfl.hasReservedCallFrame(mf) || tfl.hasFP(mf))
-        tii.eliminateCallFramePseudoInstr(mf, mi);
+        tri.eliminateCallFramePseudoInstr(mf, mi);
     }
   }
 

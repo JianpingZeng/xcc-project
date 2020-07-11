@@ -89,28 +89,28 @@ def ARMWrapperPIC    : SDNode<"ARMISD.WrapperPIC",  SDTIntUnaryOp>;
 def ARMWrapperJT     : SDNode<"ARMISD.WrapperJT",   SDTIntBinOp>;
 
 def ARMcallseq_start : SDNode<"ISD.CALLSEQ_START", SDT_ARMCallSeqStart,
-                              [SDNPHasChain, SDNPOutFlag]>;
+                              [SDNPHasChain, SDNPOutGlue]>;
 def ARMcallseq_end   : SDNode<"ISD.CALLSEQ_END",   SDT_ARMCallSeqEnd,
-                              [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
+                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 
 def ARMcall          : SDNode<"ARMISD.CALL", SDT_ARMcall,
-                              [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
+                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
                                SDNPVariadic]>;
 def ARMcall_pred    : SDNode<"ARMISD.CALL_PRED", SDT_ARMcall,
-                              [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
+                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
                                SDNPVariadic]>;
 def ARMcall_nolink   : SDNode<"ARMISD.CALL_NOLINK", SDT_ARMcall,
-                              [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
+                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
                                SDNPVariadic]>;
 
 def ARMretflag       : SDNode<"ARMISD.RET_FLAG", SDTNone,
-                              [SDNPHasChain, SDNPOptInFlag]>;
+                              [SDNPHasChain, SDNPOptInGlue]>;
 
 def ARMcmov          : SDNode<"ARMISD.CMOV", SDT_ARMCMov,
-                              [SDNPInFlag]>;
+                              [SDNPInGlue]>;
 
 def ARMbrcond        : SDNode<"ARMISD.BRCOND", SDT_ARMBrcond,
-                              [SDNPHasChain, SDNPInFlag, SDNPOutFlag]>;
+                              [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 
 def ARMbrjt          : SDNode<"ARMISD.BR_JT", SDT_ARMBrJT,
                               [SDNPHasChain]>;
@@ -121,16 +121,16 @@ def ARMBcci64        : SDNode<"ARMISD.BCC_i64", SDT_ARMBCC_i64,
                               [SDNPHasChain]>;
 
 def ARMcmp           : SDNode<"ARMISD.CMP", SDT_ARMCmp,
-                              [SDNPOutFlag]>;
+                              [SDNPOutGlue]>;
 
 def ARMcmpZ          : SDNode<"ARMISD.CMPZ", SDT_ARMCmp,
-                              [SDNPOutFlag, SDNPCommutative]>;
+                              [SDNPOutGlue, SDNPCommutative]>;
 
 def ARMpic_add       : SDNode<"ARMISD.PIC_ADD", SDT_ARMPICAdd>;
 
-def ARMsrl_flag      : SDNode<"ARMISD.SRL_FLAG", SDTIntUnaryOp, [SDNPOutFlag]>;
-def ARMsra_flag      : SDNode<"ARMISD.SRA_FLAG", SDTIntUnaryOp, [SDNPOutFlag]>;
-def ARMrrx           : SDNode<"ARMISD.RRX"     , SDTIntUnaryOp, [SDNPInFlag ]>;
+def ARMsrl_flag      : SDNode<"ARMISD.SRL_FLAG", SDTIntUnaryOp, [SDNPOutGlue]>;
+def ARMsra_flag      : SDNode<"ARMISD.SRA_FLAG", SDTIntUnaryOp, [SDNPOutGlue]>;
+def ARMrrx           : SDNode<"ARMISD.RRX"     , SDTIntUnaryOp, [SDNPInGlue ]>;
 
 def ARMaddc          : SDNode<"ARMISD.ADDC",  SDTBinaryArithWithFlags,
                               [SDNPCommutative]>;
@@ -157,7 +157,7 @@ def ARMPreload        : SDNode<"ARMISD.PRELOAD", SDT_ARMPREFETCH,
 def ARMrbit          : SDNode<"ARMISD.RBIT", SDTIntUnaryOp>;
 
 def ARMtcret         : SDNode<"ARMISD.TC_RETURN", SDT_ARMTCRET,
-                        [SDNPHasChain,  SDNPOptInFlag, SDNPVariadic]>;
+                        [SDNPHasChain,  SDNPOptInGlue, SDNPVariadic]>;
 
 
 def ARMbfi           : SDNode<"ARMISD.BFI", SDT_ARMBFI>;

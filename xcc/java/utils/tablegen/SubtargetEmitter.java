@@ -605,10 +605,14 @@ public class SubtargetEmitter extends TableGenBackend {
 
       // Emit constructor method.
       os.printf("\tprotected backend.target.%s.%sSubtarget subtarget;\n", targetName.toLowerCase(), targetName);
-      os.printf("\tpublic %s(String tt, String cpu, String fs) {\n" +
-          "\t\tinitMCSubtargetInfo(tt, cpu, fs, %sFeatureKV, %sSubTypeKV, %sProcItinKV, %sStages, %sOperandCycles, %sForwardingPathes);\n",
-          className, targetName, targetName, targetName, targetName, targetName, targetName);
-
+      os.printf("\tpublic %s(String tt, String cpu, String fs) {\n", className);
+      os.printf("\t\tinitMCSubtargetInfo(tt, cpu, fs, %sFeatureKV, %sSubTypeKV,", targetName, targetName);
+      if (hasItrineraries) {
+        os.printf("%sProcItinKV, %sStages, %sOperandCycles, %sForwardingPathes);\n",
+                targetName, targetName, targetName, targetName);
+      } else {
+        os.println("null, null, null, null);");
+      }
       os.println("\t}\n}");
     }
   }

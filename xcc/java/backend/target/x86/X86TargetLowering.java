@@ -1161,9 +1161,10 @@ public class X86TargetLowering extends TargetLowering {
 
   @Override
   public SDValue lowerFormalArguments(SDValue chain, CallingConv callingConv,
-                                      boolean varArg, ArrayList<InputArg> ins, SelectionDAG dag, ArrayList<SDValue> inVals) {
+                                      boolean varArg, ArrayList<InputArg> ins, 
+                                      SelectionDAG dag, ArrayList<SDValue> inVals) {
     MachineFunction mf = dag.getMachineFunction();
-    X86MachineFunctionInfo fnInfo = (X86MachineFunctionInfo) mf.getInfo();
+    X86MachineFunctionInfo fnInfo = (X86MachineFunctionInfo) mf.getFunctionInfo();
     Function fn = mf.getFunction();
     if (fn.hasExternalLinkage() && subtarget.isTargetCygMing() && fn.getName().equals("main"))
       fnInfo.setForceFramePointer(true);
@@ -1246,7 +1247,7 @@ public class X86TargetLowering extends TargetLowering {
     }
 
     if (is64Bit && mf.getFunction().hasStructRetAttr()) {
-      X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getInfo();
+      X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getFunctionInfo();
       int reg = funcInfo.getSRetReturnReg();
       if (reg == 0) {
         reg = mf.getMachineRegisterInfo().
@@ -1378,7 +1379,7 @@ public class X86TargetLowering extends TargetLowering {
   private int getAlignedArgumentStackSize(int stackSize, SelectionDAG dag) {
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameLowering tfi = tm.getFrameLowering();
+    TargetFrameLowering tfi = subtarget.getFrameLowering();
     int stackAlign = tfi.getStackAlignment();
     int alignMask = stackAlign - 1;
     int offset = stackSize;
@@ -1561,7 +1562,7 @@ public class X86TargetLowering extends TargetLowering {
     // and into %rax.
     if (subtarget.is64Bit() &&
         mf.getFunction().hasStructRetAttr()) {
-      X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getInfo();
+      X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getFunctionInfo();
       int reg = funcInfo.getSRetReturnReg();
       if (reg == 0) {
         reg = mf.getMachineRegisterInfo().createVirtualRegister(getRegClassFor(new EVT(MVT.i64)));
@@ -1664,12 +1665,12 @@ public class X86TargetLowering extends TargetLowering {
     int fpDiff = 0;
     if (isTailCall) {
       // Lower arguments at fp - stackoffset + fpdiff.
-      int numBytesCallerPushed = ((X86MachineFunctionInfo) mf.getInfo()).
+      int numBytesCallerPushed = ((X86MachineFunctionInfo) mf.getFunctionInfo()).
           getBytesToPopOnReturn();
       fpDiff = numBytesCallerPushed - numBytes;
 
-      if (fpDiff < ((X86MachineFunctionInfo) mf.getInfo()).getTCReturnAddrDelta())
-        ((X86MachineFunctionInfo) mf.getInfo()).setTCReturnAddrDelta(fpDiff);
+      if (fpDiff < ((X86MachineFunctionInfo) mf.getFunctionInfo()).getTCReturnAddrDelta())
+        ((X86MachineFunctionInfo) mf.getFunctionInfo()).setTCReturnAddrDelta(fpDiff);
     }
 
     chain = dag.getCALLSEQ_START(chain, dag.getIntPtrConstant(numBytes, true));
@@ -2061,7 +2062,7 @@ public class X86TargetLowering extends TargetLowering {
 
   private SDValue getReturnAddressFrameIndex(SelectionDAG dag) {
     MachineFunction mf = dag.getMachineFunction();
-    X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getInfo();
+    X86MachineFunctionInfo funcInfo = (X86MachineFunctionInfo) mf.getFunctionInfo();
     int returnAddrIndex = funcInfo.getRAIndex();
 
     if (returnAddrIndex == 0) {
@@ -2089,10 +2090,9 @@ public class X86TargetLowering extends TargetLowering {
   @Override
   public MachineBasicBlock emitInstrWithCustomInserter(MachineInstr mi,
                                                        MachineBasicBlock mbb) {
-    TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     DebugLoc dl = mi.getDebugLoc();
     switch (mi.getOpcode()) {
-      case X86GenInstrNames.CMOV_V1I64:
       case X86GenInstrNames.CMOV_FR32:
       case X86GenInstrNames.CMOV_FR64:
       case X86GenInstrNames.CMOV_V4F32:
@@ -2426,7 +2426,7 @@ public class X86TargetLowering extends TargetLowering {
                                      int numArgs,
                                      boolean memArgs) {
     MachineFunction mf = mbb.getParent();
-    TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     DebugLoc dl = mi.getDebugLoc();
 
     int opc;
@@ -2486,7 +2486,7 @@ public class X86TargetLowering extends TargetLowering {
     //     lcs dest = [bitinstr.addr], t2  [EAX is implicit]
     //     bz  newMBB
     //     fallthrough -->nextMBB
-    TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     DebugLoc dl = mi.getDebugLoc();
     BasicBlock llvmBB = mbb.getBasicBlock();
     int itr = 1;
@@ -2549,7 +2549,7 @@ public class X86TargetLowering extends TargetLowering {
 
     mib = buildMI(newMBB, dl, tii.get(copyOpc), destOp.getReg()).addReg(eaxReg);
     // insert branch.
-    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE_4)).addMBB(newMBB);
     mf.deleteMachineInstr(mi);
     return nextMBB;
   }
@@ -2580,7 +2580,7 @@ public class X86TargetLowering extends TargetLowering {
     int loadOpc = X86GenInstrNames.MOV32rm;
     int copyOpc = X86GenInstrNames.MOV32rr;
     int notOpc = X86GenInstrNames.NOT32r;
-    TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     BasicBlock llvmBB = mbb.getBasicBlock();
     int itr = 1;
 
@@ -2675,7 +2675,7 @@ public class X86TargetLowering extends TargetLowering {
     buildMI(newMBB, dl, tii.get(copyOpc), t4).addReg(X86GenRegisterNames.EDX);
 
     // insert branch.
-    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE_4)).addMBB(newMBB);
     mf.deleteMachineInstr(mi);
     return nextMBB;
   }
@@ -2695,7 +2695,7 @@ public class X86TargetLowering extends TargetLowering {
     //     bz   newMBB
     //     fallthrough -->nextMBB
     //
-    TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     DebugLoc dl = mi.getDebugLoc();
     BasicBlock llvmBB = mbb.getBasicBlock();
     int itr = 1;
@@ -2763,7 +2763,7 @@ public class X86TargetLowering extends TargetLowering {
         .addReg(X86GenRegisterNames.EAX);
 
     // insert branch.
-    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE)).addMBB(newMBB);
+    buildMI(newMBB, dl, tii.get(X86GenInstrNames.JNE_4)).addMBB(newMBB);
     mf.deleteMachineInstr(mi);
     return nextMBB;
   }
@@ -2796,7 +2796,7 @@ public class X86TargetLowering extends TargetLowering {
     mbb.addSuccessor(xmmSavedMBB);
     xmmSavedMBB.addSuccessor(endMBB);
 
-    TargetInstrInfo tii = getTargetMachine().getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     int countReg = mi.getOperand(0).getReg();
     long regSaveFrameIndex = mi.getOperand(1).getImm();
     long varArgsOffset = mi.getOperand(2).getImm();
@@ -2805,7 +2805,7 @@ public class X86TargetLowering extends TargetLowering {
       // If %al is 0, branch around the XMM save block.
       buildMI(mbb, dl, tii.get(X86GenInstrNames.TEST8ri)).addReg(countReg)
           .addReg(countReg);
-      buildMI(mbb, dl, tii.get(X86GenInstrNames.JE)).addMBB(endMBB);
+      buildMI(mbb, dl, tii.get(X86GenInstrNames.JE_4)).addMBB(endMBB);
       mbb.addSuccessor(endMBB);
     }
 
@@ -5461,7 +5461,7 @@ public class X86TargetLowering extends TargetLowering {
     SDValue fptr = op.getOperand(2);
     SDValue nest = op.getOperand(3);
     Value trmpAddr = ((SrcValueSDNode) op.getOperand(4).getNode()).getValue();
-    X86InstrInfo ii = (X86InstrInfo) tm.getInstrInfo();
+    X86InstrInfo ii = (X86InstrInfo) subtarget.getInstrInfo();
     if (subtarget.is64Bit()) {
       SDValue[] outChains = new SDValue[6];
       int jmp64r = ii.getBaseOpcodeFor(X86GenInstrNames.JMP64r);
@@ -5554,7 +5554,7 @@ public class X86TargetLowering extends TargetLowering {
           dag.getConstant(1, new EVT(MVT.i32), false));
       outChains[1] = dag.getStore(root, nest, addr, trmpAddr, 1, false, 1);
 
-      int jmp = ii.getBaseOpcodeFor(X86GenInstrNames.JMP);
+      int jmp = ii.getBaseOpcodeFor(X86GenInstrNames.JMP_4);
       addr = dag.getNode(ISD.ADD, new EVT(MVT.i32), trmp,
           dag.getConstant(5, new EVT(MVT.i32), false));
       outChains[2] = dag.getStore(root, dag.getConstant(jmp, new EVT(MVT.i8), false),
@@ -5590,7 +5590,7 @@ public class X86TargetLowering extends TargetLowering {
         */
     MachineFunction mf = dag.getMachineFunction();
     TargetMachine tm = mf.getTarget();
-    TargetFrameLowering tfi = tm.getFrameLowering();
+    TargetFrameLowering tfi = subtarget.getFrameLowering();
     int stackAlignment = tfi.getStackAlignment();
     EVT vt = op.getValueType();
     int ssfi = mf.getFrameInfo().createStackObject(2, stackAlignment);

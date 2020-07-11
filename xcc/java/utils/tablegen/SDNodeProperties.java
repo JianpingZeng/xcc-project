@@ -50,14 +50,14 @@ public class SDNodeProperties {
         case "SDNPHasChain":
           properties |= 1 << SDNP.SDNPHasChain;
           break;
-        case "SDNPOutFlag":
-          properties |= 1 << SDNP.SDNPOutFlag;
+        case "SDNPOutGlue":
+          properties |= 1 << SDNP.SDNPOutGlue;
           break;
-        case "SDNPInFlag":
-          properties |= 1 << SDNP.SDNPInFlag;
+        case "SDNPInGlue":
+          properties |= 1 << SDNP.SDNPInGlue;
           break;
-        case "SDNPOptInFlag":
-          properties |= 1 << SDNP.SDNPOptInFlag;
+        case "SDNPOptInGlue":
+          properties |= 1 << SDNP.SDNPOptInGlue;
           break;
         case "SDNPMayStore":
           properties |= 1 << SDNP.SDNPMayStore;

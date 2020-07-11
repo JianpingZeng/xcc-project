@@ -400,46 +400,6 @@ public abstract class ARMInstrInfo extends TargetInstrInfoImpl {
     return mib.addReg(0);
   }
 
-  @Override
-  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr old) {
-    Util.assertion(old.getOpcode() == ARMGenInstrNames.ADJCALLSTACKDOWN ||
-        old.getOpcode() == ARMGenInstrNames.ADJCALLSTACKUP ||
-        old.getOpcode() == ARMGenInstrNames.tADJCALLSTACKDOWN ||
-        old.getOpcode() == ARMGenInstrNames.tADJCALLSTACKUP);
-    
-    if (!subtarget.getFrameLowering().hasReservedCallFrame(mf)) {
-      // If we have alloca, convert as follows:
-      // ADJCALLSTACKDOWN -> sub, sp, sp, amount
-      // ADJCALLSTACKUP   -> add, sp, sp, amount
-      DebugLoc dl = old.getDebugLoc();
-      int oldOpcode = old.getOpcode();
-      // get the immediate.
-      int imm = (int) old.getOperand(0).getImm();
-      if (imm != 0) {
-        ARMFunctionInfo afi = (ARMFunctionInfo) mf.getFunctionInfo();
-        Util.assertion(!afi.isThumb1OnlyFunction());
-        boolean isARM = !afi.isThumbFunction();
-
-        int predIdx = old.findFirstPredOperandIdx();
-        ARMCC.CondCodes cc = predIdx == -1 ? ARMCC.CondCodes.AL : ARMCC.CondCodes.values()[predIdx];
-        if (oldOpcode == ARMGenInstrNames.ADJCALLSTACKDOWN ||
-            oldOpcode == ARMGenInstrNames.tADJCALLSTACKDOWN) {
-          // PredReg is the 2'nd operand.
-          int predReg = old.getOperand(2).getReg();
-          ARMFrameLowering.emitSPUpdate(isARM, old.getParent(),
-              old.getIndexInMBB(), dl, subtarget.getInstrInfo(), -imm, cc, predReg);
-        }
-        else {
-          // PredReg is the 3'rd operand.
-          int predReg = old.getOperand(3).getReg();
-          ARMFrameLowering.emitSPUpdate(isARM, old.getParent(),
-              old.getIndexInMBB(), dl, subtarget.getInstrInfo(), imm, cc, predReg);
-        }
-      }
-    }
-    old.removeFromParent();
-  }
-
   private int emitPopInst(MachineBasicBlock mbb, int mbbi, List<CalleeSavedInfo> csi,
                           int ldmOpc, int ldOpc, boolean isVarArg, boolean noCap) {
     MachineFunction mf = mbb.getParent();

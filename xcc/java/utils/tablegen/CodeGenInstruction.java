@@ -233,11 +233,13 @@ public final class CodeGenInstruction {
       DefInit Arg = (DefInit) (di.getArg(i));
 
       Record rec = Arg.getDef();
-      String PrintMethod = "printOperand";
+      String printMethod = "printOperand";
       long numOps = 1;
       DagInit miOpInfo = null;
-      if (rec.isSubClassOf("Operand")) {
-        PrintMethod = rec.getValueAsString("PrintMethod");
+      if (rec.isSubClassOf("RegisterOperand")) {
+        printMethod = rec.getValueAsString("PrintMethod");
+      } else if (rec.isSubClassOf("Operand")) {
+        printMethod = rec.getValueAsString("PrintMethod");
         miOpInfo = rec.getValueAsDag("MIOperandInfo");
 
         if (!(miOpInfo.getOperator() instanceof DefInit) ||
@@ -257,12 +259,14 @@ public final class CodeGenInstruction {
       } else if (Objects.equals(rec.getName(), "variable_ops")) {
         isVariadic = true;
         continue;
-      } else if (!rec.isSubClassOf("RegisterClass") &&
-          !rec.getName().equals("ptr_rc") &&
-          !rec.getName().equals("unknown"))
-        Error.printFatalError("Unknown operand class '" + rec.getName()
-            + "' in instruction '" + r.getName()
-            + "' instruction!");
+      } else if (rec.isSubClassOf("RegisterClass")) {
+        // TODO
+      } else if (!rec.isSubClassOf("PointerLikeRegClass") &&
+                 !rec.getName().equals("unknown")) {
+          Error.printFatalError("Unknown operand class '" + rec.getName()
+                + "' in instruction '" + r.getName()
+                + "' instruction!");
+      }
 
       // Check that the operand has a namespace and that it's unique.
       if (di.getArgName(i).isEmpty())
@@ -274,7 +278,7 @@ public final class CodeGenInstruction {
             "In instruction '" + r.getName() + "', operand #" + i
                 + " has the same namespace as a previous operand!");
 
-      operandList.add(new OperandInfo(rec, di.getArgName(i), PrintMethod,
+      operandList.add(new OperandInfo(rec, di.getArgName(i), printMethod,
           MIOperandNo, numOps, miOpInfo));
       MIOperandNo += numOps;
     }

@@ -815,171 +815,76 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
   private int handleSpecialFP(int itr) {
     MachineInstr mi = mbb.getInstAt(itr);
     switch (mi.getOpcode()) {
-      case FpGET_ST0_32:
-      case FpGET_ST0_64:
-      case FpGET_ST0_80:
-        Util.assertion(stackTop == 0, "Stack should be empty after a call!");
-        pushReg(getFPReg(mi.getOperand(0)));
-        break;
-      case FpGET_ST1_32:
-      case FpGET_ST1_64:
-      case FpGET_ST1_80:
-        pushReg(getFPReg(mi.getOperand(0)));
-        if (stackTop == 1)
-          break;
-        int regOnTop = getStackEntry(0);
-        int regNo = getStackEntry(1);
+      case TargetOpcode.COPY: {
+          MachineOperand mo1 = mi.getOperand(1);
+          MachineOperand mo0 = mi.getOperand(0);
+          int destST = mo0.getReg() - X86GenRegisterNames.ST0;
+          int srcST = mo1.getReg() - X86GenRegisterNames.ST0;
+          boolean killsSrc = mi.killsRegister(mo1.getReg());
+          if (destST < 8)
+          {
+               int srcFP = getFPReg(mo1);
+               Util.assertion(isLive(srcFP), "Can't copy dead register");
+               Util.assertion(!mo0.isDead(), "Can't copy to dead ST register");
 
-        // swap the slots.
-        int t = regMap[regNo];
-        regMap[regNo] = regMap[regOnTop];
-        regMap[regOnTop] = t;
+               while (numPendingSTs <= destST)
+                   pendingST[numPendingSTs++] = NumFPRegs;
 
-        Util.assertion(regMap[regOnTop] < stackTop);
-        t = stack[regMap[regOnTop]];
-        stack[regMap[regOnTop]] = stack[stackTop - 1];
-        stack[stackTop - 1] = t;
-        break;
-      case FpSET_ST0_32:
-      case FpSET_ST0_64:
-      case FpSET_ST0_80:
-        int op0 = getFPReg(mi.getOperand(0));
+               if (isScratchReg(pendingST[destST]))
+               {
+                   if (Util.DEBUG)
+                       System.err.printf("Clobbering old ST in FP%d%n", pendingST[destST]);
+                   itr = freeStackSlotBefore(itr, pendingST[destST]);
+               }
 
-        if (!mi.killsRegister(X86GenRegisterNames.FP0 + op0)) {
-          itr = duplicateToTop(0, 7, itr);
-        } else {
-          itr = moveToTop(op0, itr);
-        }
-        --stackTop;
-        break;
-      case FpSET_ST1_32:
-      case FpSET_ST1_64:
-      case FpSET_ST1_80:
-        if (stackTop == 1) {
-          buildMI(mbb, itr, mi.getDebugLoc(), tii.get(XCH_F)).addReg(X86GenRegisterNames.ST1);
-          NumFXCH.inc();
-          stackTop = 0;
-          break;
-        }
-
-        Util.assertion(stackTop == 2, "Stack should have two element on it's top");
-        --stackTop;
-        break;
-      case MOV_Fp3232:
-      case MOV_Fp3264:
-      case MOV_Fp6432:
-      case MOV_Fp6464:
-      case MOV_Fp3280:
-      case MOV_Fp6480:
-      case MOV_Fp8032:
-      case MOV_Fp8064:
-      case MOV_Fp8080: {
-        MachineOperand mo1 = mi.getOperand(1);
-        int srcReg = getFPReg(mo1);
-
-        MachineOperand mo0 = mi.getOperand(0);
-        if (mo0.getReg() == X86GenRegisterNames.ST0 && srcReg == 0) {
-          Util.assertion(mo1.isKill());
-
-          Util.assertion(stackTop == 1 || stackTop == 2, "Stack should have one or two element on it to return!");
-          --stackTop;
-          break;
-        } else if (mo0.getReg() == X86GenRegisterNames.ST1 && srcReg == 1) {
-          Util.assertion(mo1.isKill());
-          if (stackTop == 1) {
-            buildMI(mbb, itr, mi.getDebugLoc(), tii.get(XCH_F)).addReg(X86GenRegisterNames.ST1);
-            NumFXCH.inc();
-            stackTop = 0;
-            break;
+               if (killsSrc)
+               {
+                   duplicatePendingSTBeforeKill(srcFP, itr);
+                   int slot = getSlot(srcFP);
+                   int sr = getScratchReg();
+                   pendingST[destST] = sr;
+                   stack[slot] = sr;
+                   regMap[sr] = slot;
+               }
+               else
+               {
+                   pendingST[destST] =  srcFP;
+               }
+               break;
           }
-          Util.assertion(stackTop == 2, "Stack should have two element on it to return!");
-          --stackTop;
+          if(srcST < 8)
+          {
+              int destFP = getFPReg(mo0);
+              Util.assertion(!isLive(destFP), "Can't copy ST to live FP register");
+              Util.assertion(numPendingSTs<srcST, "Can't copy from dead ST register");
+              int srcFP = pendingST[srcST];
+              Util.assertion(isScratchReg(srcFP), "Expected ST in a scratch register");
+              Util.assertion(isLive(srcFP), "Scratch holding ST is dead");
+
+              int slot = getSlot(srcFP);
+              stack[slot] = destFP;
+              regMap[destFP] = slot;
+              pendingST[srcST] = NumFPRegs;
+              while (numPendingSTs !=0 && pendingST[numPendingSTs-1] == NumFPRegs)
+                  --numPendingSTs;
+              break;
+          }
+
+          int destFP = getFPReg(mo0);
+          int srcFP = getFPReg(mo1);
+          Util.assertion(isLive(srcFP), "Can't copy dead register");
+          if (killsSrc)
+          {
+              int slot = getSlot(srcFP);
+              stack[slot] = destFP;
+              regMap[destFP] = slot;
+          }
+          else
+          {
+              duplicateToTop(srcFP, destFP, itr);
+          }
           break;
-        }
-
-        int destReg = getFPReg(mo0);
-        if (mi.killsRegister(X86GenRegisterNames.FP0 + srcReg)) {
-          int slot = getSlot(srcReg);
-          Util.assertion(slot < 7 && destReg < 7, "FpMOV operands invalid!");
-          stack[slot] = destReg;
-          regMap[destReg] = slot;
-        } else {
-          itr = duplicateToTop(srcReg, destReg, itr++);
-        }
-        break;
       }
-            /*
-            case RISCVGenInstrInfo.COPY:
-            {
-                MachineOperand mo1 = mi.getOperand(1);
-                MachineOperand mo0 = mi.getOperand(0);
-                int destST = mo0.getReg() - X86GenRegisterNames.ST0;
-                int srcST = mo1.getReg() - X86GenRegisterNames.ST0;
-                boolean killsSrc = mi.killsRegister(mo1.getReg());
-                if (destST < 8)
-                {
-                     int srcFP = getFPReg(mo1);
-                     Util.assertion(isLive(srcFP), "Can't copy dead register");
-                     Util.assertion(!mo0.isDead(), "Can't copy to dead ST register");
-
-                     while (numPendingSTs <= destST)
-                         pendingST[numPendingSTs++] = NumFPRegs;
-
-                     if (isScratchReg(pendingST[destST]))
-                     {
-                         if (Util.DEBUG)
-                             System.err.printf("Clobbering old ST in FP%d%n", pendingST[destST]);
-                         itr = freeStackSlotBefore(itr, pendingST[destST]);
-                     }
-
-                     if (killsSrc)
-                     {
-                         duplicatePendingSTBeforeKill(srcFP, itr);
-                         int slot = getSlot(srcFP);
-                         int sr = getScratchReg();
-                         pendingST[destST] = sr;
-                         stack[slot] = sr;
-                         regMap[sr] = slot;
-                     }
-                     else
-                     {
-                         pendingST[destST] =  srcFP;
-                     }
-                     break;
-                }
-                if(srcST < 8)
-                {
-                    int destFP = getFPReg(mo0);
-                    Util.assertion(!isLive(destFP), "Can't copy ST to live FP register");
-                    Util.assertion(numPendingSTs<srcST, "Can't copy from dead ST register");
-                    int srcFP = pendingST[srcST];
-                    Util.assertion(isScratchReg(srcFP), "Expected ST in a scratch register");
-                    Util.assertion(isLive(srcFP), "Scratch holding ST is dead");
-
-                    int slot = getSlot(srcFP);
-                    stack[slot] = destFP;
-                    regMap[destFP] = slot;
-                    pendingST[srcST] = NumFPRegs;
-                    while (numPendingSTs !=0 && pendingST[numPendingSTs-1] == NumFPRegs)
-                        --numPendingSTs;
-                    break;
-                }
-
-                int destFP = getFPReg(mo0);
-                int srcFP = getFPReg(mo1);
-                Util.assertion(isLive(srcFP), "Can't copy dead register");
-                if (killsSrc)
-                {
-                    int slot = getSlot(srcFP);
-                    stack[slot] = destFP;
-                    regMap[destFP] = slot;
-                }
-                else
-                {
-                    duplicateToTop(srcFP, destFP, itr);
-                }
-                break;
-            }*/
       case TargetOpcode.IMPLICIT_DEF: {
         int reg = mi.getOperand(0).getReg() - X86GenRegisterNames.FP0;
         if (Util.DEBUG)
@@ -1089,9 +994,9 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
 
     for (int itr = 0; itr < mbb.size(); ++itr) {
       MachineInstr mi = mbb.getInstAt(itr);
-      int flags = mi.getDesc().tSFlags;
+      long flags = mi.getDesc().tSFlags;
 
-      int fpInstClass = flags & X86II.FPTypeMask;
+      int fpInstClass = (int) (flags & X86II.FPTypeMask);
       if (mi.getOpcode() == TargetOpcode.INLINEASM)
         fpInstClass = X86II.SpecialFP;
 
@@ -1217,10 +1122,8 @@ public class X86FloatingPointStackifier extends MachineFunctionPass {
       return false;
 
     edgeBundles = (EdgeBundles) getAnalysisToUpDate(EdgeBundles.class);
-    tii = mf.getTarget().getInstrInfo();
-
+    tii = mf.getSubtarget().getInstrInfo();
     bundleCFG(mf);
-
     stackTop = 0;
 
     boolean changed = false;

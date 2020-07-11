@@ -28,9 +28,9 @@ public interface SDNP {
   int SDNPCommutative = 0;
   int SDNPAssociative = 1;
   int SDNPHasChain = 2;
-  int SDNPOutFlag = 3;
-  int SDNPInFlag = 4;
-  int SDNPOptInFlag = 5;
+  int SDNPOutGlue = 3;
+  int SDNPInGlue = 4;
+  int SDNPOptInGlue = 5;
   int SDNPMayLoad = 6;
   int SDNPMayStore = 7;
   int SDNPSideEffect = 8;

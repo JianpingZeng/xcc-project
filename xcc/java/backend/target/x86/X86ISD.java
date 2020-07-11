@@ -18,6 +18,8 @@ package backend.target.x86;
 
 import backend.codegen.dagisel.ISD;
 
+import javax.swing.text.Segment;
+
 /**
  * @author Jianping Zeng
  * @version 0.4
@@ -109,11 +111,21 @@ public class X86ISD {
 
   public static final int SETCC_CARRY = SETCC + 1;
 
+  /// X86 FP SETCC, implemented with CMP{cc}SS/CMP{cc}SD.
+  /// Operands are two FP values to compare; result is a mask of
+  /// 0s or 1s.  Generally DTRT for C/C++ with NaNs.
+  public static final int FSETCCss = SETCC_CARRY +1;
+  public static final int FSETCCsd = FSETCCss + 1;
+
+  /// X86 MOVMSK{pd|ps}, extracts sign bits of two or four FP values,
+  /// result in an integer GPR.  Needs masking for scalar result.
+  public static final int FGETSIGNx86 = FSETCCsd + 1;
+
   /// X86 conditional moves. Operand 0 and operand 1 are the two values
   /// to select from. Operand 2 is the condition code, and operand 3 is the
   /// flag operand produced by a CMP or TEST instruction. It also writes a
   /// flag result.
-  public static final int CMOV = SETCC_CARRY + 1;
+  public static final int CMOV = FGETSIGNx86 + 1;
   /// X86 conditional branches. Operand 0 is the chain operand, operand 1
   /// is the block to branch if condition is true, operand 2 is the
   /// condition code, and operand 3 is the flag operand produced by a CMP
@@ -135,9 +147,18 @@ public class X86ISD {
   /// WrapperRIP - Special wrapper used under X86-64 PIC mode for RIP
   /// relative displacements.
   public static final int WrapperRIP = Wrapper + 1;
+  /// MOVQ2DQ - Copies a 64-bit value from an MMX vector to the low word
+  /// of an XMM vector, with the high word zero filled.
+  public static final int MOVQ2DQ = WrapperRIP + 1;
+
+  /// MOVDQ2Q - Copies a 64-bit value from the low word of an XMM vector
+  /// to an MMX vector.  If you think this is too close to the previous
+  /// mnemonic, so do I; blame Intel.
+  public static final int MOVDQ2Q = MOVQ2DQ + 1;
+
   /// PEXTRB - Extract an 8-bit value from a vector and zero extend it to
   /// i32, corresponds to X86::PEXTRB.
-  public static final int PEXTRB = WrapperRIP + 1;
+  public static final int PEXTRB = MOVDQ2Q + 1;
   /// PEXTRW - Extract a 16-bit value from a vector and zero extend it to
   /// i32, corresponds to X86::PEXTRW.
   public static final int PEXTRW = PEXTRB + 1;
@@ -152,9 +173,25 @@ public class X86ISD {
   public static final int PINSRW = PINSRB + 1;
   /// PSHUFB - Shuffle 16 8-bit values within a vector.
   public static final int PSHUFB = PINSRW + 1;
+  public static final int ANDNP = PSHUFB + 1;
+
+  /// PSIGNB/W/D - Copy integer sign.
+  public static final int PSIGNB = ANDNP + 1;
+  public static final int PSIGNW = PSIGNB + 1;
+  public static final int PSIGND = PSIGNW + 1;
+
+  /// BLEND family of opcodes
+  public static final int BLENDV = PSIGND + 1;
+
+  /// FHADD - Floating point horizontal add.
+  public static final int FHADD = BLENDV + 1;
+
+  /// FHSUB - Floating point horizontal sub.
+  public static final int FHSUB = FHADD + 1;
+
   /// FMAX; FMIN - Floating point max and min.
   ///
-  public static final int FMAX = PSHUFB + 1;
+  public static final int FMAX = FHSUB + 1;
   public static final int FMIN = FMAX + 1;
   /// FRSQRT, FRCP - Floating point reciprocal-sqrt and reciprocal
   /// approximation.  Note that these typically require refinement
@@ -165,35 +202,24 @@ public class X86ISD {
   public static final int TLSADDR = FRCP + 1;
   // SegmentBaseAddress - The address segment:0
   public static final int SegmentBaseAddress = TLSADDR + 1;
+
+  // TLSCALL - Thread Local Storage.  When calling to an OS provided
+  // thunk at the address from an earlier relocation.
+  public static final int TLSCALL = SegmentBaseAddress + 1;
+
   // EH_RETURN - Exception Handling helpers.
-  public static final int EH_RETURN = SegmentBaseAddress + 1;
+  public static final int EH_RETURN = TLSCALL + 1;
   /// TC_RETURN - Tail call return.
   ///   operand #0 chain
   ///   operand #1 callee (register or absolute)
   ///   operand #2 stack adjustment
   ///   operand #3 optional in flag
   public static final int TC_RETURN = EH_RETURN + 1;
-  // LCMPXCHG_DAG, LCMPXCHG8_DAG - Compare and swap.
-  public static final int LCMPXCHG_DAG = TC_RETURN + 1;
-  public static final int LCMPXCHG8_DAG = LCMPXCHG_DAG + 1;
-  // ATOMADD64_DAG, ATOMSUB64_DAG, ATOMOR64_DAG, ATOMAND64_DAG,
-  // ATOMXOR64_DAG, ATOMNAND64_DAG, ATOMSWAP64_DAG -
-  // Atomic 64-bit binary operations.
-  public static final int ATOMADD64_DAG = LCMPXCHG8_DAG + 1;
-  public static final int ATOMSUB64_DAG = ATOMADD64_DAG + 1;
-  public static final int ATOMOR64_DAG = ATOMSUB64_DAG + 1;
-  public static final int ATOMXOR64_DAG = ATOMOR64_DAG + 1;
-  public static final int ATOMAND64_DAG = ATOMXOR64_DAG + 1;
-  public static final int ATOMNAND64_DAG = ATOMAND64_DAG + 1;
-  public static final int ATOMSWAP64_DAG = ATOMNAND64_DAG + 1;
-  // FNSTCW16m - Store FP control world into i16 memory.
-  public static final int FNSTCW16m = ATOMSWAP64_DAG + 1;
+
   // VZEXT_MOVL - Vector move low and zero extend.
-  public static final int VZEXT_MOVL = FNSTCW16m + 1;
-  // VZEXT_LOAD - Load, scalar_to_vector, and zero extend.
-  public static final int VZEXT_LOAD = VZEXT_MOVL + 1;
+  public static final int VZEXT_MOVL = TC_RETURN + 1;
   // VSHL, VSRL - Vector logical left / right shift.
-  public static final int VSHL = VZEXT_LOAD + 1;
+  public static final int VSHL = VZEXT_MOVL + 1;
   public static final int VSRL = VSHL + 1;
   // CMPPD, CMPPS - Vector double/float comparison.
   // CMPPD, CMPPS - Vector double/float comparison.
@@ -211,16 +237,106 @@ public class X86ISD {
   // ADD, SUB, SMUL, UMUL, etc. - Arithmetic operations with FLAGS results.
   public static final int ADD = PCMPGTQ + 1;
   public static final int SUB = ADD + 1;
+  public static final int ADC = SUB + 1;
+  public static final int SBB = SUB + 1;
   public static final int SMUL = SUB + 1;
   public static final int UMUL = SMUL + 1;
   public static final int INC = UMUL + 1;
   public static final int DEC = INC + 1;
+  public static final int OR = DEC + 1;
+  public static final int XOR = OR + 1;
+  public static final int AND = XOR + 1;
+  public static final int ANDN = AND + 1;
+
   // MUL_IMM - X86 specific multiply by immediate.
   public static final int MUL_IMM = DEC + 1;
   // PTEST - Vector bitwise comparisons
   public static final int PTEST = MUL_IMM + 1;
+  public static final int TESTP = PTEST + 1;
+
+  // Several flavors of instructions with vector shuffle behaviors.
+  public static final int PALIGN = TESTP + 1;
+  public static final int PSHUFD = PALIGN + 1;
+  public static final int PSHUFHW = PSHUFD + 1;
+  public static final int PSHUFLW = PSHUFHW + 1;
+  public static final int PSHUFHW_LD = PSHUFLW + 1;
+  public static final int PSHUFLW_LD = PSHUFHW_LD + 1;
+  public static final int SHUFPD = PSHUFLW_LD + 1;
+  public static final int SHUFPS = SHUFPD + 1;
+  public static final int MOVDDUP = SHUFPS + 1;
+  public static final int MOVSHDUP = MOVDDUP +1;
+  public static final int MOVSLDUP = MOVSHDUP + 1;
+  public static final int MOVSHDUP_LD = MOVSLDUP + 1;
+  public static final int MOVSLDUP_LD = MOVSHDUP_LD + 1;
+  public static final int MOVLHPS = MOVSLDUP_LD + 1;
+  public static final int MOVLHPD = MOVLHPS + 1;
+  public static final int MOVHLPS = MOVLHPD + 1;
+  public static final int MOVHLPD = MOVHLPS + 1;
+  public static final int MOVLPS = MOVHLPD + 1;
+  public static final int MOVLPD = MOVLPS + 1;
+  public static final int MOVSD = MOVLPD + 1;
+  public static final int MOVSS = MOVSD + 1;
+  public static final int UNPCKLPS = MOVSS + 1;
+  public static final int UNPCKLPD = UNPCKLPS + 1;
+  public static final int VUNPCKLPSY = UNPCKLPD + 1;
+  public static final int VUNPCKLPDY = VUNPCKLPSY + 1;
+  public static final int UNPCKHPS = VUNPCKLPDY + 1;
+  public static final int UNPCKHPD = UNPCKHPS + 1;
+  public static final int VUNPCKHPSY = UNPCKHPD + 1;
+  public static final int VUNPCKHPDY = VUNPCKHPSY + 1;
+  public static final int PUNPCKLBW = VUNPCKHPDY + 1;
+  public static final int PUNPCKLWD = PUNPCKLBW + 1;
+  public static final int PUNPCKLDQ = PUNPCKLWD + 1;
+  public static final int PUNPCKLQDQ = PUNPCKLDQ + 1;
+  public static final int PUNPCKHBW = PUNPCKLQDQ + 1;
+  public static final int PUNPCKHWD = PUNPCKHBW + 1;
+  public static final int PUNPCKHDQ = PUNPCKHWD + 1;
+  public static final int PUNPCKHQDQ = PUNPCKHDQ + 1;
+  public static final int VPERMILPS = PUNPCKHQDQ + 1;
+  public static final int VPERMILPSY = VPERMILPS + 1;
+  public static final int VPERMILPD = VPERMILPSY + 1;
+  public static final int VPERMILPDY = VPERMILPD + 1;
+  public static final int VPERM2F128 = VPERMILPDY + 1;
+  public static final int VBROADCAST = VPERM2F128 + 1;
+
   // VASTART_SAVE_XMM_REGS - Save xmm argument registers to the stack,
   // according to %al. An operator is needed so that this can be expanded
   // with control flow.
-  public static final int VASTART_SAVE_XMM_REGS = PTEST + 1;
+  public static final int VASTART_SAVE_XMM_REGS = VBROADCAST + 1;
+
+  // WIN_ALLOCA - Windows's _chkstk call to do stack probing.
+  public static final int WIN_ALLOCA = VASTART_SAVE_XMM_REGS + 1;
+
+  // SEG_ALLOCA - For allocating variable amounts of stack space when using
+  // segmented stacks. Check if the current stacklet has enough space, and
+  // falls back to heap allocation if not.
+  public static final int SEG_ALLOCA = WIN_ALLOCA + 1;
+
+  // Memory barrier
+  public static final int MEMBARRIER= SEG_ALLOCA + 1;
+  public static final int MFENCE = MEMBARRIER + 1;
+  public static final int SFENCE = MFENCE + 1;
+  public static final int LFENCE = SFENCE + 1;
+
+  // ATOMADD64_DAG, ATOMSUB64_DAG, ATOMOR64_DAG, ATOMAND64_DAG,
+  // ATOMXOR64_DAG, ATOMNAND64_DAG, ATOMSWAP64_DAG -
+  // Atomic 64-bit binary operations.
+  public static final int ATOMADD64_DAG = ISD.FIRST_TARGET_MEMORY_OPCODE;
+  public static final int ATOMSUB64_DAG = ATOMADD64_DAG + 1;
+  public static final int ATOMOR64_DAG = ATOMSUB64_DAG + 1;
+  public static final int ATOMXOR64_DAG = ATOMOR64_DAG + 1;
+  public static final int ATOMAND64_DAG = ATOMXOR64_DAG + 1;
+  public static final int ATOMNAND64_DAG = ATOMAND64_DAG + 1;
+  public static final int ATOMSWAP64_DAG = ATOMNAND64_DAG + 1;
+
+  // LCMPXCHG_DAG, LCMPXCHG8_DAG, LCMPXCHG16_DAG - Compare and swap.
+  public static final int LCMPXCHG_DAG = ATOMSWAP64_DAG + 1;
+  public static final int LCMPXCHG8_DAG = LCMPXCHG_DAG + 1;
+  public static final int LCMPXCHG16_DAG = LCMPXCHG8_DAG + 1;
+
+  // VZEXT_LOAD - Load, scalar_to_vector, and zero extend.
+  public static final int VZEXT_LOAD = LCMPXCHG16_DAG + 1;
+
+  // FNSTCW16m - Store FP control world into i16 memory.
+  public static final int FNSTCW16m = VZEXT_LOAD + 1;
 }

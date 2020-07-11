@@ -18,6 +18,8 @@ package backend.target.x86;
 
 import backend.support.CallingConv;
 import backend.support.Triple;
+import backend.target.TargetFrameLowering;
+import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.value.GlobalValue;
 import tools.CPUInfoUtility;
@@ -159,13 +161,15 @@ public class X86Subtarget extends X86GenSubtarget {
 
   private TargetType targetType;
   private boolean isLittleEndian;
-  private X86TargetMachine tm;
+  private X86FrameLowering frameLowering;
+  private X86TargetLowering targetLowering;
   private Triple targetTriple;
+  private X86TargetMachine tm;
 
   protected X86Subtarget(X86TargetMachine tm, String tt, String cpu,
-                         String fs, int stackAlignOverride, boolean is64Bit) {
+                         String fs, int stackAlignOverride,
+                         boolean is64Bit) {
     super(tt, cpu, fs);
-    subtarget = this;
     this.tm = tm;
     picStyle = PICStyle.None;
     x86SSELevel = NoMMXSSE;
@@ -267,20 +271,30 @@ public class X86Subtarget extends X86GenSubtarget {
       stackAlignemnt = 16;
   }
 
-  public X86TargetMachine getTargetMachine() {
-    return tm;
-  }
-
   public X86RegisterInfo getRegisterInfo() {
     if (regInfo == null)
-      regInfo = new X86GenRegisterInfo(tm, getHwMode());
+      regInfo = new X86GenRegisterInfo(this, getHwMode());
     return (X86RegisterInfo) regInfo;
   }
 
   public X86InstrInfo getInstrInfo() {
     if (instrInfo == null)
-      instrInfo = new X86GenInstrInfo(tm);
+      instrInfo = new X86GenInstrInfo(this);
     return (X86InstrInfo) instrInfo;
+  }
+
+  @Override
+  public X86FrameLowering getFrameLowering() {
+    if(frameLowering == null)
+      frameLowering = new X86FrameLowering(tm, this);
+    return frameLowering;
+  }
+
+  @Override
+  public X86TargetLowering getTargetLowering() {
+    if (targetLowering == null)
+      targetLowering = new X86TargetLowering(tm);
+    return targetLowering;
   }
 
   public int getStackAlignemnt() {
@@ -507,7 +521,7 @@ public class X86Subtarget extends X86GenSubtarget {
   public boolean hasSSE3() {
     return x86SSELevel.ordinal() >= SSE3.ordinal();
   }
-
+  public boolean hasSSSE3() { Util.assertion("SSSE3 is not implemented yet!"); return false; }
   public boolean hasSSE41() {
     return x86SSELevel.ordinal() >= SSE41.ordinal();
   }
@@ -528,6 +542,8 @@ public class X86Subtarget extends X86GenSubtarget {
     return x863DNowLevel.ordinal() >= ThreeDNowA.ordinal();
   }
 
+  public boolean hasXMM() { Util.shouldNotReachHere("hasXMM is not implemented yet!"); return false; }
+  public boolean hasXMMInt() { Util.shouldNotReachHere("hasXMMInt is not implemented yet!"); return false; }
   public boolean hasAVX() {
     return hasAVX;
   }
@@ -591,6 +607,15 @@ public class X86Subtarget extends X86GenSubtarget {
   public boolean isLittleEndian() {
     return isLittleEndian;
   }
+
+  public boolean hasCMov() { return hasCMov; }
+  public boolean hasAES() { return hasAES; }
+  public boolean hasMOVBE() { return hasMOVBE; }
+  public boolean hasLZCNT() { return hasLZCNT; }
+  public boolean hasBMI() { return hasBMI; }
+  public boolean hasPOPCNT() { return hasPOPCNT; }
+  public boolean hasCmpxchg16b() { return hasCmpxchg16b; }
+  public boolean hasVectorUAMem() { return hasVectorUAMem; }
 
   public String getDataLayout() {
     if (is64Bit())

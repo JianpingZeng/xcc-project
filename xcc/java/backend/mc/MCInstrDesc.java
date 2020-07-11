@@ -49,7 +49,7 @@ public class MCInstrDesc {
   /**
    * Target Specific Flag values
    */
-  public int tSFlags;
+  public long tSFlags;
   /**
    * Registers implicitly read by this instr
    */
@@ -89,7 +89,7 @@ public class MCInstrDesc {
                      int size,
                      String name,
                      int flags,
-                     int tSFlags,
+                     long tSFlags,
                      int[] implUses,
                      int[] implDefs,
                      MCRegisterClass[] rcBarriers,

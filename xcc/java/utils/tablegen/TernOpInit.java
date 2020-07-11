@@ -151,6 +151,8 @@ public final class TernOpInit extends Init.OpInit {
           lhsi = (IntInit) lhs;
           if (lhsi.getValue() != 0) return mhs;
           else return rhs;
+        } else if (lhs instanceof BitInit) {
+          return ((BitInit)lhs).getValue() ? mhs : rhs;
         }
         break;
       }
@@ -298,6 +300,16 @@ public final class TernOpInit extends Init.OpInit {
           IntInit value = (IntInit) Lhs;
           // Short-circuit
           if (value.getValue() != 0) {
+            Init Mhs = mhs.resolveReferences(r, rval);
+            return (new TernOpInit(getOpcode(), Lhs, Mhs, rhs, getType())).fold(r, null);
+          } else {
+            Init Rhs = rhs.resolveReferences(r, rval);
+            return (new TernOpInit(getOpcode(), Lhs, mhs, Rhs, getType())).fold(r, null);
+          }
+        } else if (Lhs instanceof BitInit) {
+          BitInit bi = (BitInit) Lhs;
+          // short cut.
+          if (bi.getValue()) {
             Init Mhs = mhs.resolveReferences(r, rval);
             return (new TernOpInit(getOpcode(), Lhs, Mhs, rhs, getType())).fold(r, null);
           } else {

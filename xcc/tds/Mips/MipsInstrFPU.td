@@ -37,11 +37,11 @@ def SDT_MipsExtractElementF64 : SDTypeProfile<1, 2, [SDTCisVT<0, i32>,
                                                      SDTCisVT<1, f64>,
                                                      SDTCisVT<2, i32>]>;
 
-def MipsFPCmp : SDNode<"MipsISD.FPCmp", SDT_MipsFPCmp, [SDNPOutFlag]>;
-def MipsCMovFP_T : SDNode<"MipsISD.CMovFP_T", SDT_MipsCMovFP, [SDNPInFlag]>;
-def MipsCMovFP_F : SDNode<"MipsISD.CMovFP_F", SDT_MipsCMovFP, [SDNPInFlag]>;
+def MipsFPCmp : SDNode<"MipsISD.FPCmp", SDT_MipsFPCmp, [SDNPOutGlue]>;
+def MipsCMovFP_T : SDNode<"MipsISD.CMovFP_T", SDT_MipsCMovFP, [SDNPInGlue]>;
+def MipsCMovFP_F : SDNode<"MipsISD.CMovFP_F", SDT_MipsCMovFP, [SDNPInGlue]>;
 def MipsFPBrcond : SDNode<"MipsISD.FPBrcond", SDT_MipsFPBrcond,
-                          [SDNPHasChain, SDNPOptInFlag]>;
+                          [SDNPHasChain, SDNPOptInGlue]>;
 def MipsBuildPairF64 : SDNode<"MipsISD.BuildPairF64", SDT_MipsBuildPairF64>;
 def MipsExtractElementF64 : SDNode<"MipsISD.ExtractElementF64",
                                    SDT_MipsExtractElementF64>;

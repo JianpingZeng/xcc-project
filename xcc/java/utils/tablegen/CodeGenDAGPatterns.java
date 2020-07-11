@@ -133,9 +133,7 @@ public final class CodeGenDAGPatterns {
     }
   }
 
-  TypeSetByHwMode getLegalValueTypes() {
-    return legalValueTypes;
-  }
+  TypeSetByHwMode getLegalValueTypes() { return legalValueTypes; }
 
   private void getInstructionInTree(TreePatternNode node, ArrayList<Record> instrs) {
     if (node.isLeaf())
@@ -1164,19 +1162,20 @@ public final class CodeGenDAGPatterns {
       if (opName.isEmpty())
         tp.error("Operand #" + j + " in operands list has no namespace!");
 
-      if (!instInputsCheck.containsKey(opName)) {
+      if (!instInputsCheck.containsKey(opName) ||
+          instInputsCheck.get(opName) == null) {
         // If this is an predicate operand or optional def operand with an
         // DefaultOps set filled in, we can ignore this.  When we codegen it,
         // we will do so as always executed.
-        if (op.rec.isSubClassOf("PredicateOperand")
-            || op.rec.isSubClassOf("OptionalDefOperand")) {
+        if (op.rec.isSubClassOf("PredicateOperand") ||
+            op.rec.isSubClassOf("OptionalDefOperand")) {
           // Does it have a non-empty DefaultOps field?  If so, ignore this
           // operand.
           if (!getDefaultOperand(op.rec).defaultOps.isEmpty())
             continue;
         }
-        tp.error("Operand $" + opName +
-            " does not appear in the instruction pattern");
+        tp.error("Operand $" + opName + " does not appear in the instruction pattern");
+        System.exit(1);
       }
 
       TreePatternNode inVal = instInputsCheck.get(opName);
@@ -1466,7 +1465,7 @@ public final class CodeGenDAGPatterns {
     for (CodeGenIntrinsic cgi : tgtIntrinsics)
       if (cgi.theDef.equals(r)) return cgi;
 
-    Util.assertion(false, "Undefined intrinsic!");
+    Util.assertion("Undefined intrinsic!");
     return null;
   }
 
@@ -1475,8 +1474,7 @@ public final class CodeGenDAGPatterns {
       return intrinsics.get(iid - 1);
     if (iid - intrinsics.size() - 1 < tgtIntrinsics.size())
       return tgtIntrinsics.get(iid - intrinsics.size() - 1);
-    Util.assertion(false, "Bad intrinsic ID!");
-    System.exit(1);
+    Util.assertion("Bad intrinsic ID!");
     return null;
   }
 
@@ -1493,8 +1491,7 @@ public final class CodeGenDAGPatterns {
         return idx;
       ++idx;
     }
-    Util.assertion(false, "Undefined intrinsic!");
-    System.exit(1);
+    Util.assertion("Undefined intrinsic!");
     return -1;
   }
 
@@ -1523,8 +1520,6 @@ public final class CodeGenDAGPatterns {
   }
 
   private void addPatternsToMatch(PatternToMatch pat) {
-    //Util.assertion( (pat != null));
-    //if (!patternsToMatch.contains(pat))
     patternsToMatch.add(pat);
   }
 

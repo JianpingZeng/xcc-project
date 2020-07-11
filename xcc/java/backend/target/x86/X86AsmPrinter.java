@@ -171,38 +171,6 @@ public class X86AsmPrinter extends AsmPrinter {
     outStreamer.emitInstruction(inst);
   }
 
-  public void printi8mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
-  public void printi16mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
-  public void printi32mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
-  public void printi64mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
-  public void printf32mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
-  public void printf64mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
-  public void printf80mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
-  public void printf128mem(MachineInstr mi, int opNo) {
-    printMemReference(mi, opNo);
-  }
-
   /**
    * Print a raw symbol reference operand. THis handles jump tables, constant
    * pools, global address and external symbols, all of which part to a label
@@ -334,7 +302,7 @@ public class X86AsmPrinter extends AsmPrinter {
   }
 
   private void printPICBaseSymbol() {
-    X86TargetLowering tli = (X86TargetLowering) tm.getTargetLowering();
+    X86TargetLowering tli = (X86TargetLowering) subtarget.getTargetLowering();
     tli.getPICBaseSymbol(mf, outContext).print(os);
   }
 
@@ -412,7 +380,7 @@ public class X86AsmPrinter extends AsmPrinter {
    */
   public void printOperand(MachineInstr mi, int opNo, String modifier, boolean notRIPRel) {
     MachineOperand mo = mi.getOperand(opNo);
-    TargetRegisterInfo regInfo = tm.getRegisterInfo();
+    TargetRegisterInfo regInfo = subtarget.getRegisterInfo();
     switch (mo.getType()) {
       case MO_Register: {
         Util.assertion(TargetRegisterInfo.isPhysicalRegister(mo.getReg()),

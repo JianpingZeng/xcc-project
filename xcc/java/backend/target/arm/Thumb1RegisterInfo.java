@@ -34,6 +34,7 @@ import backend.mc.MCRegisterClass;
 import backend.target.TargetFrameLowering;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
+import backend.target.TargetSubtarget;
 import backend.type.Type;
 import backend.value.Constant;
 import backend.value.ConstantInt;
@@ -41,6 +42,7 @@ import tools.OutRef;
 import tools.Util;
 
 import static backend.codegen.MachineInstrBuilder.*;
+import static backend.target.arm.ARMFrameLowering.emitSPUpdate;
 
 /**
  * @author Jianping Zeng.
@@ -201,29 +203,36 @@ class Thumb1RegisterInfo extends ARMGenRegisterInfo {
     }
   }
 
+
   @Override
-  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr mi) {
-    TargetFrameLowering tfl = mf.getSubtarget().getFrameLowering();
-    ARMInstrInfo tii = ((ARMSubtarget)mf.getSubtarget()).getInstrInfo();
+  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr old) {
+    ARMSubtarget subtarget = (ARMSubtarget) mf.getTarget().getSubtarget();
+    TargetFrameLowering tfl = subtarget.getFrameLowering();
+    MachineBasicBlock mbb = old.getParent();
+    int toDelete = old.getIndexInMBB();
+
     if (!tfl.hasReservedCallFrame(mf)) {
-      // convert to that as follows:
+      // If we have alloca, convert as follows:
       // ADJCALLSTACKDOWN -> sub, sp, sp, amount
       // ADJCALLSTACKUP   -> add, sp, sp, amount
-      DebugLoc dl = mi.getDebugLoc();
-      long amount = mi.getOperand(0).getImm();
+      DebugLoc dl = old.getDebugLoc();
+      int amount = (int) old.getOperand(0).getImm();
       if (amount != 0) {
-        // we need to keep stack alignment.
         int align = tfl.getStackAlignment();
-        amount = (amount + align - 1)/align * align;
-        int opc = mi.getOpcode();
-        if (opc == ARMGenInstrNames.ADJCALLSTACKDOWN || opc == ARMGenInstrNames.tADJCALLSTACKDOWN) {
-          amount = -amount;
+        amount = (amount + align - 1) /align * align;
+        int opc = old.getOpcode();
+        if (opc == ARMGenInstrNames.tADJCALLSTACKDOWN || opc == ARMGenInstrNames.ADJCALLSTACKDOWN) {
+          toDelete = Thumb1FrameLowering.emitSPUpdate(false, mbb, toDelete,
+                  dl, subtarget.getInstrInfo(), -amount);
         }
-        ARMFrameLowering.emitSPUpdate(false, mi.getParent(), mi.getIndexInMBB(),
-                dl, tii, (int) amount);
+        else {
+          Util.assertion(opc == ARMGenInstrNames.tADJCALLSTACKUP || opc == ARMGenInstrNames.ADJCALLSTACKUP);
+          toDelete = Thumb1FrameLowering.emitSPUpdate(false, mbb, toDelete,
+                  dl, subtarget.getInstrInfo(), amount);
+        }
       }
     }
-    mi.removeFromParent();
+    mbb.remove(toDelete);
   }
 
   private static void removeOperands(MachineInstr mi, int idx) {
@@ -242,7 +251,7 @@ class Thumb1RegisterInfo extends ARMGenRegisterInfo {
     DebugLoc dl = mi.getDebugLoc();
     int opcode = mi.getOpcode();
     MCInstrDesc mcid = tii.get(opcode);
-    int addrMode = mcid.tSFlags & ARMII.AddrModeMask;
+    int addrMode = (int) (mcid.tSFlags & ARMII.AddrModeMask);
 
     if (opcode == ARMGenInstrNames.tADDrSPi) {
       offset.set(offset.get() + (int)mi.getOperand(frameRegIdx+1).getImm());

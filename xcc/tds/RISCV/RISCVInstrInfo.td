@@ -16,24 +16,24 @@ def SDT_RISCVSelectCC     : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
                                                  SDTCisSameAs<4, 5>]>;
 
 def Call         : SDNode<"RISCVISD.CALL", SDT_RISCVCall,
-                          [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag,
+                          [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
                           SDNPVariadic]>;
 def CallSeqStart : SDNode<"ISD.CALLSEQ_START", SDT_RISCVCallSeqStart,
-                          [SDNPHasChain, SDNPOutFlag]>;
+                          [SDNPHasChain, SDNPOutGlue]>;
 def CallSeqEnd   : SDNode<"ISD.CALLSEQ_END", SDT_RISCVCallSeqEnd,
-                          [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
+                          [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 def RetFlag      : SDNode<"RISCVISD.RET_FLAG", SDTNone,
-                          [SDNPHasChain, SDNPOptInFlag]>;
+                          [SDNPHasChain, SDNPOptInGlue]>;
 def URetFlag     : SDNode<"RISCVISD.URET_FLAG", SDTNone,
-                          [SDNPHasChain, SDNPOptInFlag]>;
+                          [SDNPHasChain, SDNPOptInGlue]>;
 def SRetFlag     : SDNode<"RISCVISD.SRET_FLAG", SDTNone,
-                          [SDNPHasChain, SDNPOptInFlag]>;
+                          [SDNPHasChain, SDNPOptInGlue]>;
 def MRetFlag     : SDNode<"RISCVISD.MRET_FLAG", SDTNone,
-                          [SDNPHasChain, SDNPOptInFlag]>;
+                          [SDNPHasChain, SDNPOptInGlue]>;
 def SelectCC     : SDNode<"RISCVISD.SELECT_CC", SDT_RISCVSelectCC,
-                          [SDNPInFlag]>;
+                          [SDNPInGlue]>;
 def Tail         : SDNode<"RISCVISD.TAIL", SDT_RISCVCall,
-                          [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
+                          [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
 // Operand and SDNode transformation definitions.

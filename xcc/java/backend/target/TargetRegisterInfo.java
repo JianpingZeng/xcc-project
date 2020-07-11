@@ -166,17 +166,18 @@ public abstract class TargetRegisterInfo extends MCRegisterInfo {
                                            MachineInstr mi,
                                            RegScavenger rs);
 
+
   /**
-   * This is method is called by {@linkplain
-   * PrologEpilogInserter#replaceFrameIndices(MachineFunction)}
-   * when it encounters a frame setup/destroy pseudo instruction to
-   * replace all pseudo instruction with actual stack adjustment instruction
-   * according to the specific target machine.
-   * @param mf
-   * @param mi
+   * This method is called during prolog/epilog code insertion to eliminate
+   * call frame setup and destroy pseudo instructions (but only if the
+   * Target is using them).  It is responsible for eliminating these
+   * instructions, replacing them with concrete instructions.  This method
+   * need only be implemented if using call frame setup/destroy pseudo
+   * instructions.
    */
-  public abstract void eliminateCallFramePseudoInstr(MachineFunction mf,
-                                                     MachineInstr mi);
+  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr old) {
+    Util.assertion("Call Frame Pseudo Instructions do not exist on this target!");
+  }
 
   /**
    * Spill the register so it can be used by the register scavenger.

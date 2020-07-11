@@ -560,35 +560,49 @@ public final class AsmWriterEmitter extends TableGenBackend {
     Util.assertion(operandOffsets.size() == tableDrivenOperandPrinters.size());
 
     int numInsts = numberedInstructions.size();
-    final int splitThreshold = 2100;
+    final int splitThreshold = 2400;
     if (numInsts > splitThreshold) {
-      boolean enterBlock = false;
       os.printf("\tprivate static final long[][] opInfo = new long[%d][2];\n", numInsts);
-      for (int i = 0; i != numInsts; i++) {
-        if (i % splitThreshold == 0) {
-          if (enterBlock) {
-            os.println("\t}");
-          }
-          os.println("\t{");
-          enterBlock = true;
+      int numFuncs = numInsts/splitThreshold;
+      int x = 0;
+      for (; x < numFuncs; ++x) {
+        os.printf("\tstatic void initOpInfo%d()\n\t{\n", x);
+        for (int i = x*splitThreshold, e = i + splitThreshold; i < e; ++i) {
+          os.printf("\t\topInfo[%d] = new long[]{0x%xL, %d};\t// %s\n",
+                  i,
+                  opcodeInfo.get(i).first,
+                  opcodeInfo.get(i).second,
+                  numberedInstructions.get(i).theDef.getName());
         }
+        os.println("\t}");
+      }
+      int remainded = numInsts % splitThreshold;
+      if (remainded != 0) {
+        os.printf("\tstatic void initOpInfo%d()\n\t{\n", x);
+        for (int i = x *splitThreshold, e = i + remainded; i < e; ++i)
+          os.printf("\t\topInfo[%d] = new long[]{0x%xL, %d};\t// %s\n",
+                  i,
+                  opcodeInfo.get(i).first,
+                  opcodeInfo.get(i).second,
+                  numberedInstructions.get(i).theDef.getName());
+        os.println("\t}");
+      }
+
+      os.println("\tstatic \n\t{");
+      for (int i = 0; i <= x; i++)
+        os.printf("\t\tinitOpInfo%d();\n", i);
+      os.println("\t}");
+    }
+    else {
+      os.printf("\tprivate static final long[][] opInfo = new long[%d][2];\n", numInsts);
+      os.println("\t{");
+      for (int i = 0; i != numInsts; i++) {
         os.printf("\t\topInfo[%d] = new long[]{0x%xL, %d};\t// %s\n",
-            i,
-            opcodeInfo.get(i).first,
+            i, opcodeInfo.get(i).first,
             opcodeInfo.get(i).second,
             numberedInstructions.get(i).theDef.getName());
       }
       os.println("\t}");
-    }
-    else {
-      os.print("\tprivate static final long[][] opInfo = {\n");
-      for (int i = 0; i != numInsts; i++) {
-        os.printf("\t{0x%xL, %d},\t// %s\n",
-            opcodeInfo.get(i).first,
-            opcodeInfo.get(i).second,
-            numberedInstructions.get(i).theDef.getName());
-      }
-      os.print("\t};\n");
     }
 
     // Emit the string itself.

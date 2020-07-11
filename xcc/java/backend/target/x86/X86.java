@@ -389,4 +389,29 @@ public interface X86 {
         return COND_O;
     }
   }
+
+  static int getInsertVINSERTF128Immediate(SDNode n) {
+    Util.shouldNotReachHere();
+    return 0;
+  }
+
+  static int getExtractVEXTRACTF128Immediate(SDNode n) {
+    Util.shouldNotReachHere();
+    return 0;
+  }
+
+  static boolean isMOVLHPSMask(ShuffleVectorSDNode n) {
+    Util.shouldNotReachHere();
+    return false;
+  }
+
+  static boolean isVINSERTF128Index(SDNode n) {
+    Util.shouldNotReachHere();
+    return false;
+  }
+
+  static boolean isVEXTRACTF128Index(SDNode n) {
+    Util.shouldNotReachHere();
+    return false;
+  }
 }

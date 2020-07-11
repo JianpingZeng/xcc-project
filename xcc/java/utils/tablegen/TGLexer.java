@@ -307,17 +307,22 @@ public final class TGLexer {
 
   private TokKind lexIdentifier() {
     int identStart = tokStart;
-    byte ch = curBuf.getCharAt(curPtr);
-    while (Character.isJavaIdentifierPart(ch)) {
-      if (curBuf.getCharAt(identStart) == '#') {
-        if (!curBuf.getSubString(identStart, identStart + 6).equals("#NAME#"))
+    if (curBuf.getCharAt(identStart) == '#') {
+      if (!curBuf.getSubString(identStart, identStart + 6).equals("#NAME#"))
+        return TokKind.Error;
+      curPtr += 5;
+    }
+    int ch;
+    do {
+      ch = getNextChar();
+      if (ch == '#') {
+        if (!curBuf.getSubString(curPtr-1, curPtr+5).equals("#NAME#"))
           return TokKind.Error;
         curPtr += 5;
-      } else {
-        ++curPtr;
+        ch = getNextChar();
       }
-      ch = curBuf.getCharAt(curPtr);
-    }
+    }while (Character.isJavaIdentifierPart(ch));
+    --curPtr;
     String id = curBuf.getSubString(identStart, curPtr);
     switch (id) {
       case "int":

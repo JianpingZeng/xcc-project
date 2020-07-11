@@ -625,7 +625,7 @@ public final class TGParser {
         }
         case dot: {
           if (lexer.lex() != TGLexer.TokKind.Id) {
-            tokError("exected field iddentifier after '.'");
+            tokError("expected field identifier after '.'");
             return null;
           }
 
@@ -904,22 +904,13 @@ public final class TGParser {
 
         TGLexer.TokKind tk = lexer.getCode();
         if (tk != TGLexer.TokKind.Id
-            && tk != TGLexer.TokKind.XCast
-            && tk != TGLexer.TokKind.XNameConcat) {
+            && tk != TGLexer.TokKind.XCast) {
           tokError("expected identifier in dag init");
           return null;
         }
 
-        Init operator = null;
-        if (lexer.getCode() == TGLexer.TokKind.Id) {
-          operator = parseIDValue(curRec);
-          if (operator == null)
-            return null;
-        } else {
-          operator = parseOperation(curRec);
-          if (operator == null)
-            return null;
-        }
+        Init operator = parseValue(curRec);
+        if (operator == null) return null;
 
         String operatorName = "";
         if (lexer.getCode() == TGLexer.TokKind.colon) {
@@ -1789,11 +1780,16 @@ public final class TGParser {
 
             curRec.resolveReferencesTo(curRec.getValue(targs.get(j)));
             curRec.removeValue(targs.get(j));
-          } else if (!curRec.getValue(targs.get(j)).getValue().isComplete()) {
+          } else if (curRec.getValue(targs.get(j)).getValue().isComplete()) {
+            // some template parameter is initialized to a default value so that
+            // there is no such template argument
+            curRec.resolveReferencesTo(curRec.getValue(targs.get(j)));
+            curRec.removeValue(targs.get(j));
+          } else {
             return error(subClassLoc,
-                "value not specified for template #"
-                    + i + " (" + targs.get(j) + ") of multiclass '"
-                    + mc.rec.getName() + "'");
+                    "value not specified for template #"
+                            + i + " (" + targs.get(j) + ") of multiclass '"
+                            + mc.rec.getName() + "'");
           }
         }
 
@@ -1873,7 +1869,7 @@ public final class TGParser {
           for (int j = 0, sz = letStack.size(); j < sz; j++) {
             for (int k = 0, size = letStack.get(j).size(); k < size; k++) {
               if (setValue(curRec, letStack.get(j).get(k).loc, letStack.get(j).get(k).name,
-                  letStack.get(j).get(k).bits, letStack.get(j).get(k).value));
+                  letStack.get(j).get(k).bits, letStack.get(j).get(k).value))
               return true;
             }
           }
@@ -1935,23 +1931,7 @@ public final class TGParser {
       if (parseTemplateArgList(curRec))
         return true;
 
-
-    boolean res = parseObjectBody(curRec);
-    //if (TableGen.DEBUG)
-    //    curRec.dump();
-
-    // Dump the debug information for checking there is field changing of
-    // Record Register caused by RegisterWithSubRegs.
-    // Done
-    /**
-     if (TableGen.DEBUG)
-     {
-     Record r = Record.records.getClass("Register");
-     if (r != null)
-     r.dump();
-     }
-     */
-    return res;
+    return parseObjectBody(curRec);
   }
 
   /**

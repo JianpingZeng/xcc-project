@@ -249,6 +249,7 @@ public final class TreePatternNode implements Cloneable {
 
   public void dump() {
     print(System.err);
+    System.err.println();
   }
 
   private boolean updateNodeTypeFromInst(int resNo,

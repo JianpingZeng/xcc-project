@@ -165,7 +165,11 @@ public final class SDNodeInfo {
       } else if (r.isSubClassOf("SDTCisEltOfVec")) {
         constraintType = SDTCisEltOfVec;
         x = (int) r.getValueAsInt("OtherOpNum");
-      } else {
+      } else if (r.isSubClassOf("SDTCisSubVecOfVec")) {
+        constraintType = SDTCisSubVecOfVec;
+        x = (int)r.getValueAsInt("OtherOpNum");
+      }
+      else {
         Error.printFatalError("Unrecognized SDTypeConstraint '" + r.getName() + "'!");
       }
     }
@@ -181,7 +185,8 @@ public final class SDNodeInfo {
       SDTCisSameAs,
       SDTCisVTSmallerThanOp,
       SDTCisOpSmallerThanOp,
-      SDTCisEltOfVec
+      SDTCisEltOfVec,
+      SDTCisSubVecOfVec
     }
 
     public constraintType constraintType;
@@ -268,6 +273,12 @@ public final class SDNodeInfo {
           TreePatternNode bigVecOp = getOperandNum(x, node, numResults, vResNo);
           return infer.enforceVectorEltTypeIs(bigVecOp.getExtType(vResNo[0]),
               nodeToApply.getExtType(resNo));
+        }
+        case SDTCisSubVecOfVec: {
+          int[] vResNo = new int[1];
+          TreePatternNode bigVecOp = getOperandNum(x, node, numResults, vResNo);
+          return infer.enforceVectorSubVectorTypesIs(bigVecOp.getExtType(vResNo[0]),
+                  nodeToApply.getExtType(resNo));
         }
       }
     }

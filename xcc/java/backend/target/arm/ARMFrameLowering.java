@@ -784,7 +784,7 @@ public class ARMFrameLowering extends TargetFrameLowering {
           if (!mi.getOperand(opNum).isFrameIndex())continue;
 
           MCInstrDesc mid = mi.getDesc();
-          int addrMode = mid.tSFlags & ARMII.AddrModeMask;
+          int addrMode = (int) (mid.tSFlags & ARMII.AddrModeMask);
           if (addrMode == ARMII.AddrMode.AddrMode3.ordinal() ||
               addrMode == ARMII.AddrMode.AddrModeT2_i8.ordinal())
             return (1 << 8) - 1;

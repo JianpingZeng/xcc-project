@@ -371,22 +371,22 @@ public class DAGISelMatcherGen {
               root.getOperator().equals(cgp.getIntrinsicWOChainSDNode()) ||
               info.getNumOperands() > 1 ||
               info.hasProperty(SDNPHasChain) ||
-              info.hasProperty(SDNPInFlag) ||
-              info.hasProperty(SDNPOptInFlag);
+              info.hasProperty(SDNPInGlue) ||
+              info.hasProperty(SDNPOptInGlue);
         }
         if (needCheck)
           addMatcher(new CheckFoldableChainNodeMatcher());
       }
     }
 
-    if (n.hasProperty(SDNPOutFlag, cgp) && n != pattern.getSrcPattern()) {
+    if (n.hasProperty(SDNPOutGlue, cgp) && n != pattern.getSrcPattern()) {
       addMatcher(new RecordMatcher(String.format("\'%s\' flag output node",
           n.getOperator().getName()), nextRecordedOperandNo));
       matchedFlagResultNodes.add(nextRecordedOperandNo++);
     }
 
-    if (n.hasProperty(SDNPOptInFlag, cgp) ||
-        n.hasProperty(SDNPInFlag, cgp)) {
+    if (n.hasProperty(SDNPOptInGlue, cgp) ||
+        n.hasProperty(SDNPInGlue, cgp)) {
       addMatcher(new CaptureFlagInputMatcher());
     }
 
@@ -507,10 +507,10 @@ public class DAGISelMatcherGen {
     boolean treeHasInFlag = false, treeHasOutFlag = false;
     if (isRoot) {
       TreePatternNode srcPat = pattern.getSrcPattern();
-      treeHasInFlag = srcPat.hasProperty(SDNPOptInFlag, cgp) ||
-          srcPat.hasProperty(SDNPInFlag, cgp);
+      treeHasInFlag = srcPat.hasProperty(SDNPOptInGlue, cgp) ||
+          srcPat.hasProperty(SDNPInGlue, cgp);
 
-      treeHasOutFlag = srcPat.hasProperty(SDNPOutFlag, cgp);
+      treeHasOutFlag = srcPat.hasProperty(SDNPOutGlue, cgp);
     }
 
     // NumResults - This is the number of results produced by the instruction in

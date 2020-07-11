@@ -190,33 +190,4 @@ class Thumb1InstrInfo extends ARMGenInstrInfo {
     return ARMRegisterInfo.emitThumbRegPlusImmediate(mbb, mbbi, dl, ARMGenRegisterNames.SP,
         ARMGenRegisterNames.SP, numBytes, tii, tri);
   }
-
-  @Override
-  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr old) {
-    TargetSubtarget subtarget = mf.getTarget().getSubtarget();
-    TargetFrameLowering tfl = subtarget.getFrameLowering();
-    MachineBasicBlock mbb = old.getParent();
-    int toDelete = old.getIndexInMBB();
-
-    if (!tfl.hasReservedCallFrame(mf)) {
-      // If we have alloca, convert as follows:
-      // ADJCALLSTACKDOWN -> sub, sp, sp, amount
-      // ADJCALLSTACKUP   -> add, sp, sp, amount
-      DebugLoc dl = old.getDebugLoc();
-      int amount = (int) old.getOperand(0).getImm();
-      if (amount != 0) {
-        int align = tfl.getStackAlignment();
-        amount = (amount + align - 1) /align * align;
-        int opc = old.getOpcode();
-        if (opc == ARMGenInstrNames.tADJCALLSTACKDOWN || opc == ARMGenInstrNames.ADJCALLSTACKDOWN) {
-          toDelete = emitSPUpdate(mbb, toDelete, this, dl, (Thumb1RegisterInfo) subtarget.getRegisterInfo(), -amount);
-        }
-        else {
-          Util.assertion(opc == ARMGenInstrNames.tADJCALLSTACKUP || opc == ARMGenInstrNames.ADJCALLSTACKUP);
-          toDelete = emitSPUpdate(mbb, toDelete, this, dl, (Thumb1RegisterInfo) subtarget.getRegisterInfo(), amount);
-        }
-      }
-    }
-    mbb.remove(toDelete);
-  }
 }

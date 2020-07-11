@@ -1267,6 +1267,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       return ((sublassData >> 5) & 0x1) != 0;
     }
 
+    public boolean isNonTemporal() { Util.shouldNotReachHere(); return false; }
     public int getRawSubclassData() {
       return sublassData;
     }

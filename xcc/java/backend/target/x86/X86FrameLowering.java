@@ -32,7 +32,6 @@ import static backend.target.x86.X86GenRegisterNames.*;
  * @version 0.4
  */
 public class X86FrameLowering extends TargetFrameLowering {
-
   private X86TargetMachine tm;
   private X86Subtarget subtarget;
 
@@ -58,7 +57,7 @@ public class X86FrameLowering extends TargetFrameLowering {
     int mbbi = 0;  // a index position where a new instr will inserts.
     MachineFrameInfo mfi = mf.getFrameInfo();
     MachineInstr mi;
-    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getInfo();
+    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getFunctionInfo();
     int maxAlign = mfi.getMaxAlignment();
     int stackSize = mfi.getStackSize();
     boolean hasFP = hasFP(mf);
@@ -98,7 +97,7 @@ public class X86FrameLowering extends TargetFrameLowering {
     int numBytes = 0;
     TargetData td = tm.getTargetData();
 
-    int stackGrowth = (tm.getFrameLowering().getStackGrowDirection()
+    int stackGrowth = (subtarget.getFrameLowering().getStackGrowDirection()
         == TargetFrameLowering.StackDirection.StackGrowUp ?
         td.getPointerSize() : -td.getPointerSize());
 
@@ -252,7 +251,7 @@ public class X86FrameLowering extends TargetFrameLowering {
     X86InstrInfo tii = subtarget.getInstrInfo();
     int stackPtr = tri.getStackRegister();
     int framePtr = tri.getFrameRegister(mf);
-    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getInfo();
+    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getFunctionInfo();
 
     // get the position where epilogue code will inserts after.
     int mbbi = mbb.size() - 1;
@@ -406,5 +405,64 @@ public class X86FrameLowering extends TargetFrameLowering {
   @Override
   public boolean hasReservedCallFrame(MachineFunction mf) {
     return !mf.getFrameInfo().hasVarSizedObjects();
+  }
+
+  @Override
+  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf) {
+    processFunctionBeforeCalleeSavedScan(mf, null);
+  }
+
+  private static int calculateMaxStackAlignment(MachineFrameInfo mfi) {
+    int maxAlign = 0;
+
+    for (int i = mfi.getObjectIndexBegin(), e = mfi.getObjectIndexEnd();
+         i != e; i++) {
+      if (mfi.isDeadObjectIndex(i))
+        continue;
+      int align = mfi.getObjectAlignment(i);
+      maxAlign = Math.max(maxAlign, align);
+    }
+
+    return maxAlign;
+  }
+
+  @Override
+  public void processFunctionBeforeCalleeSavedScan(MachineFunction mf,
+                                                   RegScavenger rs) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+
+    int maxAlign = Math
+            .max(mfi.getMaxAlignment(), calculateMaxStackAlignment(mfi));
+
+    mfi.setMaxAlignment(maxAlign);
+    TargetFrameLowering tli = subtarget.getFrameLowering();
+
+    if (tli.hasFP(mf)) {
+      int slotSize = subtarget.getRegisterInfo().getSlotSize();
+      TargetFrameLowering tfi = subtarget.getFrameLowering();
+      int frameIndex = mfi.createFixedObject(slotSize,
+              -slotSize + tfi.getLocalAreaOffset());
+      Util.assertion(frameIndex == mfi.getObjectIndexBegin(),
+              "Slot for EBP register must be last in order to be found!");
+    }
+  }
+
+  /**
+   * This method is called immediately before the specified functions frame
+   * layout (MF.getFrameLowering()) is finalized.  Once the frame is finalized,
+   * MO_FrameIndex operands are replaced with direct ants.  This method is
+   * optional.
+   */
+  @Override
+  public void processFunctionBeforeFrameFinalized(
+          MachineFunction mf) {
+    TargetFrameLowering tli = subtarget.getFrameLowering();
+    if (tli.hasFP(mf)) {
+      // creates a stack object for saving EBP.
+      int frameIndex = mf.getFrameInfo().createStackObject(4, 4);
+      Util.assertion(frameIndex == mf.getFrameInfo().getObjectIndexEnd() - 1,
+              "The slot for EBP must be last");
+
+    }
   }
 }

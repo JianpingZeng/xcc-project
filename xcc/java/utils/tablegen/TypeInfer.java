@@ -363,11 +363,11 @@ public class TypeInfer {
     TIntArrayList list = unionMode(vec, sub);
     for (int i = 0, e = list.size(); i < e; i++) {
       int m = list.get(i);
-      MachineValueTypeSet vs = vec.get(m), ws = sub.get(m);
+      MachineValueTypeSet vecSet = vec.get(m), subSet = sub.get(m);
 
-      changed |= vs.eraseIf(IsScalar);
-      changed |= vs.eraseIf(vt -> NoSubV.test(vs, vt));
-      changed |= ws.eraseIf(vt -> NoSupV.test(ws, vt));
+      changed |= vecSet.eraseIf(IsScalar);
+      changed |= subSet.eraseIf(vt -> NoSubV.test(vecSet, vt));
+      changed |= vecSet.eraseIf(vt -> NoSupV.test(subSet, vt));
     }
     return changed;
   }

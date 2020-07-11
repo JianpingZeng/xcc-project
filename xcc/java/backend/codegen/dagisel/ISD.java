@@ -256,10 +256,17 @@ public class ISD {
   /// concatenated vector result value, with length equal to the sum of the
   /// lengths of the input vectors.
   public static final int CONCAT_VECTORS = EXTRACT_VECTOR_ELT + 1;
+  /// INSERT_SUBVECTOR(VECTOR1, VECTOR2, IDX) - Returns a vector
+  /// with VECTOR2 inserted into VECTOR1 at the (potentially
+  /// variable) element number IDX, which must be a multiple of the
+  /// VECTOR2 vector length.  The elements of VECTOR1 starting at
+  /// IDX are overwritten with VECTOR2.  Elements IDX through
+  /// vector_length(VECTOR2) must be valid VECTOR1 indices.
+  public static final int INSERT_SUBVECTOR = CONCAT_VECTORS + 1;
   /// EXTRACT_SUBVECTOR(VECTOR, IDX) - Returns a subvector from VECTOR (an
   /// vector value) starting with the (potentially variable) element number
   /// IDX, which must be a multiple of the result vector length.
-  public static final int EXTRACT_SUBVECTOR = CONCAT_VECTORS + 1;
+  public static final int EXTRACT_SUBVECTOR = INSERT_SUBVECTOR + 1;
   /// VECTOR_SHUFFLE(VEC1, VEC2) - Returns a vector, of the same type as
   /// VEC1/VEC2.  A VECTOR_SHUFFLE node also contains an array of constant int
   /// values that indicate which value (or undef) each result element will
@@ -298,11 +305,18 @@ public class ISD {
   // Select(COND, TRUEVAL, FALSEVAL).  If the type of the boolean COND is not
   // i1 then the high bits must conform to getBooleanContents.
   public static final int SELECT = CTPOP + 1;
+
+  // Select with a vector condition (op #0) and two vector operands (ops #1
+  // and #2), returning a vector result.  All vectors have the same length.
+  // Much like the scalar select and setcc, each bit in the condition selects
+  // whether the corresponding result element is taken from op #1 or op #2.
+  public static final int VSELECT = SELECT + 1;
+
   // Select with condition operator - This selects between a true value and
   // a false value (ops #2 and #3) based on the boolean result of comparing
   // the lhs and rhs (ops #0 and #1) of a conditional expression with the
   // condition code in op #4, a CondCodeSDNode.
-  public static final int SELECT_CC = SELECT + 1;
+  public static final int SELECT_CC = VSELECT + 1;
   // SetCC operator - This evaluates to a true value iff the condition is
   // true.  If the result value type is not i1 then the high bits conform
   // to getBooleanContents.  The operands to this are the left and right

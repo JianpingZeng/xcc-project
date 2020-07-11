@@ -37,7 +37,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import static utils.tablegen.SDNP.SDNPHasChain;
-import static utils.tablegen.SDNP.SDNPOutFlag;
+import static utils.tablegen.SDNP.SDNPOutGlue;
 
 /**
  * @author Jianping Zeng.
@@ -205,7 +205,7 @@ class DAGISelMatcherOpt {
       // because the code in the pattern generator doesn't handle it right.  We
       // do it anyway for thoroughness.
       if (!emitNode.isHasOutFlag() &&
-          pattern.getSrcPattern().hasProperty(SDNPOutFlag, cgp))
+          pattern.getSrcPattern().hasProperty(SDNPOutGlue, cgp))
         resultMatch = false;
 
       if (resultMatch) {

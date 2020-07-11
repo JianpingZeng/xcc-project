@@ -1344,7 +1344,15 @@ public abstract class RecTy {
 
     @Override
     public boolean baseClassOf(RecordRecTy rhs) {
-      return rec == rhs.getRecord() || rhs.getRecord().isSubClassOf(rec);
+      if (rec == rhs.getRecord() || rhs.getRecord().isSubClassOf(rec))
+        return true;
+
+      ArrayList<Record> scs = rec.getSuperClasses();
+      for (Record rc : scs) {
+        if (rhs.getRecord().isSubClassOf(rc))
+          return true;
+      }
+      return false;
     }
   }
 }

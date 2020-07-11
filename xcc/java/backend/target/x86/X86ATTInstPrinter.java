@@ -29,6 +29,13 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
     return new X86GenATTInstPrinter(os, mai);
   }
 
+  protected abstract void printInst(MCInst inst);
+
+  @Override
+  public void printInstruction(MCInst inst) {
+    printInst(inst);
+  }
+
   public void printOperand(MCInst mi, int opNo) {
     MCOperand op = mi.getOperand(opNo);
     if (op.isReg())
@@ -132,6 +139,10 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
     printMemReference(mi, opNo);
   }
 
+  public void printi256mem(MCInst mi, int opNo) {
+    printMemReference(mi, opNo);
+  }
+
   public void printf32mem(MCInst mi, int opNo) {
     printMemReference(mi, opNo);
   }
@@ -147,6 +158,7 @@ public abstract class X86ATTInstPrinter extends MCInstPrinter {
   public void printf128mem(MCInst mi, int opNo) {
     printMemReference(mi, opNo);
   }
+  public void printf256mem(MCInst mi, int opNo) { printMemReference(mi, opNo); }
 
   public void printlea32mem(MCInst mi, int opNo) {
     printLeaMemReference(mi, opNo);

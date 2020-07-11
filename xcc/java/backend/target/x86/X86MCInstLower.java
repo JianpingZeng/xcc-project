@@ -37,7 +37,7 @@ public class X86MCInstLower {
     return asmPrinter.getSubtarget();
   }
   public MCSymbol getPICBaseSymbol() {
-    X86TargetLowering tli = (X86TargetLowering) asmPrinter.tm.getTargetLowering();
+    X86TargetLowering tli = (X86TargetLowering) asmPrinter.getSubtarget().getTargetLowering();
     return tli.getPICBaseSymbol(asmPrinter.mf, ctx);
   }
 
@@ -680,18 +680,9 @@ public class X86MCInstLower {
       case X86GenInstrNames.MOV32r0:
         lowerUnaryToTwoAddr(outMI, X86GenInstrNames.XOR32rr);
         break;
-      case X86GenInstrNames.MMX_V_SET0:
-        lowerUnaryToTwoAddr(outMI, X86GenInstrNames.MMX_PXORrr);
-        break;
-      case X86GenInstrNames.MMX_V_SETALLONES:
-        lowerUnaryToTwoAddr(outMI, X86GenInstrNames.MMX_PCMPEQDrr);
-        break;
       case X86GenInstrNames.FsFLD0SS:
       case X86GenInstrNames.FsFLD0SD:
         lowerUnaryToTwoAddr(outMI, X86GenInstrNames.PXORrr);
-        break;
-      case X86GenInstrNames.V_SET0:
-        lowerUnaryToTwoAddr(outMI, X86GenInstrNames.XORPSrr);
         break;
       case X86GenInstrNames.V_SETALLONES:
         lowerUnaryToTwoAddr(outMI, X86GenInstrNames.PCMPEQDrr);

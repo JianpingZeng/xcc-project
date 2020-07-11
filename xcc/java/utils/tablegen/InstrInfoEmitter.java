@@ -225,7 +225,7 @@ public final class InstrInfoEmitter extends TableGenBackend {
         Util.assertion(String.format("Invalid TSFlag bit in %s", inst.theDef.getName()));
     }
 
-    os.printf(", %d, ", value);
+    os.printf(", %dL, ", value);
 
     // Emit the implicit uses and defs list.
     ArrayList<Record> uses = inst.theDef.getValueAsListOfDefs("Uses");

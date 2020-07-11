@@ -236,7 +236,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
     if (done)
       return;
 
-    int tsFlags = mi.getDesc().tSFlags;
+    long tsFlags = mi.getDesc().tSFlags;
     Util.assertion(offset != 0 || ((tsFlags & ARMII.AddrModeMask) == ARMII.AddrMode.AddrMode4.ordinal() ||
             (tsFlags & ARMII.AddrModeMask) == ARMII.AddrMode.AddrMode6.ordinal()),
         "This code isn't needed if offset already handled!");
@@ -306,7 +306,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
                                       ARMInstrInfo tii) {
     int opcode = mi.getOpcode();
     MCInstrDesc mid = mi.getDesc();
-    ARMII.AddrMode addrMode = ARMII.AddrMode.values()[mid.tSFlags & ARMII.AddrModeMask];
+    ARMII.AddrMode addrMode = ARMII.AddrMode.values()[(int) (mid.tSFlags & ARMII.AddrModeMask)];
     boolean isSub = false;
 
     if (opcode == ARMGenInstrNames.INLINEASM)
@@ -605,7 +605,7 @@ public abstract class ARMRegisterInfo extends TargetRegisterInfo {
                                        ARMInstrInfo tii) {
     int opcode = mi.getOpcode();
     MCInstrDesc mid = mi.getDesc();
-    ARMII.AddrMode addrMode = ARMII.AddrMode.values()[mid.tSFlags & ARMII.AddrModeMask];
+    ARMII.AddrMode addrMode = ARMII.AddrMode.values()[(int) (mid.tSFlags & ARMII.AddrModeMask)];
     boolean isSub = false;
 
     // Memory operands in inline assembly always use AddrMode2.

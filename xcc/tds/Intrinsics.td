@@ -101,6 +101,10 @@ def llvm_ptrptr_ty     : LLVMPointerType<llvm_ptr_ty>;            // i8**
 def llvm_anyptr_ty     : LLVMAnyPointerType<llvm_i8_ty>;          // (space)i8*
 def llvm_empty_ty      : LLVMType<OtherVT>;                       // { }
 def llvm_descriptor_ty : LLVMPointerType<llvm_empty_ty>;          // { }*
+def llvm_metadata_ty   : LLVMType<MetadataVT>;                    // !{...}
+
+def llvm_x86mmx_ty     : LLVMType<x86mmx>;
+def llvm_ptrx86mmx_ty  : LLVMPointerType<llvm_x86mmx_ty>;         // <1 x i64>*
 
 def llvm_v2i8_ty       : LLVMType<v2i8>;     //  2 x i8
 def llvm_v4i8_ty       : LLVMType<v4i8>;     //  4 x i8

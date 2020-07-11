@@ -224,6 +224,38 @@ let Namespace = "X86" in {
   def ES : Register<"es">;
   def FS : Register<"fs">;
   def GS : Register<"gs">;
+
+  // Debug registers
+  def DR0 : Register<"dr0">;
+  def DR1 : Register<"dr1">;
+  def DR2 : Register<"dr2">;
+  def DR3 : Register<"dr3">;
+  def DR4 : Register<"dr4">;
+  def DR5 : Register<"dr5">;
+  def DR6 : Register<"dr6">;
+  def DR7 : Register<"dr7">;
+
+  // Control registers
+  def CR0 : Register<"cr0">;
+  def CR1 : Register<"cr1">;
+  def CR2 : Register<"cr2">;
+  def CR3 : Register<"cr3">;
+  def CR4 : Register<"cr4">;
+  def CR5 : Register<"cr5">;
+  def CR6 : Register<"cr6">;
+  def CR7 : Register<"cr7">;
+  def CR8 : Register<"cr8">;
+  def CR9 : Register<"cr9">;
+  def CR10 : Register<"cr10">;
+  def CR11 : Register<"cr11">;
+  def CR12 : Register<"cr12">;
+  def CR13 : Register<"cr13">;
+  def CR14 : Register<"cr14">;
+  def CR15 : Register<"cr15">;
+
+// Pseudo index registers
+def EIZ : Register<"eiz">;
+def RIZ : Register<"riz">;
 }
 
 
@@ -261,7 +293,7 @@ def GR8 : RegisterClass<"X86", [i8],  8,
   let AltOrderSelect = [{
     TargetMachine tm = mf.getTarget();
     X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
-    return subtarget.is64Bit();
+    return subtarget.is64Bit() ? 1 : 0;
   }];
 }
 
@@ -285,6 +317,17 @@ def GR64 : RegisterClass<"X86", [i64], 64,
                           RBX, R14, R15, R12, R13, RBP, RSP, RIP)> {
   let SubRegClasses = [(GR8 sub_8bit, sub_8bit_hi), (GR16 sub_16bit), (GR32 sub_32bit)];
 }
+
+// Segment registers for use by MOV instructions (and others) that have a
+//   segment register as one operand.  Always contain a 16-bit segment
+//   descriptor.
+def SEGMENT_REG : RegisterClass<"X86", [i16], 16, (add CS, DS, SS, ES, FS, GS)>;
+
+// Debug registers.
+def DEBUG_REG : RegisterClass<"X86", [i32], 32, (sequence "DR%d", 0, 7)>;
+
+// Control registers.
+def CONTROL_REG : RegisterClass<"X86", [i64], 64, (sequence "CR%d", 0, 15)>;
 
 
 // GR8_ABCD_L, GR8_ABCD_H, GR16_ABCD, GR32_ABCD, GR64_ABCD - Subclasses of
@@ -333,7 +376,9 @@ def GR8_NOREX : RegisterClass<"X86", [i8], 8,
                               (add AL, CL, DL, AH, CH, DH, BL, BH)> {
   let AltOrders = [(sub GR8_NOREX, AH, BH, CH, DH)];
   let AltOrderSelect = [{
-    return MF.getTarget().getSubtarget<X86Subtarget>().is64Bit();
+    TargetMachine tm = mf.getTarget();
+    X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+    return subtarget.is64Bit() ? 1 : 0;
   }];
 }
 // GR16_NOREX - GR16 registers which do not require a REX prefix.

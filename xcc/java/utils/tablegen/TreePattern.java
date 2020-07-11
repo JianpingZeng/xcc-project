@@ -337,7 +337,7 @@ public final class TreePattern {
     if (theInit instanceof BitsInit) {
       BitsInit bi = (BitsInit) theInit;
       Init ii = bi.convertInitializerTo(new IntRecTy());
-      if (ii == null || !(ii instanceof IntInit))
+      if (!(ii instanceof IntInit))
         error("Bits value must be constant!");
       return parseTreePattern(ii, opName);
     }

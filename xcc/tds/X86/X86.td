@@ -123,8 +123,21 @@ def : Proc<"penryn",          [FeatureSSE41,  Feature64Bit, FeatureSlowBTMem]>;
 def : Proc<"atom",            [FeatureSSE3,   Feature64Bit, FeatureSlowBTMem]>;
 def : Proc<"corei7",          [FeatureSSE42,  Feature64Bit, FeatureSlowBTMem]>;
 def : Proc<"nehalem",         [FeatureSSE42,  Feature64Bit, FeatureSlowBTMem]>;
-// Sandy Bridge does not have FMA
-def : Proc<"sandybridge",     [FeatureSSE42,  FeatureAVX,   Feature64Bit]>;
+// Sandy Bridge
+// SSE is not listed here since llvm treats AVX as a reimplementation of SSE,
+// rather than a superset.
+def : Proc<"corei7-avx",      [FeatureSSE42, FeatureCMPXCHG16B,
+                               FeatureAES, FeatureCLMUL]>;
+// Ivy Bridge
+def : Proc<"core-avx-i",      [FeatureSSE42, FeatureCMPXCHG16B,
+                               FeatureAES, FeatureCLMUL,
+                               FeatureRDRAND, FeatureF16C]>;
+
+// Haswell
+def : Proc<"core-avx2",       [FeatureSSE42, FeatureCMPXCHG16B, FeatureAES,
+                               FeatureCLMUL, FeatureRDRAND, FeatureF16C,
+                               FeatureFMA3, FeatureMOVBE, FeatureLZCNT,
+                               FeatureBMI]>;
 
 def : Proc<"k6",              [FeatureMMX]>;
 def : Proc<"k6-2",            [FeatureMMX,    Feature3DNow]>;
@@ -180,7 +193,6 @@ def X86InstrInfo : InstrInfo;
 // Calling Conventions
 //===----------------------------------------------------------------------===//
 
-// Commented by Jianping Zeng on 2017.6.19
 include "X86CallingConv.td"
 
 

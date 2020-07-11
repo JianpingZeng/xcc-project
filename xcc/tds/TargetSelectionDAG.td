@@ -61,6 +61,13 @@ class SDTCisEltOfVec<int ThisOp, int OtherOp>
   int OtherOpNum = OtherOp;
 }
 
+/// SDTCisSubVecOfVec - This indicates that ThisOp is a vector type
+/// with length less that of OtherOp, which is a vector type.
+class SDTCisSubVecOfVec<int ThisOp, int OtherOp>
+  : SDTypeConstraint<ThisOp> {
+  int OtherOpNum = OtherOp;
+}
+
 //===----------------------------------------------------------------------===//
 // Selection DAG Type Profile definitions.
 //
@@ -138,6 +145,10 @@ def SDTSelect : SDTypeProfile<1, 3, [       // select
   SDTCisInt<1>, SDTCisSameAs<0, 2>, SDTCisSameAs<2, 3>
 ]>;
 
+def SDTVSelect : SDTypeProfile<1, 3, [       // vselect
+  SDTCisInt<1>, SDTCisSameAs<0, 2>, SDTCisSameAs<2, 3>
+]>;
+
 def SDTSelectCC : SDTypeProfile<1, 5, [     // select_cc
   SDTCisSameAs<1, 2>, SDTCisSameAs<3, 4>, SDTCisSameAs<0, 3>,
   SDTCisVT<5, OtherVT>
@@ -179,8 +190,15 @@ def SDTVecInsert : SDTypeProfile<1, 3, [    // vector insert
   SDTCisEltOfVec<2, 1>, SDTCisSameAs<0, 1>, SDTCisPtrTy<3>
 ]>;
 
-def STDPrefetch : SDTypeProfile<0, 3, [     // prefetch
-  SDTCisPtrTy<0>, SDTCisSameAs<1, 2>, SDTCisInt<1>
+def SDTSubVecExtract : SDTypeProfile<1, 2, [// subvector extract
+  SDTCisSubVecOfVec<0,1>, SDTCisInt<2>
+]>;
+def SDTSubVecInsert : SDTypeProfile<1, 3, [ // subvector insert
+  SDTCisSubVecOfVec<2, 1>, SDTCisSameAs<0,1>, SDTCisInt<3>
+]>;
+
+def STDPrefetch : SDTypeProfile<0, 4, [     // prefetch
+  SDTCisPtrTy<0>, SDTCisSameAs<1, 2>, SDTCisSameAs<1, 3>, SDTCisInt<1>
 ]>;
 
 def STDMemBarrier : SDTypeProfile<0, 5, [   // memory barier
@@ -293,13 +311,13 @@ def or         : SDNode<"ISD.OR"        , SDTIntBinOp,
 def xor        : SDNode<"ISD.XOR"       , SDTIntBinOp,
                         [SDNPCommutative, SDNPAssociative]>;
 def addc       : SDNode<"ISD.ADDC"      , SDTIntBinOp,
-                        [SDNPCommutative, SDNPOutFlag]>;
+                        [SDNPCommutative, SDNPOutGlue]>;
 def adde       : SDNode<"ISD.ADDE"      , SDTIntBinOp,
-                        [SDNPCommutative, SDNPOutFlag, SDNPInFlag]>;
+                        [SDNPCommutative, SDNPOutGlue, SDNPInGlue]>;
 def subc       : SDNode<"ISD.SUBC"      , SDTIntBinOp,
-                        [SDNPOutFlag]>;
+                        [SDNPOutGlue]>;
 def sube       : SDNode<"ISD.SUBE"      , SDTIntBinOp,
-                        [SDNPOutFlag, SDNPInFlag]>;
+                        [SDNPOutGlue, SDNPInGlue]>;
                         
 def sext_inreg : SDNode<"ISD.SIGN_EXTEND_INREG", SDTExtInreg>;
 def bswap      : SDNode<"ISD.BSWAP"      , SDTIntUnaryOp>;
@@ -344,6 +362,7 @@ def f32_to_f16 : SDNode<"ISD.FP32_TO_FP16", SDTFPToIntOp>;
 
 def setcc      : SDNode<"ISD.SETCC"      , SDTSetCC>;
 def select     : SDNode<"ISD.SELECT"     , SDTSelect>;
+def vselect    : SDNode<"ISD.VSELECT"    , SDTVSelect>;
 def selectcc   : SDNode<"ISD.SELECT_CC"  , SDTSelectCC>;
 def vsetcc     : SDNode<"ISD.VSETCC"     , SDTSetCC>;
 
@@ -414,6 +433,9 @@ def vector_extract_subvec : SDNode<"ISD.EXTRACT_SUBVECTOR",
     SDTypeProfile<1, 2, [SDTCisInt<2>, SDTCisVec<1>, SDTCisVec<0>]>,
     []>;
 
+// This operator does subvector type checking.
+def extract_subvector : SDNode<"ISD.EXTRACT_SUBVECTOR", SDTSubVecExtract, []>;
+def insert_subvector : SDNode<"ISD.INSERT_SUBVECTOR", SDTSubVecInsert, []>;
 
 // Nodes for intrinsics, you should use the intrinsic itself and let tblgen use
 // these internally.  Don't reference these directly.
@@ -485,11 +507,11 @@ class PatFrag<dag ops, dag frag, code pred = [{}],
   // Is the desired pre-packaged predicate for an atomic?
   bit IsAtomic = ?;
 
-  // cast<LoadSDNode>(n)->getAddressingMode() == ISD.UNINDEXED;
-  // cast<StoreSDNode>(n)->getAddressingMode() == ISD.UNINDEXED;
+  // cast<LoadSDNode>(n)->getAddressingMode() == MemIndexedMode.UNINDEXED;
+  // cast<StoreSDNode>(n)->getAddressingMode() == MemIndexedMode.UNINDEXED;
   bit IsUnindexed = ?;
 
-  // cast<LoadSDNode>(n)->getExtensionType() != ISD.NON_EXTLOAD
+  // cast<LoadSDNode>(n)->getExtensionType() != LoadExtType.NON_EXTLOAD
   bit IsNonExtLoad = ?;
   // cast<LoadSDNode>(n)->getExtensionType() == ISD.EXTLOAD;
   bit IsAnyExtLoad = ?;
@@ -552,6 +574,7 @@ class ImmLeaf<ValueType vt, code pred, SDNodeXForm xform = NOOP_SDNodeXForm,
 
   // Is the data type of the immediate an APFloat?
   bit IsAPFloat = 0;
+  bit FastIselShouldIgnore = 0;
 }
 
 // Leaf fragments.

@@ -29,6 +29,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Initializer class definition.
@@ -352,9 +353,6 @@ public abstract class Init {
 
         do {
           b = curBit;
-          //System.out.println(r.toString());
-          //System.out.println(rval.toString());
-
           curBit = curBit.resolveReferences(r, rval);
           changed |= !b.equals(curBit);
         } while (!b.equals(curBit));
@@ -828,9 +826,11 @@ public abstract class Init {
         case LE:
         case GT:
         case GE: {
-          if (lhs instanceof IntInit && rhs instanceof IntInit) {
-            IntInit lhsi = (IntInit) lhs;
-            IntInit rhsi = (IntInit) rhs;
+          Init convertedLhs = lhs.convertInitializerTo(new RecTy.IntRecTy());
+          Init convertedRhs = rhs.convertInitializerTo(new RecTy.IntRecTy());
+          if (convertedLhs instanceof IntInit && convertedRhs instanceof IntInit) {
+            IntInit lhsi = (IntInit) convertedLhs;
+            IntInit rhsi = (IntInit) convertedRhs;
             long lhsv = lhsi.getValue(), rhsv = rhsi.getValue();
             boolean result;
             switch (getOpcode()) {
@@ -853,6 +853,62 @@ public abstract class Init {
                 break;
               case GE:
                 result = lhsv >= rhsv;
+                break;
+            }
+            return new BitInit(result);
+          } else if (lhs instanceof BitInit && rhs instanceof BitInit) {
+            BitInit lhsi = (BitInit) lhs;
+            BitInit rhsi = (BitInit) rhs;
+            boolean lhsv = lhsi.getValue(), rhsv = rhsi.getValue();
+            boolean result;
+            switch (getOpcode()) {
+              default:
+                Util.assertion("Bad opcode!");
+              case EQ:
+                result = lhsv == rhsv;
+                break;
+              case NE:
+                result = lhsv != rhsv;
+                break;
+              case LT:
+                result = !lhsv && rhsv;
+                break;
+              case LE:
+                result = !(lhsv && !rhsv);
+                break;
+              case GT:
+                result = lhsv && !rhsv;
+                break;
+              case GE:
+                result = !(!lhsv && rhsv);
+                break;
+            }
+            return new BitInit(result);
+          } else if (lhs instanceof StringInit && rhs instanceof StringInit) {
+            StringInit lhsi = (StringInit) lhs;
+            StringInit rhsi = (StringInit) rhs;
+            String lhsv = lhsi.getValue(), rhsv = rhsi.getValue();
+            boolean result;
+            switch (getOpcode()) {
+              default:
+                Util.assertion("Bad opcode!");
+              case EQ:
+                result = lhsv.equals(rhsv);
+                break;
+              case NE:
+                result = !lhsv.equals(rhsv);
+                break;
+              case LT:
+                result = lhsv.compareTo(rhsv) < 0;
+                break;
+              case LE:
+                result = lhsv.compareTo(rhsv) <= 0;
+                break;
+              case GT:
+                result = lhsv.compareTo(rhsv) > 0;
+                break;
+              case GE:
+                result = lhsv.compareTo(rhsv) >= 0;
                 break;
             }
             return new BitInit(result);
@@ -925,15 +981,10 @@ public abstract class Init {
     public Init resolveReferences(Record r, RecordVal rval) {
       Init lhsi = lhs.resolveReferences(r, rval);
       Init rhsi = rhs.resolveReferences(r, rval);
-      try {
-        if (!lhs.equals(lhsi) || !rhs.equals(rhsi)) {
-          return new BinOpInit(getOpcode(), lhsi, rhsi, getType())
-              .fold(r, null);
-        }
-        return fold(r, null);
-      } catch (Exception e) {
-        return null;
-      }
+      if (!lhs.equals(lhsi) || !rhs.equals(rhsi))
+        return new BinOpInit(getOpcode(), lhsi, rhsi, getType())
+            .fold(r, null);
+      return fold(r, null);
     }
 
     @Override
@@ -1107,9 +1158,19 @@ public abstract class Init {
 
     public abstract Init resolveListElementReference(Record r, RecordVal rval,
                                                      int elt);
-
     @Override
     public abstract TypedInit clone();
+
+    @Override
+    public RecTy getFieldType(String fieldName) {
+      if (getType() instanceof RecordRecTy) {
+        RecordRecTy recTy = (RecordRecTy) getType();
+        RecordVal field = recTy.getRecord().getValue(fieldName);
+        if (field != null)
+          return field.getType();
+      }
+      return null;
+    }
   }
 
   /**
@@ -1399,7 +1460,7 @@ public abstract class Init {
 
       Init op = opc.resolveReferences(r, rval);
       if (!args.equals(newArgs) || !op.equals(opc))
-        return new DagInit(op, "", newArgs, argNames);
+        return new DagInit(op, varName, newArgs, argNames);
       return this;
     }
 
@@ -1408,7 +1469,7 @@ public abstract class Init {
       os.print("(");
       opc.print(os);
       if (!varName.isEmpty())
-        os.printf(":%s", varName);
+        os.printf(":$%s", varName);
 
       if (!args.isEmpty()) {
         os.print(" ");
@@ -1796,7 +1857,7 @@ public abstract class Init {
 
     @Override
     public Init getOperand(int i) {
-      Util.assertion(i >= 0 && i < 1);
+      Util.assertion(i == 0);
       return lhs;
     }
 
@@ -1947,6 +2008,14 @@ public abstract class Init {
       UnOpInit uo = (UnOpInit) obj;
 
       return opc == uo.opc && lhs.equals(uo.lhs);
+    }
+
+    @Override
+    public Init resolveReferences(Record r, RecordVal rval) {
+      Init newLhs = lhs.resolveReferences(r, rval);
+      if (!Objects.equals(newLhs, lhs))
+        return new UnOpInit(getOpcode(), newLhs, getType()).fold(r, null);
+      return fold(r, null);
     }
   }
 }

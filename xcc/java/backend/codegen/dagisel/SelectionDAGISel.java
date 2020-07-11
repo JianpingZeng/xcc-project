@@ -2142,11 +2142,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         new EVT(MVT.Other), tmp, chain);
   }
 
-  public SDNode select_DECLARE(SDValue n) {
-    Util.shouldNotReachHere("This method should be overrided by concrete target!");
-    return null;
-  }
-
   public void cannotYetSelect(SDNode n) {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream os = new PrintStream(baos);

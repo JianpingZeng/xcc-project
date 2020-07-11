@@ -73,7 +73,7 @@ public final class PatternToMatch {
       TreePatternNode child = pat.getChild(i);
       if (!child.isLeaf() && child.getNumTypes() > 0) {
         TypeSetByHwMode vt = child.getExtType(0);
-        if (vt.getMachineValueType().simpleVT != MVT.Other)
+        if (!vt.getMachineValueType().equals(new MVT(MVT.Other)))
           size += getPatternSize(child, cgp);
       } else if (child.isLeaf()) {
         if (child.getLeafValue() instanceof Init.IntInit)

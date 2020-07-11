@@ -51,7 +51,7 @@ def SDT_Ins : SDTypeProfile<1, 4, [SDTCisInt<0>, SDTCisSameAs<0, 1>,
 
 // Call
 def MipsJmpLink : SDNode<"MipsISD.JmpLink",SDT_MipsJmpLink,
-                         [SDNPHasChain, SDNPOutFlag, SDNPOptInFlag,
+                         [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue,
                           SDNPVariadic]>;
 
 // Hi and Lo nodes are used to handle global addresses. Used on
@@ -73,29 +73,29 @@ def MipsThreadPointer: SDNode<"MipsISD.ThreadPointer", SDT_MipsThreadPointer>;
 
 // Return
 def MipsRet : SDNode<"MipsISD.Ret", SDT_MipsRet, [SDNPHasChain,
-                     SDNPOptInFlag]>;
+                     SDNPOptInGlue]>;
 
 // These are target-independent nodes, but have target-specific formats.
 def callseq_start : SDNode<"ISD.CALLSEQ_START", SDT_MipsCallSeqStart,
-                           [SDNPHasChain, SDNPOutFlag]>;
+                           [SDNPHasChain, SDNPOutGlue]>;
 def callseq_end   : SDNode<"ISD.CALLSEQ_END", SDT_MipsCallSeqEnd,
-                           [SDNPHasChain, SDNPOptInFlag, SDNPOutFlag]>;
+                           [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 
 // MAdd*/MSub* nodes
 def MipsMAdd      : SDNode<"MipsISD.MAdd", SDT_MipsMAddMSub,
-                           [SDNPOptInFlag, SDNPOutFlag]>;
+                           [SDNPOptInGlue, SDNPOutGlue]>;
 def MipsMAddu     : SDNode<"MipsISD.MAddu", SDT_MipsMAddMSub,
-                           [SDNPOptInFlag, SDNPOutFlag]>;
+                           [SDNPOptInGlue, SDNPOutGlue]>;
 def MipsMSub      : SDNode<"MipsISD.MSub", SDT_MipsMAddMSub,
-                           [SDNPOptInFlag, SDNPOutFlag]>;
+                           [SDNPOptInGlue, SDNPOutGlue]>;
 def MipsMSubu     : SDNode<"MipsISD.MSubu", SDT_MipsMAddMSub,
-                           [SDNPOptInFlag, SDNPOutFlag]>;
+                           [SDNPOptInGlue, SDNPOutGlue]>;
 
 // DivRem(u) nodes
 def MipsDivRem    : SDNode<"MipsISD.DivRem", SDT_MipsDivRem,
-                           [SDNPOutFlag]>;
+                           [SDNPOutGlue]>;
 def MipsDivRemU   : SDNode<"MipsISD.DivRemU", SDT_MipsDivRem,
-                           [SDNPOutFlag]>;
+                           [SDNPOutGlue]>;
 
 // Target constant nodes that are not part of any isel patterns and remain
 // unchanged can cause instructions with illegal operands to be emitted.
@@ -111,7 +111,7 @@ def MipsWrapperPIC    : SDNode<"MipsISD.WrapperPIC",  SDTIntUnaryOp>;
 
 // Pointer to dynamically allocated stack area.
 def MipsDynAlloc  : SDNode<"MipsISD.DynAlloc", SDT_MipsDynAlloc,
-                           [SDNPHasChain, SDNPInFlag]>;
+                           [SDNPHasChain, SDNPInGlue]>;
 
 def MipsSync : SDNode<"MipsISD.Sync", SDT_Sync, [SDNPHasChain]>;
 

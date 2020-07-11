@@ -14,7 +14,6 @@ import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
 import static backend.target.TargetOptions.OverrideStackAlignment;
 import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
-import static backend.target.x86.X86FloatingPointRegKill.createX86FPRegKillPass;
 import static backend.target.x86.X86FloatingPointStackifier.createX86FPStackifierPass;
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
@@ -23,14 +22,8 @@ import static backend.target.x86.X86Subtarget.PICStyle.*;
  * @version 0.4
  */
 public class X86TargetMachine extends LLVMTargetMachine {
-  /**
-   * A stack frame info class used for organizing data layout of frame when
-   * function calling.
-   */
-  private X86FrameLowering frameInfo;
   private X86Subtarget subtarget;
   private TargetData dataLayout;
-  private X86TargetLowering tli;
   private RelocModel defRelocModel;
 
   public X86TargetMachine(Target t, String triple,
@@ -40,9 +33,6 @@ public class X86TargetMachine extends LLVMTargetMachine {
     super(t, triple);
     subtarget = new X86Subtarget(this, triple, cpu, fs, OverrideStackAlignment.value, is64Bit);
     dataLayout = new TargetData(subtarget.getDataLayout());
-    frameInfo = new X86FrameLowering(this, subtarget);
-    tli = new X86TargetLowering(this);
-
     defRelocModel = getRelocationModel();
 
     if (getRelocationModel() == RelocModel.Default) {
@@ -120,35 +110,6 @@ public class X86TargetMachine extends LLVMTargetMachine {
     return dataLayout;
   }
 
-  /**
-   * You should directly call argetSubtarget::getInstrInfo().
-   * @return
-   */
-  @Deprecated
-  @Override
-  public TargetInstrInfo getInstrInfo() {
-    return subtarget.getInstrInfo();
-  }
-
-  /**
-   * You should directly call argetSubtarget::getRegisterInfo().
-   * @return
-   */
-  @Deprecated
-  @Override
-  public TargetRegisterInfo getRegisterInfo() {
-    return subtarget.getRegisterInfo();
-  }
-
-  public TargetFrameLowering getFrameLowering() {
-    return frameInfo;
-  }
-
-  @Override
-  public X86TargetLowering getTargetLowering() {
-    return tli;
-  }
-
   @Override
   public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level) {
     //pm.add(createX86FastISel(this, level));
@@ -159,10 +120,6 @@ public class X86TargetMachine extends LLVMTargetMachine {
       default:
         Util.shouldNotReachHere("Unknown Instruction Selector");
     }
-
-    // FIXME dead mi elim pass eliminates used instr. 2018/1/6
-    //pm.add(createDeadMachineInstructionElimPass());
-    pm.add(createX86FPRegKillPass());
     return false;
   }
 

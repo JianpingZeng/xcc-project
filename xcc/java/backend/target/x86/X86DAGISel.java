@@ -60,7 +60,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     }
 
     subtarget = tm.getSubtarget();
-    tli = tm.getTargetLowering();
+    tli = subtarget.getTargetLowering();
   }
 
   /**
@@ -1360,7 +1360,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean selectLEAAddr(SDNode root, SDValue n, SDValue[] comp) {
+  protected boolean selectLEAAddr(SDValue n, SDValue[] comp) {
     Util.assertion(comp.length == 4);
     X86ISelAddressMode am = new X86ISelAddressMode();
     SDValue backup = am.segment.clone();
@@ -1408,7 +1408,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     return true;
   }
 
-  protected boolean selectTLSADDRAddr(SDNode op, SDValue val, SDValue[] comp) {
+  protected boolean selectTLSADDRAddr(SDValue val, SDValue[] comp) {
     Util.assertion(comp.length == 4);
     Util.assertion(val.getOpcode() == ISD.TargetGlobalTLSAddress);
     GlobalAddressSDNode ga = (GlobalAddressSDNode) val.getNode();
@@ -1717,7 +1717,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
   }
 
   protected void emitSpecialCodeForMain(MachineBasicBlock mbb, MachineFrameInfo mfi) {
-    TargetInstrInfo tii = tm.getInstrInfo();
+    TargetInstrInfo tii = subtarget.getInstrInfo();
     if (subtarget.isTargetCygMing()) {
       buildMI(mbb, new DebugLoc(), tii.get(X86GenInstrNames.CALLpcrel32)).addExternalSymbol("__main");
     }
@@ -1774,24 +1774,6 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
   public X86TargetMachine getTargetMachine() {
     return (X86TargetMachine) super.getTargetMachine();
-  }
-
-  public SDNode select_DECLARE(SDValue n) {
-    SDValue chain = n.getOperand(0);
-    SDValue n1 = n.getOperand(1);
-    SDValue n2 = n.getOperand(2);
-    if (!(n1.getNode() instanceof FrameIndexSDNode)
-        || !(n2.getNode() instanceof GlobalAddressSDNode)) {
-      cannotYetSelect(n.getNode());
-    }
-    EVT pty = new EVT(tli.getPointerTy());
-    int fi = ((FrameIndexSDNode) n1.getNode()).getFrameIndex();
-    GlobalValue gv = ((GlobalAddressSDNode) n2.getNode()).getGlobalValue();
-    SDValue tmp1 = curDAG.getTargetFrameIndex(fi, pty);
-    SDValue tmp2 = curDAG.getTargetGlobalAddress(gv, pty, 0, 0);
-    return curDAG.selectNodeTo(n.getNode(),
-        X86GenInstrNames.DECLARE,
-        new EVT(MVT.Other), tmp1, tmp2, chain);
   }
 
   @Override

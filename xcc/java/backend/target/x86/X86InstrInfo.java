@@ -61,8 +61,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       desc("Re-materialize load from stub in PIC mode"), init(false),
       new OptionHiddenApplicator(Hidden));
 
-  private X86TargetMachine tm;
+  private X86Subtarget subtarget;
   private X86RegisterInfo registerInfo;
+  private X86TargetMachine tm;
 
   /**
    * RegOp2MemOpTable2Addr, RegOp2MemOpTable0, RegOp2MemOpTable1,
@@ -134,14 +135,14 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       {XOR64ri8, XOR64mi8}, {XOR64rr, XOR64mr}, {XOR8ri, XOR8mi},
       {XOR8rr, XOR8mr}};
 
-  public X86InstrInfo(X86TargetMachine tm) {
-    super(tm.getSubtarget().is64Bit() ?
+  public X86InstrInfo(X86Subtarget subtarget) {
+    super(subtarget.is64Bit() ?
             X86GenInstrNames.ADJCALLSTACKDOWN64 :
             X86GenInstrNames.ADJCALLSTACKDOWN32,
-        tm.getSubtarget().is64Bit() ?
+        subtarget.is64Bit() ?
             X86GenInstrNames.ADJCALLSTACKUP64 :
             X86GenInstrNames.ADJCALLSTACKUP32);
-    this.tm = tm;
+    this.subtarget = subtarget;
     TIntArrayList ambEntries = new TIntArrayList();
     regOp2MemOpTable2Addr = new TIntObjectHashMap<>();
     regOp2MemOpTable0 = new TIntObjectHashMap<>();
@@ -186,7 +187,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         {MOVAPDrr, MOVAPDmr, 0, 16}, {MOVAPSrr, MOVAPSmr, 0, 16},
         {MOVDQArr, MOVDQAmr, 0, 16}, {MOVPDI2DIrr, MOVPDI2DImr, 0, 0},
         {MOVPQIto64rr, MOVPQI2QImr, 0, 0},
-        {MOVPS2SSrr, MOVPS2SSmr, 0, 0}, {MOVSDrr, MOVSDmr, 0, 0},
+        {MOVSDrr, MOVSDmr, 0, 0},
         {MOVSDto64rr, MOVSDto64mr, 0, 0},
         {MOVSS2DIrr, MOVSS2DImr, 0, 0}, {MOVSSrr, MOVSSmr, 0, 0},
         {MOVUPDrr, MOVUPDmr, 0, 0}, {MOVUPSrr, MOVUPSmr, 0, 0},
@@ -241,18 +242,12 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         {Int_CVTPD2PSrr, Int_CVTPD2PSrm, 16},
         {Int_CVTPS2DQrr, Int_CVTPS2DQrm, 16},
         {Int_CVTPS2PDrr, Int_CVTPS2PDrm, 0},
-        {Int_CVTSD2SI64rr, Int_CVTSD2SI64rm, 0},
-        {Int_CVTSD2SIrr, Int_CVTSD2SIrm, 0},
         {Int_CVTSD2SSrr, Int_CVTSD2SSrm, 0},
         {Int_CVTSI2SD64rr, Int_CVTSI2SD64rm, 0},
         {Int_CVTSI2SDrr, Int_CVTSI2SDrm, 0},
         {Int_CVTSI2SS64rr, Int_CVTSI2SS64rm, 0},
         {Int_CVTSI2SSrr, Int_CVTSI2SSrm, 0},
         {Int_CVTSS2SDrr, Int_CVTSS2SDrm, 0},
-        {Int_CVTSS2SI64rr, Int_CVTSS2SI64rm, 0},
-        {Int_CVTSS2SIrr, Int_CVTSS2SIrm, 0},
-        {Int_CVTTPD2DQrr, Int_CVTTPD2DQrm, 16},
-        {Int_CVTTPS2DQrr, Int_CVTTPS2DQrm, 16},
         {Int_CVTTSD2SI64rr, Int_CVTTSD2SI64rm, 0},
         {Int_CVTTSD2SIrr, Int_CVTTSD2SIrm, 0},
         {Int_CVTTSS2SI64rr, Int_CVTTSS2SI64rm, 0},
@@ -264,9 +259,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         {MOV8rr, MOV8rm, 0}, {MOVAPDrr, MOVAPDrm, 16},
         {MOVAPSrr, MOVAPSrm, 16}, {MOVDDUPrr, MOVDDUPrm, 0},
         {MOVDI2PDIrr, MOVDI2PDIrm, 0}, {MOVDI2SSrr, MOVDI2SSrm, 0},
-        {MOVDQArr, MOVDQArm, 16}, {MOVSD2PDrr, MOVSD2PDrm, 0},
+        {MOVDQArr, MOVDQArm, 16},
         {MOVSDrr, MOVSDrm, 0}, {MOVSHDUPrr, MOVSHDUPrm, 16},
-        {MOVSLDUPrr, MOVSLDUPrm, 16}, {MOVSS2PSrr, MOVSS2PSrm, 0},
+        {MOVSLDUPrr, MOVSLDUPrm, 16},
         {MOVSSrr, MOVSSrm, 0}, {MOVSX16rr8, MOVSX16rm8, 0},
         {MOVSX32rr16, MOVSX32rm16, 0}, {MOVSX32rr8, MOVSX32rm8, 0},
         {MOVSX64rr16, MOVSX64rm16, 0}, {MOVSX64rr32, MOVSX64rm32, 0},
@@ -311,13 +306,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     int[][] opTbl2 = {{ADC32rr, ADC32rm, 0}, {ADC64rr, ADC64rm, 0},
         {ADD16rr, ADD16rm, 0}, {ADD32rr, ADD32rm, 0},
         {ADD64rr, ADD64rm, 0}, {ADD8rr, ADD8rm, 0},
-        {ADDPDrr, ADDPDrm, 16}, {ADDPSrr, ADDPSrm, 16},
-        {ADDSDrr, ADDSDrm, 0}, {ADDSSrr, ADDSSrm, 0},
         {ADDSUBPDrr, ADDSUBPDrm, 16}, {ADDSUBPSrr, ADDSUBPSrm, 16},
         {AND16rr, AND16rm, 0}, {AND32rr, AND32rm, 0},
         {AND64rr, AND64rm, 0}, {AND8rr, AND8rm, 0},
-        {ANDNPDrr, ANDNPDrm, 16}, {ANDNPSrr, ANDNPSrm, 16},
-        {ANDPDrr, ANDPDrm, 16}, {ANDPSrr, ANDPSrm, 16},
         {CMOVA16rr, CMOVA16rm, 0}, {CMOVA32rr, CMOVA32rm, 0},
         {CMOVA64rr, CMOVA64rm, 0}, {CMOVAE16rr, CMOVAE16rm, 0},
         {CMOVAE32rr, CMOVAE32rm, 0}, {CMOVAE64rr, CMOVAE64rm, 0},
@@ -344,28 +335,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         {CMOVS32rr, CMOVS32rm, 0}, {CMOVS64rr, CMOVS64rm, 0},
         {CMPPDrri, CMPPDrmi, 16}, {CMPPSrri, CMPPSrmi, 16},
         {CMPSDrr, CMPSDrm, 0}, {CMPSSrr, CMPSSrm, 0},
-        {DIVPDrr, DIVPDrm, 16}, {DIVPSrr, DIVPSrm, 16},
-        {DIVSDrr, DIVSDrm, 0}, {DIVSSrr, DIVSSrm, 0},
-        {FsANDNPDrr, FsANDNPDrm, 16}, {FsANDNPSrr, FsANDNPSrm, 16},
-        {FsANDPDrr, FsANDPDrm, 16}, {FsANDPSrr, FsANDPSrm, 16},
-        {FsORPDrr, FsORPDrm, 16}, {FsORPSrr, FsORPSrm, 16},
-        {FsXORPDrr, FsXORPDrm, 16}, {FsXORPSrr, FsXORPSrm, 16},
         {HADDPDrr, HADDPDrm, 16}, {HADDPSrr, HADDPSrm, 16},
         {HSUBPDrr, HSUBPDrm, 16}, {HSUBPSrr, HSUBPSrm, 16},
         {IMUL16rr, IMUL16rm, 0}, {IMUL32rr, IMUL32rm, 0},
-        {IMUL64rr, IMUL64rm, 0}, {MAXPDrr, MAXPDrm, 16},
-        {MAXPDrr_Int, MAXPDrm_Int, 16}, {MAXPSrr, MAXPSrm, 16},
-        {MAXPSrr_Int, MAXPSrm_Int, 16}, {MAXSDrr, MAXSDrm, 0},
-        {MAXSDrr_Int, MAXSDrm_Int, 0}, {MAXSSrr, MAXSSrm, 0},
-        {MAXSSrr_Int, MAXSSrm_Int, 0}, {MINPDrr, MINPDrm, 16},
-        {MINPDrr_Int, MINPDrm_Int, 16}, {MINPSrr, MINPSrm, 16},
-        {MINPSrr_Int, MINPSrm_Int, 16}, {MINSDrr, MINSDrm, 0},
-        {MINSDrr_Int, MINSDrm_Int, 0}, {MINSSrr, MINSSrm, 0},
-        {MINSSrr_Int, MINSSrm_Int, 0}, {MULPDrr, MULPDrm, 16},
-        {MULPSrr, MULPSrm, 16}, {MULSDrr, MULSDrm, 0},
-        {MULSSrr, MULSSrm, 0}, {OR16rr, OR16rm, 0},
+        {IMUL64rr, IMUL64rm, 0}, {OR16rr, OR16rm, 0},
         {OR32rr, OR32rm, 0}, {OR64rr, OR64rm, 0}, {OR8rr, OR8rm, 0},
-        {ORPDrr, ORPDrm, 16}, {ORPSrr, ORPSrm, 16},
         {PACKSSDWrr, PACKSSDWrm, 16}, {PACKSSWBrr, PACKSSWBrm, 16},
         {PACKUSWBrr, PACKUSWBrm, 16}, {PADDBrr, PADDBrm, 16},
         {PADDDrr, PADDDrm, 16}, {PADDQrr, PADDQrm, 16},
@@ -400,14 +374,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         {SHUFPDrri, SHUFPDrmi, 16}, {SHUFPSrri, SHUFPSrmi, 16},
         {SUB16rr, SUB16rm, 0}, {SUB32rr, SUB32rm, 0},
         {SUB64rr, SUB64rm, 0}, {SUB8rr, SUB8rm, 0},
-        {SUBPDrr, SUBPDrm, 16}, {SUBPSrr, SUBPSrm, 16},
-        {SUBSDrr, SUBSDrm, 0}, {SUBSSrr, SUBSSrm, 0},
         // FIXME: TEST*rr . swapped operand of TEST*mr.
         {UNPCKHPDrr, UNPCKHPDrm, 16}, {UNPCKHPSrr, UNPCKHPSrm, 16},
         {UNPCKLPDrr, UNPCKLPDrm, 16}, {UNPCKLPSrr, UNPCKLPSrm, 16},
         {XOR16rr, XOR16rm, 0}, {XOR32rr, XOR32rm, 0},
-        {XOR64rr, XOR64rm, 0}, {XOR8rr, XOR8rm, 0},
-        {XORPDrr, XORPDrm, 16}, {XORPSrr, XORPSrm, 16}};
+        {XOR64rr, XOR64rm, 0}, {XOR8rr, XOR8rm, 0}};
 
     for (int i = 0, e = opTbl2.length; i < e; i++) {
       int regOp = opTbl2[i][0];
@@ -428,7 +399,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
   private X86RegisterInfo getRegisterInfo() {
     if (registerInfo == null)
-      registerInfo = tm.getSubtarget().getRegisterInfo();
+      registerInfo = subtarget.getRegisterInfo();
     return registerInfo;
   }
 
@@ -448,24 +419,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       case MOVSSrr:
       case MOVSDrr:
 
-        // FP Stack register class copies
-      case MOV_Fp3232:
-      case MOV_Fp6464:
-      case MOV_Fp8080:
-      case MOV_Fp3264:
-      case MOV_Fp3280:
-      case MOV_Fp6432:
-      case MOV_Fp8032:
-
       case FsMOVAPSrr:
       case FsMOVAPDrr:
       case MOVAPSrr:
       case MOVAPDrr:
       case MOVDQArr:
-      case MOVSS2PSrr:
-      case MOVSD2PDrr:
-      case MOVPS2SSrr:
-      case MOVPD2SDrr:
       case MMX_MOVQ64rr:
         Util.assertion(mi.getNumOperands() >= 2 && mi.getOperand(0).isRegister() && mi.getOperand(1)
             .isRegister(), "invalid register-register move instruction");
@@ -863,7 +821,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     switch (miOpc) {
       case SHUFPSrri: {
         Util.assertion(mi.getNumOperands() == 4, "Undefined shufps instruction!");
-        if (!tm.getSubtarget().hasSSE2())
+        if (!subtarget.hasSSE2())
           return null;
 
         int b = mi.getOperand(1).getReg();
@@ -898,7 +856,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         long shAmt = mi.getOperand(2).getImm();
         if (shAmt == 0 || shAmt >= 4) return null;
 
-        int opc = tm.getSubtarget().is64Bit() ? LEA64_32r : LEA32r;
+        int opc = subtarget.is64Bit() ? LEA64_32r : LEA32r;
         newMI = buildMI(get(opc))
             .addReg(dest, Define | getDeadRegState(isDead))
             .addReg(0)
@@ -918,7 +876,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         if (disableLEA16) {
           // If 16-bit LEA is disabled, use 32-bit LEA via subregisters.
           MachineRegisterInfo regInfo = mbb.getParent().getMachineRegisterInfo();
-          int opc = tm.getSubtarget().is64Bit() ? LEA64_32r : LEA32r;
+          int opc = subtarget.is64Bit() ? LEA64_32r : LEA32r;
           int leaInReg = regInfo.createVirtualRegister(GR32RegisterClass);
           int leaOutReg = regInfo.createVirtualRegister(GR32RegisterClass);
 
@@ -968,7 +926,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         if (hasLiveCondCodeDef(mi))
           return null;
 
-        boolean is64Bit = tm.getSubtarget().in64BitMode;
+        boolean is64Bit = subtarget.in64BitMode;
         switch (miOpc) {
           case INC64r:
           case INC32r:
@@ -1378,37 +1336,37 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     switch (brOpc) {
       default:
         return COND_INVALID;
-      case JE:
+      case JE_4:
         return COND_E;
-      case JNE:
+      case JNE_4:
         return CondCode.COND_NE;
-      case JL:
+      case JL_4:
         return CondCode.COND_L;
-      case JLE:
+      case JLE_4:
         return CondCode.COND_LE;
-      case JG:
+      case JG_4:
         return CondCode.COND_G;
-      case JGE:
+      case JGE_4:
         return CondCode.COND_GE;
-      case JB:
+      case JB_4:
         return CondCode.COND_B;
-      case JBE:
+      case JBE_4:
         return CondCode.COND_BE;
-      case JA:
+      case JA_4:
         return CondCode.COND_A;
-      case JAE:
+      case JAE_4:
         return CondCode.COND_AE;
-      case JS:
+      case JS_4:
         return CondCode.COND_S;
-      case JNS:
+      case JNS_4:
         return CondCode.COND_NS;
-      case JP:
+      case JP_4:
         return CondCode.COND_P;
-      case JNP:
+      case JNP_4:
         return COND_NP;
-      case JO:
+      case JO_4:
         return CondCode.COND_O;
-      case JNO:
+      case JNO_4:
         return CondCode.COND_NO;
     }
   }
@@ -1418,37 +1376,37 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       default:
         Util.shouldNotReachHere("Illegal condition code!");
       case COND_E:
-        return JE;
+        return JE_4;
       case CondCode.COND_NE:
-        return JNE;
+        return JNE_4;
       case CondCode.COND_L:
-        return JL;
+        return JL_4;
       case CondCode.COND_LE:
-        return JLE;
+        return JLE_4;
       case CondCode.COND_G:
-        return JG;
+        return JG_4;
       case CondCode.COND_GE:
-        return JGE;
+        return JGE_4;
       case CondCode.COND_B:
-        return JB;
+        return JB_4;
       case CondCode.COND_BE:
-        return JBE;
+        return JBE_4;
       case CondCode.COND_A:
-        return JA;
+        return JA_4;
       case CondCode.COND_AE:
-        return JAE;
+        return JAE_4;
       case CondCode.COND_S:
-        return JS;
+        return JS_4;
       case CondCode.COND_NS:
-        return JNS;
+        return JNS_4;
       case CondCode.COND_P:
-        return JP;
+        return JP_4;
       case COND_NP:
-        return JNP;
+        return JNP_4;
       case CondCode.COND_O:
-        return JO;
+        return JO_4;
       case CondCode.COND_NO:
-        return JNO;
+        return JNO_4;
     }
   }
 
@@ -1491,14 +1449,6 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     }
   }
 
-  public static boolean isBrAnalysisUnpredicatedTerminator(
-      MachineInstr mi,
-      X86InstrInfo ii) {
-    if (mi.getOpcode() == FP_REG_KILL)
-      return false;
-    return ii.isUnpredicatedTerminator(mi);
-  }
-
   public boolean analyzeBranch(
       MachineBasicBlock mbb,
       OutRef<MachineBasicBlock> tbb,
@@ -1513,14 +1463,14 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       MachineInstr mi = mbb.getInstAt(i);
       // Working from the bottom, when we see a non-terminator
       // instruction, we're done.
-      if (!isBrAnalysisUnpredicatedTerminator(mi, this))
+      if (!isUnpredicatedTerminator(mi))
         break;
       // A terminator that isn't a branch can't easily be handled
       // by this analysis.
       if (!mi.getDesc().isBranch())
         return true;
       // Handle unconditional branches.
-      if (mi.getOpcode() == JMP) {
+      if (mi.getOpcode() == JMP_4) {
         if (!allowModify) {
           tbb.set(mi.getOperand(0).getMBB());
           continue;
@@ -1597,7 +1547,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
     while (i != 0) {
       --i;
-      if (mbb.getInstAt(i).getOpcode() != JMP &&
+      if (mbb.getInstAt(i).getOpcode() != JMP_4 &&
           getCondFromBranchOpc(mbb.getInstAt(i).getOpcode()) == COND_INVALID)
         break;
 
@@ -1626,7 +1576,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       // Unconditional branch?
       Util.assertion(fbb == null, "Unconditional branch with multiple successors!");
 
-      buildMI(mbb, dl, get(JMP)).addMBB(tbb);
+      buildMI(mbb, dl, get(JMP_4)).addMBB(tbb);
       return 1;
     }
 
@@ -1636,16 +1586,16 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     switch ((int) cc) {
       case COND_NP_OR_E:
         // Synthesize NP_OR_E with two branches.
-        buildMI(mbb, dl, get(JNP)).addMBB(tbb);
+        buildMI(mbb, dl, get(JNP_4)).addMBB(tbb);
         ++count;
-        buildMI(mbb, dl, get(JE)).addMBB(tbb);
+        buildMI(mbb, dl, get(JE_4)).addMBB(tbb);
         ++count;
         break;
       case COND_NE_OR_P:
         // Synthesize NE_OR_P with two branches.
-        buildMI(mbb, dl, get(JNE)).addMBB(tbb);
+        buildMI(mbb, dl, get(JNE_4)).addMBB(tbb);
         ++count;
-        buildMI(mbb, dl, get(JP)).addMBB(tbb);
+        buildMI(mbb, dl, get(JP_4)).addMBB(tbb);
         ++count;
         break;
       default: {
@@ -1656,7 +1606,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     }
     if (fbb != null) {
       // Two-way Conditional branch. Insert the second branch.
-      buildMI(mbb, dl, get(JMP)).addMBB(fbb);
+      buildMI(mbb, dl, get(JMP_4)).addMBB(fbb);
       ++count;
     }
     return count;
@@ -1667,178 +1617,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     return GR8_ABCD_HRegisterClass.contains(Reg);
   }
 
-  public boolean copyPhysReg(MachineBasicBlock mbb,
-                             int index,
-                             int dstReg,
-                             int srcReg,
-                             MCRegisterClass destRC,
-                             MCRegisterClass srcRC) {
-    Util.assertion(TargetRegisterInfo.isPhysicalRegister(srcReg) &&
-        TargetRegisterInfo.isPhysicalRegister(dstReg), "copy virtual register should be coped with COPY!");
-
-    DebugLoc dl = DebugLoc.getUnknownLoc();
-    if (index != mbb.size())
-      dl = mbb.getInstAt(index).getDebugLoc();
-
-    // Determine if DstRC and srcRC have a common superclass in common.
-    MCRegisterClass commonRC = destRC;
-    if (destRC.equals(srcRC)) {
-      /* Source and destination have the same register class. */
-    } else if (commonRC.hasSuperClass(srcRC))
-      commonRC = srcRC;
-    else if (!destRC.hasSubClass(srcRC)) {
-      // Neither of GR64_NOREX or GR64_NOSP is a superclass of the other,
-      // but we want to copy then as GR64. Similarly, for GR32_NOREX and
-      // GR32_NOSP, copy as GR32.
-      if (srcRC.hasSuperClass(GR64RegisterClass) && destRC
-          .hasSuperClass(GR64RegisterClass))
-        commonRC = GR64RegisterClass;
-      else if (srcRC.hasSuperClass(GR32RegisterClass) && destRC
-          .hasSuperClass(GR32RegisterClass))
-        commonRC = GR32RegisterClass;
-      else
-        commonRC = null;
-    }
-
-    if (commonRC != null) {
-      int opc;
-      if (commonRC == GR64RegisterClass
-          || commonRC == GR64_NOSPRegisterClass) {
-        opc = MOV64rr;
-      } else if (commonRC == GR32RegisterClass
-          || commonRC == GR32_NOSPRegisterClass) {
-        opc = MOV32rr;
-      } else if (commonRC == GR16RegisterClass) {
-        opc = MOV16rr;
-      } else if (commonRC == GR8RegisterClass) {
-        // Copying to or from a physical H register on x86-64 requires a NOREX
-        // move.  Otherwise use a normal move.
-        if ((isHReg(dstReg) || isHReg(srcReg)) && ((X86Subtarget) tm
-            .getSubtarget()).is64Bit())
-          opc = MOV8rr_NOREX;
-        else
-          opc = MOV8rr;
-      } else if (commonRC == GR64_ABCDRegisterClass) {
-        opc = MOV64rr;
-      } else if (commonRC == GR32_ABCDRegisterClass) {
-        opc = MOV32rr;
-      } else if (commonRC == GR16_ABCDRegisterClass) {
-        opc = MOV16rr;
-      } else if (commonRC == GR8_ABCD_LRegisterClass) {
-        opc = MOV8rr;
-      } else if (commonRC == GR8_ABCD_HRegisterClass) {
-        if (tm.getSubtarget().is64Bit())
-          opc = MOV8rr_NOREX;
-        else
-          opc = MOV8rr;
-      } else if (commonRC == GR64_NOREXRegisterClass
-          || commonRC == GR64_NOREX_NOSPRegisterClass) {
-        opc = MOV64rr;
-      } else if (commonRC == GR32_NOREXRegisterClass) {
-        opc = MOV32rr;
-      } else if (commonRC == GR16_NOREXRegisterClass) {
-        opc = MOV16rr;
-      } else if (commonRC == GR8_NOREXRegisterClass) {
-        opc = MOV8rr;
-      } else if (commonRC == RFP32RegisterClass) {
-        opc = MOV_Fp3232;
-      } else if (commonRC == RFP64RegisterClass
-          || commonRC == RSTRegisterClass) {
-        opc = MOV_Fp6464;
-      } else if (commonRC == RFP80RegisterClass) {
-        opc = MOV_Fp8080;
-      } else if (commonRC == FR32RegisterClass) {
-        opc = FsMOVAPSrr;
-      } else if (commonRC == FR64RegisterClass) {
-        opc = FsMOVAPDrr;
-      } else if (commonRC == VR128RegisterClass) {
-        opc = MOVAPSrr;
-      } else if (commonRC == VR64RegisterClass) {
-        opc = MMX_MOVQ64rr;
-      } else {
-        return false;
-      }
-      buildMI(mbb, index, dl, get(opc), dstReg).addReg(srcReg);
-      return true;
-    }
-
-    // Moving EFLAGS to / from another register requires a push and a pop.
-    if (srcRC == CCRRegisterClass) {
-      if (srcReg != EFLAGS)
-        return false;
-      if (destRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass) {
-        buildMI(mbb, index, dl, get(PUSHFQ));
-        buildMI(mbb, index, dl, get(POP64r), dstReg);
-        return true;
-      } else if (destRC == GR32RegisterClass
-          || destRC == GR32_NOSPRegisterClass) {
-        buildMI(mbb, index, dl, get(PUSHFD));
-        buildMI(mbb, index, dl, get(POP32r), dstReg);
-        return true;
-      }
-    } else if (destRC == CCRRegisterClass) {
-      if (dstReg != EFLAGS)
-        return false;
-      if (srcRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass) {
-        buildMI(mbb, index, dl, get(PUSH64r)).addReg(srcReg);
-        buildMI(mbb, index, dl, get(POPFQ));
-        return true;
-      } else if (srcRC == GR32RegisterClass
-          || destRC == GR32_NOSPRegisterClass) {
-        buildMI(mbb, index, dl, get(PUSH32r)).addReg(srcReg);
-        buildMI(mbb, index, dl, get(POPFD));
-        return true;
-      }
-    }
-
-    // Moving from ST(0) turns into FpGET_ST0_32 etc.
-    if (srcRC == RSTRegisterClass) {
-      // Copying from ST(0)/ST(1).
-      if (srcReg != ST0 && srcReg != ST1)
-        // Can only copy from ST(0)/ST(1) right now
-        return false;
-      boolean isST0 = srcReg == ST0;
-      int opc;
-      if (destRC == RFP32RegisterClass)
-        opc = isST0 ? FpGET_ST0_32 : FpGET_ST1_32;
-      else if (destRC == RFP64RegisterClass)
-        opc = isST0 ? FpGET_ST0_64 : FpGET_ST1_64;
-      else {
-        if (destRC != RFP80RegisterClass)
-          return false;
-        opc = isST0 ? FpGET_ST0_80 : FpGET_ST1_80;
-      }
-      buildMI(mbb, index, dl, get(opc), dstReg);
-      return true;
-    }
-
-    // Moving to ST(0) turns into FpSET_ST0_32 etc.
-    if (destRC == RSTRegisterClass) {
-      // Copying to ST(0) / ST(1).
-      if (dstReg != ST0 && dstReg != ST1)
-        // Can only copy to TOS right now
-        return false;
-      boolean isST0 = dstReg == ST0;
-      int opc;
-      if (srcRC == RFP32RegisterClass)
-        opc = isST0 ? FpSET_ST0_32 : FpSET_ST1_32;
-      else if (srcRC == RFP64RegisterClass)
-        opc = isST0 ? FpSET_ST0_64 : FpSET_ST1_64;
-      else {
-        if (srcRC != RFP80RegisterClass)
-          return false;
-        opc = isST0 ? FpSET_ST0_80 : FpSET_ST1_80;
-      }
-      buildMI(mbb, index, dl, get(opc)).addReg(srcReg);
-      return true;
-    }
-
-    // Not yet supported!
-    return false;
-  }
-
-  private static int getStoreRegOpcode(int SrcReg, MCRegisterClass rc,
-                                       boolean isStackAligned, X86TargetMachine tm) {
+  private static int getStoreRegOpcode(int srcReg, MCRegisterClass rc,
+                                       boolean isStackAligned, X86Subtarget subtarget) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
       opc = MOV64mr;
@@ -1849,7 +1629,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     } else if (rc == GR8RegisterClass) {
       // Copying to or from a physical H register on x86-64 requires a NOREX
       // move.  Otherwise use a normal move.
-      if (isHReg(SrcReg) && ((X86Subtarget) tm.getSubtarget()).is64Bit())
+      if (isHReg(srcReg) && subtarget.is64Bit())
         opc = MOV8mr_NOREX;
       else
         opc = MOV8mr;
@@ -1862,7 +1642,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     } else if (rc == GR8_ABCD_LRegisterClass) {
       opc = MOV8mr;
     } else if (rc == GR8_ABCD_HRegisterClass) {
-      if (tm.getSubtarget().is64Bit())
+      if (subtarget.is64Bit())
         opc = MOV8mr_NOREX;
       else
         opc = MOV8mr;
@@ -1910,7 +1690,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(MF);
-    int opc = getStoreRegOpcode(srcReg, rc, isAligned, tm);
+    int opc = getStoreRegOpcode(srcReg, rc, isAligned, subtarget);
     addFrameReference(buildMI(mbb, index, dl, get(opc)), frameIndex)
         .addReg(srcReg, getKillRegState(isKill));
   }
@@ -1924,7 +1704,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
-    int opc = getStoreRegOpcode(SrcReg, rc, isAligned, tm);
+    int opc = getStoreRegOpcode(SrcReg, rc, isAligned, subtarget);
     //DebugLoc DL = DebugLoc::getUnknownLoc();
     MachineInstrBuilder mib = buildMI(get(opc));
     for (int i = 0, e = addr.size(); i != e; ++i)
@@ -1936,7 +1716,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   static int getLoadRegOpcode(int destReg,
                               MCRegisterClass rc,
                               boolean isStackAligned,
-                              TargetMachine tm) {
+                              X86Subtarget subtarget) {
     int opc = 0;
     if (rc == GR64RegisterClass || rc == GR64_NOSPRegisterClass) {
       opc = MOV64rm;
@@ -1947,7 +1727,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     } else if (rc == GR8RegisterClass) {
       // Copying to or from a physical H register on x86-64 requires a NOREX
       // move.  Otherwise use a normal move.
-      if (isHReg(destReg) && tm.getSubtarget().is64Bit())
+      if (isHReg(destReg) && subtarget.is64Bit())
         opc = MOV8rm_NOREX;
       else
         opc = MOV8rm;
@@ -1960,7 +1740,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     } else if (rc == GR8_ABCD_LRegisterClass) {
       opc = MOV8rm;
     } else if (rc == GR8_ABCD_HRegisterClass) {
-      if (tm.getSubtarget().is64Bit())
+      if (subtarget.is64Bit())
         opc = MOV8rm_NOREX;
       else
         opc = MOV8rm;
@@ -2004,7 +1784,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
-    int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
+    int opc = getLoadRegOpcode(destReg, rc, isAligned, subtarget);
     DebugLoc dl = DebugLoc.getUnknownLoc();
     if (index != mbb.size())
       dl = mbb.getInstAt(index).getDebugLoc();
@@ -2019,7 +1799,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     boolean isAligned =
         (getRegisterInfo().getStackAlignment() >= 16) || getRegisterInfo()
             .needsStackRealignment(mf);
-    int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
+    int opc = getLoadRegOpcode(destReg, rc, isAligned, subtarget);
     MachineInstrBuilder mib = buildMI(get(opc), DebugLoc.getUnknownLoc(), destReg);
     for (int i = 0, e = addr.size(); i != e; ++i)
       mib.addOperand(addr.get(i));
@@ -2036,13 +1816,13 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     if (index != mbb.size())
       dl = mbb.getInstAt(index).getDebugLoc();
 
-    boolean is64Bit = tm.getSubtarget().is64Bit();
-    boolean isWin64 = tm.getSubtarget().isTargetWin64();
+    boolean is64Bit = subtarget.is64Bit();
+    boolean isWin64 = subtarget.isTargetWin64();
     int slotSize = is64Bit ? 8 : 4;
 
     MachineFunction mf = mbb.getParent();
     int fpReg = getRegisterInfo().getFrameRegister(mf);
-    X86MachineFunctionInfo X86FI = (X86MachineFunctionInfo) mf.getInfo();
+    X86MachineFunctionInfo X86FI = (X86MachineFunctionInfo) mf.getFunctionInfo();
     int calleeFrameSize = 0;
 
     int opc = is64Bit ? PUSH64r : PUSH32r;
@@ -2080,8 +1860,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
     MachineFunction MF = mbb.getParent();
     int FPReg = getRegisterInfo().getFrameRegister(MF);
-    boolean is64Bit = ((X86Subtarget) tm.getSubtarget()).is64Bit();
-    boolean isWin64 = ((X86Subtarget) tm.getSubtarget()).isTargetWin64();
+    boolean is64Bit = ((X86Subtarget) subtarget).is64Bit();
+    boolean isWin64 = ((X86Subtarget) subtarget).isTargetWin64();
     int opc = is64Bit ? POP64r : POP32r;
     for (int i = 0, e = csi.size(); i != e; ++i) {
       int Reg = csi.get(i).getReg();
@@ -2318,7 +2098,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       // x86-32 PIC requires a PIC base register for ant pools.
       int PICBase = 0;
       if (tm.getRelocationModel() == PIC_) {
-        if (tm.getSubtarget().is64Bit())
+        if (subtarget.is64Bit())
           PICBase = RIP;
         else
           // FIXME: PICBase = tm.getInstrInfo().getGlobalBaseReg(MF);
@@ -2575,9 +2355,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           getRegisterInfo().needsStackRealignment(mf);
       SDValue[] ops = new SDValue[addrOps.size()];
       addrOps.toArray(ops);
-      load = dag.getTargetNode(getLoadRegOpcode(0, rc, isAligned,
-          tm), vt, new EVT(MVT.Other), ops);
-
+      load = dag.getTargetNode(getLoadRegOpcode(0, rc, isAligned, subtarget),
+              vt, new EVT(MVT.Other), ops);
       newNodes.add(load);
     }
 
@@ -2609,8 +2388,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       boolean isAligned = getRegisterInfo().getStackAlignment() >= 16 ||
           getRegisterInfo().needsStackRealignment(mf);
       SDNode store = dag.getTargetNode(getStoreRegOpcode(0, destRC,
-          isAligned, tm), new EVT(MVT.Other), addrOps);
-
+          isAligned, subtarget), new EVT(MVT.Other), addrOps);
       newNodes.add(store);
     }
 
@@ -2647,7 +2425,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       case TAILJMPd:
       case TAILJMPr:
       case TAILJMPm:
-      case JMP:     // Uncond branch.
+      case JMP_4:     // Uncond branch.
       case JMP32r:  // Indirect branch.
       case JMP64r:  // Indirect branch (64-bit).
       case JMP32m:  // Indirect branch through mem.
@@ -2676,7 +2454,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   public static int sizeOfImm(MCInstrDesc desc) {
-    switch (desc.tSFlags & X86II.ImmMask) {
+    switch ((int) (desc.tSFlags & X86II.ImmMask)) {
       case X86II.Imm8:
         return 1;
       case X86II.Imm16:
@@ -2777,7 +2555,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
         }
       }
 
-      switch (desc.tSFlags & X86II.FormMask) {
+      switch ((int) (desc.tSFlags & X86II.FormMask)) {
         case X86II.MRMInitReg:
           if (isX86_64ExtendedReg(mi.getOperand(0)))
             REX |= (1 << 0) | (1 << 2);
@@ -3007,7 +2785,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       ++finalSize;
 
     // Emit segment override opcode prefix as needed.
-    switch (desc.tSFlags & X86II.SegOvrMask) {
+    switch ((int) (desc.tSFlags & X86II.SegOvrMask)) {
       case X86II.FS:
       case X86II.GS:
         ++finalSize;
@@ -3031,7 +2809,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       ++finalSize;
 
     boolean Need0FPrefix = false;
-    switch (desc.tSFlags & X86II.Op0Mask) {
+    switch ((int) (desc.tSFlags & X86II.Op0Mask)) {
       case X86II.TB:  // Two-byte opcode prefix
       case X86II.T8:  // 0F 38
       case X86II.TA:  // 0F 3A
@@ -3078,7 +2856,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
     if (Need0FPrefix)
       ++finalSize;
 
-    switch (desc.tSFlags & X86II.Op0Mask) {
+    switch ((int) (desc.tSFlags & X86II.Op0Mask)) {
       case X86II.T8:  // 0F 38
         ++finalSize;
         break;
@@ -3100,7 +2878,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       // Skip the last source operand that is tied_to the dest reg. e.g. LXADD32
       --numOps;
 
-    switch (desc.tSFlags & X86II.FormMask) {
+    switch ((int) (desc.tSFlags & X86II.FormMask)) {
       default:
         Util.shouldNotReachHere(
             "Undefined FormMask value in X86 MachineCodeEmitter!");
@@ -3111,16 +2889,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           default:
             break;
           case INLINEASM: {
-            Util.assertion(false, "Inline asm is not supported yet!");
+            Util.assertion("Inline asm is not supported yet!");
             break;
           }
-          case DBG_LABEL:
           case EH_LABEL:
-            break;
           case IMPLICIT_DEF:
-          case DECLARE:
-          case DWARF_LOC:
-          case FP_REG_KILL:
             break;
           case MOVPC32r: {
             // This emits the "call" portion of this pseudo instruction.
@@ -3326,7 +3099,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   public int getInstSizeInBytes(MachineInstr mi) {
     MCInstrDesc desc = mi.getDesc();
     boolean IsPIC = tm.getRelocationModel() == PIC_;
-    boolean Is64BitMode = tm.getSubtarget().is64Bit();
+    boolean Is64BitMode = subtarget.is64Bit();
     int Size = getInstSizeWithDesc(mi, desc, IsPIC, Is64BitMode);
     if (desc.getOpcode() == MOVPC32r)
       Size += getInstSizeWithDesc(mi, get(POP32r), IsPIC, Is64BitMode);
@@ -3342,8 +3115,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
    * @return
    */
   public int getGlobalBaseReg(MachineFunction mf) {
-    Util.assertion(!tm.getSubtarget().is64Bit(), "X86-64 PIC uses RIP relative addressing");
-    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getInfo();
+    Util.assertion(!subtarget.is64Bit(), "X86-64 PIC uses RIP relative addressing");
+    X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getFunctionInfo();
     int globalBaseReg = x86FI.getGlobalBaseReg();
     if (globalBaseReg != 0)
       return globalBaseReg;
@@ -3364,7 +3137,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
 
     // If we're using vanilla 'GOT' PIC style, we should use relative addressing
     // not to pc, but to _GLOBAL_OFFSET_TABLE_ external.
-    if (tm.getSubtarget().isPICStyleGOT()) {
+    if (subtarget.isPICStyleGOT()) {
       globalBaseReg = regInfo.createVirtualRegister(GR32RegisterClass);
       // Generate addl $__GLOBAL_OFFSET_TABLE_ + [.-piclabel], %some_register
       buildMI(firstMBB, mbbi, dl, get(ADD32ri), globalBaseReg).addReg(pc)
@@ -3379,7 +3152,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
   }
 
   public int getBaseOpcodeFor(MCInstrDesc tid) {
-    return tid.tSFlags >> X86II.OpcodeShift;
+    return (int) (tid.tSFlags >> X86II.OpcodeShift);
   }
 
   /**
@@ -3419,77 +3192,5 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       default:
         return false;
     }
-  }
-
-  /**
-   * This method is called during prolog/epilog code insertion to eliminate
-   * call frame setup and destroy pseudo instructions (but only if the
-   * Target is using them).  It is responsible for eliminating these
-   * instructions, replacing them with concrete instructions.  This method
-   * need only be implemented if using call frame setup/destroy pseudo
-   * instructions.
-   */
-  @Override
-  public void eliminateCallFramePseudoInstr(MachineFunction mf,
-                                            MachineInstr old) {
-    MachineInstr newOne = null;
-    MachineBasicBlock mbb = old.getParent();
-    TargetSubtarget subtarget = mf.getSubtarget();
-    TargetRegisterInfo tri = subtarget.getRegisterInfo();
-    boolean is64Bit = subtarget.is64Bit();
-    int stackPtr = tri.getFrameRegister(mf);
-
-    if (!tm.getFrameLowering().hasReservedCallFrame(mf)) {
-      // If we have a frame pointer, turn the adjcallstackup instruction into a
-      // 'sub ESP, <amt>' and the adjcallstackdown instruction into 'add ESP,
-      // <amt>'
-      long amount = old.getOperand(0).getImm();
-      if (amount != 0) {
-        int align = mf.getTarget().getFrameLowering().getStackAlignment();
-        amount = Util.roundUp(amount, align);
-
-        // stack setup pseudo instruction.
-        if (old.getOpcode() == getCallFrameSetupOpcode()) {
-          newOne = buildMI(get(is64Bit ? SUB64ri32 : SUB32ri), old.getDebugLoc(), stackPtr)
-              .addReg(stackPtr).addImm(amount).getMInstr();
-        } else {
-          Util.assertion(old.getOpcode() == getCallFrameDestroyOpcode());
-          long calleeAmt = old.getOperand(1).getImm();
-          amount -= calleeAmt;
-          if (amount != 0) {
-            int opc = amount < 128 ?
-                (is64Bit ? ADD64ri8 : ADD32ri8) :
-                (is64Bit ? ADD64ri32 : ADD32ri);
-            // stack destroy pseudo instruction.
-            newOne = buildMI(get(opc), old.getDebugLoc(), stackPtr)
-                .addReg(stackPtr).addImm(amount).getMInstr();
-          }
-        }
-        if (newOne != null) {
-          // The EFLAGS implicit def is dead.
-          newOne.getOperand(3).setIsDead(true);
-
-          // Replace the pseudo instruction with a new instruction.
-          mbb.insert(old, newOne);
-        }
-      }
-    } else if (old.getOpcode() == getCallFrameDestroyOpcode()) {
-      // If we are performing frame pointer elimination and if the callee pops
-      // something off the stack pointer, add it back.  We do this until we have
-      // more advanced stack pointer tracking ability.
-      long calleeAmt = old.getOperand(1).getImm();
-      if (calleeAmt != 0) {
-        int opc = (calleeAmt < 128) ?
-            (is64Bit ? SUB64ri8 : SUB32ri8) :
-            (is64Bit ? SUB64ri32 : SUB32ri);
-        newOne = buildMI(get(opc), old.getDebugLoc(), stackPtr)
-            .addReg(stackPtr).addImm(calleeAmt).getMInstr();
-
-        // The EFLAGS implicit def is dead.
-        newOne.getOperand(3).setIsDead(true);
-        mbb.insert(old, newOne);
-      }
-    }
-    old.removeFromParent();
   }
 }

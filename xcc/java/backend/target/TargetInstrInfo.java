@@ -78,22 +78,6 @@ public abstract class TargetInstrInfo extends MCInstrInfo {
   // passes to move data around between registers, immediates and memory.
   //
 
-  /**
-   * This method is called during prolog/epilog code insertion to eliminate
-   * call frame setup and destroy pseudo instructions (but only if the
-   * Target is using them).  It is responsible for eliminating these
-   * instructions, replacing them with concrete instructions.  This method
-   * need only be implemented if using call frame setup/destroy pseudo
-   * instructions.
-   */
-  public void eliminateCallFramePseudoInstr(MachineFunction mf, MachineInstr old) {
-    Util.assertion((getCallFrameSetupOpcode() == -1 && getCallFrameDestroyOpcode() == -1),
-        "eliminateCallFramePseudoInstr must be implemented if using"
-            + " call frame setup/destroy pseudo instructions!");
-
-    Util.assertion("Call Frame Pseudo Instructions do not exist on this target!");
-  }
-
   public boolean isTriviallyReMaterializable(MachineInstr mi) {
     return mi.getDesc().isRematerializable() && isReallyTriviallyReMaterializable(mi);
   }
