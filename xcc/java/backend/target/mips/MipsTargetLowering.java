@@ -409,7 +409,7 @@ public class MipsTargetLowering extends TargetLowering {
                                       SelectionDAG dag,
                                       ArrayList<SDValue> inVals) {
     MachineFunction mf = dag.getMachineFunction();
-    MipsFunctionInfo mipsFI = (MipsFunctionInfo) mf.getInfo();
+    MipsFunctionInfo mipsFI = (MipsFunctionInfo) mf.getFunctionInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
 
     mipsFI.setVarArgsFrameINdex(0);
@@ -615,7 +615,7 @@ public class MipsTargetLowering extends TargetLowering {
 
     // Handle the sret structure attribute.
     if (mf.getFunction().hasStructRetAttr()) {
-      MipsFunctionInfo mipsFI = (MipsFunctionInfo) mf.getInfo();
+      MipsFunctionInfo mipsFI = (MipsFunctionInfo) mf.getFunctionInfo();
       int sretReg = mipsFI.getSRetReturnReg();
       Util.assertion(sretReg != 0, "the sret register should be allocated in the front block!");
 

@@ -54,7 +54,7 @@ public class MipsFrameLowering extends TargetFrameLowering {
   @Override
   public void emitPrologue(MachineFunction mf) {
     MachineFrameInfo mfi = mf.getFrameInfo();
-    MipsFunctionInfo mipsFuncInfo = (MipsFunctionInfo) mf.getInfo();
+    MipsFunctionInfo mipsFuncInfo = (MipsFunctionInfo) mf.getFunctionInfo();
     MachineBasicBlock mbb = mf.getEntryBlock();
     int itr = 0;  // a pointer to the first instruction of mbb.
     DebugLoc dl = itr != mbb.size() ? mbb.getInstAt(itr).getDebugLoc() : new DebugLoc();

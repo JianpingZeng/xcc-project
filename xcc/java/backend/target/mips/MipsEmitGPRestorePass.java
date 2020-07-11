@@ -60,7 +60,7 @@ public class MipsEmitGPRestorePass extends MachineFunctionPass {
     TargetInstrInfo tii = tm.getSubtarget().getInstrInfo();
     boolean changed = false;
 
-    int fi = ((MipsFunctionInfo)mf.getInfo()).getGPFI();
+    int fi = ((MipsFunctionInfo)mf.getFunctionInfo()).getGPFI();
     for (int i = 0, e = mf.getNumBlocks(); i < e; ++i) {
       MachineBasicBlock mbb = mf.getMBBAt(i);
       int itr = 0;
