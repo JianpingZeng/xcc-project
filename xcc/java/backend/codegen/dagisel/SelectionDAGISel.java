@@ -851,7 +851,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     }
     if (inputChains.size() == 1)
       return inputChains.get(0);
-    return curDAG.getNode(ISD.TokenFactor, new EVT(MVT.Other), inputChains);
+    return curDAG.getNode(ISD.TokenFactor, chainNodesMatched.get(0).getDebugLoc(), new EVT(MVT.Other), inputChains);
   }
 
   /**
@@ -1384,8 +1384,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           if (inputChain.getNode() == null)
             inputChain = curDAG.getEntryNode();
 
-          inputChain = curDAG.getCopyToReg(inputChain, dstPhysReg,
-              recordedNodes.get(recNo).first, inputFlag);
+          inputChain = curDAG.getCopyToReg(inputChain, nodeToMatch.getDebugLoc(),
+                  dstPhysReg, recordedNodes.get(recNo).first, inputFlag);
           inputFlag = inputChain.getValue(1);
           continue;
         }
@@ -1460,7 +1460,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
             // If this is a normal EmitNode command, just create the new node and
             // add the results to the RecordedNodes list.
 
-            res = curDAG.getMachineNode(targetOpc, vtlist, tempOps);
+            res = curDAG.getMachineNode(targetOpc, nodeToMatch.getDebugLoc(), vtlist, tempOps);
             // Add all the non-flag/non-chain results to the RecordedNodes list.
             for (int i = 0, e = vts.size(); i < e; i++) {
               if (vts.get(i).equals(new EVT(MVT.Other)) ||
@@ -1639,7 +1639,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     else if (node.getValueType(numResults - 1).equals(new EVT(MVT.Other)))
       oldChainResultNo = numResults - 1;
 
-    MachineSDNode res = curDAG.getMachineNode(targetOpc, vts, ops);
+    MachineSDNode res = curDAG.getMachineNode(targetOpc, node.getDebugLoc(), vts, ops);
     int resNumResults = res.getNumValues();
     // move the glue if needed.
     if ((emitNodeInfo & OPFL_FlagOutput) != 0 && oldGlueResultNo != -1 &&
@@ -1699,6 +1699,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     Function fn = llvmBB.getParent();
     SelectionDAG dag = sdl.dag;
     TargetData td = tli.getTargetData();
+    DebugLoc dl = sdl.getCurDebugLoc();
 
     ArrayList<InputArg> ins = new ArrayList<>();
     int idx = 1;
@@ -1751,7 +1752,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
 
     ArrayList<SDValue> inVals = new ArrayList<>();
     SDValue newRoot = tli.lowerFormalArguments(dag.getRoot(),
-        fn.getCallingConv(), fn.isVarArg(), ins, dag, inVals);
+        fn.getCallingConv(), fn.isVarArg(), ins, dag, inVals, dl);
 
     Util.assertion(newRoot.getNode() != null && newRoot.getValueType().equals(new EVT(MVT.Other)),
         "lowerFormalArguments din't return a valid chain!");
@@ -1780,7 +1781,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
           SDValue[] ops = new SDValue[numParts];
           for (int j = 0; j < numParts; j++)
             ops[j] = inVals.get(j + i);
-          argValues.add(getCopyFromParts(dag, ops, partVT, vt, op));
+          argValues.add(getCopyFromParts(dag, dl, ops, partVT, vt, op));
         }
         i += numParts;
       }
@@ -1791,7 +1792,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
         funcInfo.setArgumentFrameIndex(arg, fi.getFrameIndex());
       }
 
-      SDValue res = dag.getMergeValues(argValues);
+      SDValue res = dag.getMergeValues(dl, argValues);
       sdl.setValue(arg, res);
       if (res.getOpcode() == ISD.BUILD_PAIR) {
         if (res.getOperand(0).getNode() instanceof LoadSDNode) {
@@ -2125,21 +2126,13 @@ public abstract class SelectionDAGISel extends MachineFunctionPass implements Bu
     ArrayList<EVT> vts = new ArrayList<>();
     vts.add(new EVT(MVT.Other));
     vts.add(new EVT(MVT.Glue));
-    SDValue newNode = curDAG.getNode(ISD.INLINEASM, vts);
+    SDValue newNode = curDAG.getNode(ISD.INLINEASM, n.getDebugLoc(), vts);
     return newNode.getNode();
   }
 
   public SDNode select_UNDEF(SDValue n) {
     return curDAG.selectNodeTo(n.getNode(), TargetOpcode.IMPLICIT_DEF,
         n.getValueType());
-  }
-
-  public SDNode select_PROLOG_LABEL(SDValue n) {
-    SDValue chain = n.getOperand(0);
-    int c = ((LabelSDNode) n.getNode()).getLabelID();
-    SDValue tmp = curDAG.getTargetConstant(c, new EVT(MVT.i32));
-    return curDAG.selectNodeTo(n.getNode(), TargetOpcode.PROLOG_LABEL,
-        new EVT(MVT.Other), tmp, chain);
   }
 
   public void cannotYetSelect(SDNode n) {

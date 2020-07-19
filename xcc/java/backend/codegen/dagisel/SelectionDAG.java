@@ -90,7 +90,7 @@ public class SelectionDAG {
     vtlist = new ArrayList<>();
     condCodeNodes = new ArrayList<>();
     cseMap = new TIntObjectHashMap<>();
-    entryNode = new SDNode(ISD.EntryToken, getVTList(new EVT(MVT.Other)));
+    entryNode = new SDNode(ISD.EntryToken, new DebugLoc(), getVTList(new EVT(MVT.Other)));
     dbgInfo = new SDDbgInfo();
     root = getEntryNode();
     add(entryNode);
@@ -138,46 +138,7 @@ public class SelectionDAG {
   }
 
   public MachineSDNode getMachineNode(int opcode,
-                                      EVT vt1,
-                                      SDValue... ops) {
-    SDVTList vts = getVTList(vt1);
-    return getMachineNode(opcode, vts, ops);
-  }
-
-  public MachineSDNode getMachineNode(int opcode,
-                                      EVT vt1,
-                                      EVT vt2,
-                                      SDValue... ops) {
-    SDVTList vts = getVTList(vt1, vt2);
-    return getMachineNode(opcode, vts, ops);
-  }
-
-  public MachineSDNode getMachineNode(int opcode,
-                                      EVT vt1,
-                                      EVT vt2) {
-    return getMachineNode(opcode, vt1, vt2, (SDValue[]) null);
-  }
-
-  public MachineSDNode getMachineNode(int opcode,
-                                      EVT vt1,
-                                      EVT vt2,
-                                      EVT vt3,
-                                      SDValue[] ops) {
-    SDVTList vts = getVTList(vt1, vt2, vt3);
-    return getMachineNode(opcode, vts, ops);
-  }
-
-  public MachineSDNode getMachineNode(int opcode,
-                                      EVT vt1,
-                                      EVT vt2,
-                                      EVT vt3,
-                                      EVT vt4,
-                                      SDValue[] ops) {
-    SDVTList vts = getVTList(vt1, vt2, vt3, vt4);
-    return getMachineNode(opcode, vts, ops);
-  }
-
-  public MachineSDNode getMachineNode(int opcode,
+                                      DebugLoc dl,
                                       SDVTList vts,
                                       SDValue[] ops) {
     boolean doCSE = !vts.vts[vts.numVTs-1].equals(new EVT(MVT.Glue));
@@ -192,7 +153,7 @@ public class SelectionDAG {
       }
     }
 
-    n = new MachineSDNode(~opcode, vts);
+    n = new MachineSDNode(~opcode, dl, vts);
     n.initOperands(ops);
     if (doCSE)
       cseMap.put(hash, n);
@@ -201,15 +162,15 @@ public class SelectionDAG {
     return n;
   }
 
-  public SDValue getNode(int opc, SDVTList vtlist, ArrayList<SDValue> ops) {
+  public SDValue getNode(int opc, DebugLoc dl, SDVTList vtlist, ArrayList<SDValue> ops) {
     SDValue[] tempOps = new SDValue[ops.size()];
     ops.toArray(tempOps);
-    return getNode(opc, vtlist, tempOps);
+    return getNode(opc, dl, vtlist, tempOps);
   }
 
-  public SDValue getNode(int opc, SDVTList vtList, SDValue... ops) {
+  public SDValue getNode(int opc, DebugLoc dl, SDVTList vtList, SDValue... ops) {
     if (vtList.numVTs == 1)
-      return getNode(opc, vtList.vts[0], ops);
+      return getNode(opc, dl, vtList.vts[0], ops);
 
     SDNode node;
     if (vtList.vts[vtList.numVTs - 1].getSimpleVT().simpleVT != MVT.Glue) {
@@ -221,34 +182,32 @@ public class SelectionDAG {
 
       switch (ops.length) {
         default:
-          node = new SDNode(opc, vtList, ops);
+          node = new SDNode(opc, dl, vtList, ops);
           break;
         case 1:
-          node = new UnarySDNode(opc, vtList, ops[0]);
+          node = new UnarySDNode(opc, dl, vtList, ops[0]);
           break;
         case 2:
-          node = new BinarySDNode(opc, vtList, ops[0], ops[1]);
+          node = new BinarySDNode(opc, dl, vtList, ops[0], ops[1]);
           break;
         case 3:
-          node = new TernarySDNode(opc, vtList, ops[0], ops[1],
-              ops[2]);
+          node = new TernarySDNode(opc, dl, vtList, ops[0], ops[1], ops[2]);
           break;
       }
       cseMap.put(id, node);
     } else {
       switch (ops.length) {
         default:
-          node = new SDNode(opc, vtList, ops);
+          node = new SDNode(opc,dl, vtList, ops);
           break;
         case 1:
-          node = new UnarySDNode(opc, vtList, ops[0]);
+          node = new UnarySDNode(opc, dl, vtList, ops[0]);
           break;
         case 2:
-          node = new BinarySDNode(opc, vtList, ops[0], ops[1]);
+          node = new BinarySDNode(opc, dl, vtList, ops[0], ops[1]);
           break;
         case 3:
-          node = new TernarySDNode(opc, vtList, ops[0], ops[1],
-              ops[2]);
+          node = new TernarySDNode(opc, dl, vtList, ops[0], ops[1], ops[2]);
           break;
       }
     }
@@ -256,40 +215,40 @@ public class SelectionDAG {
     return new SDValue(node, 0);
   }
 
-  public SDValue getNode(int opc, ArrayList<EVT> vts) {
+  public SDValue getNode(int opc, DebugLoc dl, ArrayList<EVT> vts) {
     EVT[] temp = new EVT[vts.size()];
     vts.toArray(temp);
-    return getNode(opc, getVTList(temp));
+    return getNode(opc, dl, getVTList(temp));
   }
 
-  public SDValue getNode(int opc, EVT vt, SDValue... ops) {
+  public SDValue getNode(int opc, DebugLoc dl, EVT vt, SDValue... ops) {
     int numOps = ops.length;
     switch (numOps) {
       case 0:
-        return getNode(opc, vt);
+        return getNode(opc, dl, vt);
       case 1:
-        return getNode(opc, vt, ops[0]);
+        return getNode(opc, dl, vt, ops[0]);
       case 2:
-        return getNode(opc, vt, ops[0], ops[1]);
+        return getNode(opc, dl, vt, ops[0], ops[1]);
       case 3:
-        return getNode(opc, vt, ops[0], ops[1], ops[2]);
+        return getNode(opc, dl, vt, ops[0], ops[1], ops[2]);
     }
     switch (opc) {
       default:
         break;
       case ISD.SELECT_CC:
         Util.assertion(numOps == 5, "SELECT_CC takes five operands!");
-        Util.assertion(ops[0].getValueType().equals(ops[1].getValueType()), "LHS and RHS of condition must have same type!");
-
-        Util.assertion(ops[2].getValueType().equals(ops[3].getValueType()), "True and False parts of SELECT_CC must have same type!");
-
-        Util.assertion(ops[2].getValueType().equals(vt), "SELECT_CC node must be same type as true/false part!");
-
+        Util.assertion(ops[0].getValueType().equals(ops[1].getValueType()),
+                "LHS and RHS of condition must have same type!");
+        Util.assertion(ops[2].getValueType().equals(ops[3].getValueType()),
+                "True and False parts of SELECT_CC must have same type!");
+        Util.assertion(ops[2].getValueType().equals(vt),
+                "SELECT_CC node must be same type as true/false part!");
         break;
       case ISD.BR_CC:
         Util.assertion(numOps == 5, "BR_CC takes five operands!");
-        Util.assertion(ops[2].getValueType().equals(ops[3].getValueType()), "LHS/RHS of comparison should match types!");
-
+        Util.assertion(ops[2].getValueType().equals(ops[3].getValueType()),
+                "LHS/RHS of comparison should match types!");
         break;
     }
 
@@ -303,53 +262,53 @@ public class SelectionDAG {
         node = cseMap.get(id);
         return new SDValue(node, 0);
       }
-      node = new SDNode(opc, vts, ops);
+      node = new SDNode(opc, dl, vts, ops);
       cseMap.put(id, node);
     } else {
-      node = new SDNode(opc, vts, ops);
+      node = new SDNode(opc, dl, vts, ops);
     }
     add(node);
     return new SDValue(node, 0);
   }
 
-  public SDValue getNode(int opc, EVT vt, ArrayList<SDValue> ops) {
+  public SDValue getNode(int opc, DebugLoc dl, EVT vt, ArrayList<SDValue> ops) {
     SDValue[] temps = new SDValue[ops.size()];
     ops.toArray(temps);
-    return getNode(opc, vt, temps);
+    return getNode(opc, dl, vt, temps);
   }
 
-  public SDValue getNode(int opc, EVT vt, SDUse[] ops) {
+  public SDValue getNode(int opc, DebugLoc dl, EVT vt, SDUse[] ops) {
     switch (ops.length) {
       case 0:
-        return getNode(opc, vt);
+        return getNode(opc, dl, vt);
       case 1:
-        return getNode(opc, vt, ops[0].get());
+        return getNode(opc, dl, vt, ops[0].get());
       case 2:
-        return getNode(opc, vt, ops[0].get(), ops[1].get());
+        return getNode(opc, dl, vt, ops[0].get(), ops[1].get());
       case 3:
-        return getNode(opc, vt, ops[0].get(), ops[1].get(), ops[2].get());
+        return getNode(opc, dl, vt, ops[0].get(), ops[1].get(), ops[2].get());
       default:
         break;
     }
     SDValue[] temp = new SDValue[ops.length];
     Object[] src = Arrays.stream(ops).map(SDUse::get).toArray();
     System.arraycopy(src, 0, temp, 0, ops.length);
-    return getNode(opc, vt, temp);
+    return getNode(opc, dl, vt, temp);
   }
 
-  public SDValue getNode(int opc, EVT vt) {
+  public SDValue getNode(int opc, DebugLoc dl, EVT vt) {
     FoldingSetNodeID calc = new FoldingSetNodeID();
     addNodeToIDNode(calc, opc, getVTList(vt), null, 0);
     int id = calc.computeHash();
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
-    SDNode node = new SDNode(opc, getVTList(vt));
+    SDNode node = new SDNode(opc, dl, getVTList(vt));
     cseMap.put(id, node);
     add(node);
     return new SDValue(node, 0);
   }
 
-  public SDValue getNode(int opc, EVT vt, SDValue op0) {
+  public SDValue getNode(int opc, DebugLoc dl, EVT vt, SDValue op0) {
     if (op0.getNode() instanceof ConstantSDNode) {
       ConstantSDNode cn1 = (ConstantSDNode) op0.getNode();
       APInt val = cn1.getAPIntValue();
@@ -461,7 +420,7 @@ public class SelectionDAG {
         Util.assertion(op0.getValueType().bitsLT(vt), "Invalid sext node, dest < src!");
 
         if (opOpcode == ISD.SIGN_EXTEND || opOpcode == ISD.ZERO_EXTEND)
-          return getNode(opOpcode, vt, op0.getNode().getOperand(0));
+          return getNode(opOpcode, dl, vt, op0.getNode().getOperand(0));
         break;
       case ISD.ANY_EXTEND:
       case ISD.ZERO_EXTEND:
@@ -472,7 +431,7 @@ public class SelectionDAG {
         Util.assertion(op0.getValueType().bitsLT(vt), "Invalid zext node, dest < src!");
 
         if (opOpcode == ISD.SIGN_EXTEND || opOpcode == ISD.ZERO_EXTEND)
-          return getNode(opOpcode, vt, op0.getNode().getOperand(0));
+          return getNode(opOpcode, dl, vt, op0.getNode().getOperand(0));
         break;
 
       case ISD.TRUNCATE:
@@ -483,33 +442,34 @@ public class SelectionDAG {
         Util.assertion(op0.getValueType().bitsGT(vt), "Invalid truncate node, dest > src!");
 
         if (opOpcode == ISD.TRUNCATE)
-          return getNode(ISD.TRUNCATE, vt, op0.getNode().getOperand(0));
+          return getNode(ISD.TRUNCATE, dl, vt, op0.getNode().getOperand(0));
         else if (opOpcode == ISD.ZERO_EXTEND || opOpcode == ISD.SIGN_EXTEND
             || opOpcode == ISD.ANY_EXTEND) {
           // If the source is smaller than the dest, we still need an extend.
           if (op0.getOperand(0).getValueType().bitsLT(vt))
-            return getNode(opOpcode, vt, op0.getOperand(0));
+            return getNode(opOpcode, dl, vt, op0.getOperand(0));
           else if (op0.getOperand(0).getValueType().bitsGT(vt))
-            return getNode(ISD.TRUNCATE, vt, op0.getOperand(0));
+            return getNode(ISD.TRUNCATE, dl, vt, op0.getOperand(0));
           else
             return op0.getOperand(0);
         }
         break;
       case ISD.BIT_CONVERT:
-        Util.assertion(vt.getSizeInBits() == op0.getValueType().getSizeInBits(), "Can't perform bit conversion between different size!");
-
+        Util.assertion(vt.getSizeInBits() == op0.getValueType().getSizeInBits(),
+                "Can't perform bit conversion between different size!");
         if (vt.equals(op0.getValueType()))
           return op0;
         if (opOpcode == ISD.BIT_CONVERT)
-          return getNode(ISD.BIT_CONVERT, vt, op0.getOperand(0));
+          return getNode(ISD.BIT_CONVERT, dl, vt, op0.getOperand(0));
         if (opOpcode == ISD.UNDEF)
           return getUNDEF(vt);
         break;
       case ISD.SCALAR_TO_VECTOR:
-        Util.assertion(vt.isVector() && !op0.getValueType().isVector() && (vt.getVectorElementType().equals(op0.getValueType())
-            || (vt.getVectorElementType().isInteger() && op0
-            .getValueType().isInteger() && vt.getVectorElementType().bitsLE(op0
-            .getValueType()))), "Illegal SCALAR_TO_VECTOR node!");
+        Util.assertion(vt.isVector() && !op0.getValueType().isVector() &&
+                (vt.getVectorElementType().equals(op0.getValueType())
+                        || (vt.getVectorElementType().isInteger() && op0
+                        .getValueType().isInteger() && vt.getVectorElementType().bitsLE(op0
+                        .getValueType()))), "Illegal SCALAR_TO_VECTOR node!");
 
         if (opOpcode == ISD.UNDEF)
           return getUNDEF(vt);
@@ -521,7 +481,7 @@ public class SelectionDAG {
       case ISD.FNEG:
         // -(X-Y) ==> Y-X is unsafe because -0.0 ！= +0.0 when X equals Y.
         if (EnableUnsafeFPMath.value && op0.getOpcode() == ISD.FSUB) {
-          return getNode(ISD.FSUB, vt, op0.getOperand(1), op0.getOperand(0));
+          return getNode(ISD.FSUB, dl, vt, op0.getOperand(1), op0.getOperand(0));
         }
         if (opOpcode == ISD.FNEG)   // -(-X) ==> X
           return op0.getOperand(0);
@@ -529,7 +489,7 @@ public class SelectionDAG {
       case ISD.FABS:
         // abs(-X) ==> abs(X)
         if (opOpcode == ISD.FNEG) {
-          return getNode(ISD.FABS, vt, op0.getOperand(0));
+          return getNode(ISD.FABS, dl, vt, op0.getOperand(0));
         }
         break;
     }
@@ -542,16 +502,16 @@ public class SelectionDAG {
       int id = calc.computeHash();
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
-      node = new UnarySDNode(opc, vts, op0);
+      node = new UnarySDNode(opc, dl, vts, op0);
       cseMap.put(id, node);
     } else
-      node = new UnarySDNode(opc, vts, op0);
+      node = new UnarySDNode(opc, dl, vts, op0);
     add(node);
     return new SDValue(node, 0);
   }
 
   public SDValue getUNDEF(EVT vt) {
-    return getNode(ISD.UNDEF, vt);
+    return getNode(ISD.UNDEF, new DebugLoc(), vt);
   }
 
   public SDValue foldArithmetic(int opcode, EVT vt, ConstantSDNode cst1,
@@ -594,7 +554,7 @@ public class SelectionDAG {
     return new SDValue();
   }
 
-  public SDValue getNode(int opc, EVT vt, SDValue op0, SDValue op1) {
+  public SDValue getNode(int opc, DebugLoc dl, EVT vt, SDValue op0, SDValue op1) {
     ConstantSDNode cn0 = op0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) op0.getNode() :
         null;
@@ -629,12 +589,12 @@ public class SelectionDAG {
           for (int j = 0, e = op1.getNumOperands(); j < e; j++)
             vals[i++] = op1.getOperand(j);
 
-          return getNode(ISD.BUILD_VECTOR, vt, vals);
+          return getNode(ISD.BUILD_VECTOR, dl, vt, vals);
         }
         break;
       case ISD.AND:
-        Util.assertion(vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType().isInteger(), "Binary operator types must match!");
-
+        Util.assertion(vt.isInteger() && op0.getValueType().isInteger() &&
+                op1.getValueType().isInteger(), "Binary operator types must match!");
         // X & 0 ==> 0
         if (cn1 != null && cn1.isNullValue())
           return op1;
@@ -646,8 +606,8 @@ public class SelectionDAG {
       case ISD.XOR:
       case ISD.ADD:
       case ISD.SUB:
-        Util.assertion(vt.isInteger() && op0.getValueType().isInteger() && op1.getValueType().isInteger(), "Binary operator types must match!");
-
+        Util.assertion(vt.isInteger() && op0.getValueType().isInteger() &&
+                op1.getValueType().isInteger(), "Binary operator types must match!");
         // (X ^|+- 0) = X
         if (cn1 != null && cn1.isNullValue())
           return op0;
@@ -721,8 +681,10 @@ public class SelectionDAG {
       case ISD.FP_ROUND_INREG: {
         EVT evt = ((VTSDNode)op1.getNode()).getVT();
         Util.assertion(vt.equals(op0.getValueType()), "Not a inreg round!");
-        Util.assertion(vt.isFloatingPoint() && evt.isFloatingPoint(), "Can't FP_ROUND_INREG integer types");
-        Util.assertion(evt.isVector() == vt.isVector(), "FP_ROUND_INREG type should be vector iff the operand type is vector");
+        Util.assertion(vt.isFloatingPoint() && evt.isFloatingPoint(),
+                "Can't FP_ROUND_INREG integer types");
+        Util.assertion(evt.isVector() == vt.isVector(),
+                "FP_ROUND_INREG type should be vector iff the operand type is vector");
         Util.assertion(!evt.isVector() || evt.getVectorNumElements() == vt.getVectorNumElements(),
             "Vector element counts must match in FP_ROUND_INREG");
         Util.assertion(evt.bitsLE(vt), "Not rounding down!");
@@ -776,7 +738,7 @@ public class SelectionDAG {
         if (cn1 != null && op0.getOpcode() == ISD.CONCAT_VECTORS &&
             op0.getNumOperands() > 0) {
           int factor = op0.getOperand(0).getValueType().getVectorNumElements();
-          return getNode(ISD.EXTRACT_VECTOR_ELT, vt,
+          return getNode(ISD.EXTRACT_VECTOR_ELT, dl, vt,
               op0.getOperand((int) (cn1.getZExtValue()/factor)),
               getConstant(cn1.getZExtValue() % factor, op1.getValueType(), false));
         }
@@ -789,12 +751,12 @@ public class SelectionDAG {
           if (!elt.getValueType().equals(eletTy)) {
             // If the vector element type is not legal, the BUILD_VECTOR operands
             // are promoted and implicitly truncated.  Make that explicit here.
-            elt = getNode(ISD.TRUNCATE, eletTy, elt);
+            elt = getNode(ISD.TRUNCATE, dl, eletTy, elt);
           }
           if (!vt.equals(eletTy)) {
             // If the vector element type is not legal, the EXTRACT_VECTOR_ELT
             // result is implicitly extended.
-            elt = getNode(ISD.ANY_EXTEND, vt, elt);
+            elt = getNode(ISD.ANY_EXTEND, dl, vt, elt);
           }
           return elt;
         }
@@ -812,10 +774,9 @@ public class SelectionDAG {
               if (vt.equals(op0.getOperand(1).getValueType()))
                 return op0.getOperand(1);
               else
-                return getSExtOrTrunc(op0.getOperand(1), vt);
+                return getSExtOrTrunc(op0.getOperand(1), dl, vt);
             }
-
-            return getNode(ISD.EXTRACT_VECTOR_ELT, vt, op0.getOperand(0), op1);
+            return getNode(ISD.EXTRACT_VECTOR_ELT, dl, vt, op0.getOperand(0), op1);
           }
         }
         break;
@@ -1007,10 +968,10 @@ public class SelectionDAG {
       int id = calc.computeHash();
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
-      node = new BinarySDNode(opc, vts, op0, op1);
+      node = new BinarySDNode(opc, dl, vts, op0, op1);
       cseMap.put(id, node);
     } else
-      node = new BinarySDNode(opc, vts, op0, op1);
+      node = new BinarySDNode(opc, dl, vts, op0, op1);
     add(node);
     return new SDValue(node, 0);
   }
@@ -1038,7 +999,7 @@ public class SelectionDAG {
     }
   }
 
-  public SDValue getNode(int opc, EVT vt, SDValue op0, SDValue op1, SDValue op2) {
+  public SDValue getNode(int opc, DebugLoc dl, EVT vt, SDValue op0, SDValue op1, SDValue op2) {
     ConstantSDNode cn0 = op0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) op0.getNode() :
         null;
@@ -1060,7 +1021,7 @@ public class SelectionDAG {
           for (int j = 0, e = op2.getNumOperands(); j < e; j++)
             vals[i++] = op2.getOperand(j);
 
-          return getNode(ISD.BUILD_VECTOR, vt, vals);
+          return getNode(ISD.BUILD_VECTOR, dl, vt, vals);
         }
         break;
       }
@@ -1077,7 +1038,7 @@ public class SelectionDAG {
       case ISD.BRCOND:
         if (cn1 != null) {
           return cn1.getZExtValue() != 0 ?
-              getNode(ISD.BR, new EVT(MVT.Other), op0, op2) :
+              getNode(ISD.BR, dl, new EVT(MVT.Other), op0, op2) :
               op0;
         }
         break;
@@ -1095,10 +1056,10 @@ public class SelectionDAG {
       int id = calc.computeHash();
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
-      node = new TernarySDNode(opc, vts, op0, op1, op2);
+      node = new TernarySDNode(opc, dl, vts, op0, op1, op2);
       cseMap.put(id, node);
     } else
-      node = new TernarySDNode(opc, vts, op0, op1, op2);
+      node = new TernarySDNode(opc, dl, vts, op0, op1, op2);
     add(node);
     return new SDValue(node, 0);
   }
@@ -1124,19 +1085,19 @@ public class SelectionDAG {
     return new SDValue(node, 0);
   }
 
-  public SDValue getSetCC(EVT vt, SDValue op1, SDValue op2, CondCode cond) {
-    return getNode(ISD.SETCC, vt, op1, op2, getCondCode(cond));
+  public SDValue getSetCC(DebugLoc dl, EVT vt, SDValue op1, SDValue op2, CondCode cond) {
+    return getNode(ISD.SETCC, dl, vt, op1, op2, getCondCode(cond));
   }
 
-  public SDValue getSelectCC(SDValue lhs, SDValue rhs,
+  public SDValue getSelectCC(DebugLoc dl, SDValue lhs, SDValue rhs,
                              SDValue trueVal, SDValue falseVal,
                              CondCode cc) {
-    return getNode(ISD.SELECT_CC, trueVal.getValueType(), lhs, rhs,
+    return getNode(ISD.SELECT_CC, dl, trueVal.getValueType(), lhs, rhs,
         trueVal, falseVal, getCondCode(cc));
   }
 
-  public SDValue getVSetCC(EVT vt, SDValue lhs, SDValue rhs, CondCode cc) {
-    return getNode(ISD.VSETCC, vt, lhs, rhs, getCondCode(cc));
+  public SDValue getVSetCC(DebugLoc dl, EVT vt, SDValue lhs, SDValue rhs, CondCode cc) {
+    return getNode(ISD.VSETCC, dl, vt, lhs, rhs, getCondCode(cc));
   }
 
   public SDValue getIntPtrConstant(long amt) {
@@ -1237,7 +1198,7 @@ public class SelectionDAG {
       for (int i = 0; i < ops.length; i++)
         ops[i] = res;
 
-      res = getNode(ISD.BUILD_VECTOR, vt, ops);
+      res = getNode(ISD.BUILD_VECTOR, new DebugLoc(), vt, ops);
     }
     return res;
   }
@@ -1274,7 +1235,7 @@ public class SelectionDAG {
       for (int i = 0; i < ops.length; i++)
         ops[i] = res;
 
-      res = getNode(ISD.BUILD_VECTOR, vt, ops);
+      res = getNode(ISD.BUILD_VECTOR, new DebugLoc(), vt, ops);
     }
     return res;
   }
@@ -1465,26 +1426,27 @@ public class SelectionDAG {
   }
 
   public void setRoot(SDValue root) {
-    Util.assertion(root.getNode() == null || root.getValueType().equals(new EVT(MVT.Other)), "Not a legal root!");
-
+    Util.assertion(root.getNode() == null ||
+            root.getValueType().equals(new EVT(MVT.Other)),
+            "Not a legal root!");
     this.root = root;
   }
 
-  public SDValue getMergeValues(ArrayList<SDValue> ops) {
+  public SDValue getMergeValues(DebugLoc dl, ArrayList<SDValue> ops) {
     if (ops.size() == 1)
       return ops.get(0);
 
     EVT[] vts = ops.stream().map(op -> op.getValueType()).toArray(EVT[]::new);
     SDValue[] ops_ = ops.stream().toArray(SDValue[]::new);
-    return getNode(ISD.MERGE_VALUES, getVTList(vts), ops_);
+    return getNode(ISD.MERGE_VALUES, dl, getVTList(vts), ops_);
   }
 
-  public SDValue getMergeValues(SDValue[] ops) {
+  public SDValue getMergeValues( DebugLoc dl, SDValue[] ops) {
     EVT[] vts = new EVT[ops.length];
     for (int i = 0, e = ops.length; i < e; i++)
       vts[i] = ops[i].getValueType();
 
-    return getNode(ISD.MERGE_VALUES, getVTList(vts), ops);
+    return getNode(ISD.MERGE_VALUES, dl, getVTList(vts), ops);
   }
 
   public void removeDeadNodes() {
@@ -1526,7 +1488,6 @@ public class SelectionDAG {
       }
     }
   }
-
 
   /**
    * Remove dead nodes and use variable {@code deallocate} to indicate if we should erase those dead
@@ -2073,7 +2034,7 @@ public class SelectionDAG {
     }
   }
 
-  public SDValue getAtomic(int opcode, EVT memoryVT, SDValue chain,
+  public SDValue getAtomic(int opcode, DebugLoc dl, EVT memoryVT, SDValue chain,
                            SDValue ptr, SDValue val, Value ptrVal, int alignment) {
     Util.assertion(opcode == ISD.ATOMIC_LOAD_ADD ||
         opcode == ISD.ATOMIC_LOAD_SUB ||
@@ -2106,13 +2067,13 @@ public class SelectionDAG {
     // For now, atomics are considered to be volatile always.
     flags |= MOVolatile;
     MachineMemOperand mmo = new MachineMemOperand(ptrVal, flags, 0, memoryVT.getStoreSize(), alignment);
-    SDNode n = new AtomicSDNode(opcode, vts, memoryVT, chain, ptr, val, mmo);
+    SDNode n = new AtomicSDNode(opcode, dl, vts, memoryVT, chain, ptr, val, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
   }
 
-  public SDValue getAtomic(int opc, EVT memVT, SDValue chain, SDValue ptr,
+  public SDValue getAtomic(int opc, DebugLoc dl, EVT memVT, SDValue chain, SDValue ptr,
                            SDValue cmp, SDValue swap, Value ptrVal, int alignment) {
     Util.assertion(opc == ISD.ATOMIC_CMP_SWAP, "Invalid atomic op!");
     Util.assertion(cmp.getValueType().equals(swap.getValueType()), "Invalid atomic op type!");
@@ -2137,13 +2098,13 @@ public class SelectionDAG {
     // For now, atomics are considered to be volatile always.
     flags |= MOVolatile;
     MachineMemOperand mmo = new MachineMemOperand(ptrVal, flags, 0, memVT.getStoreSize(), alignment);
-    SDNode n = new AtomicSDNode(opc, vts, memVT, chain, ptr, cmp, swap, mmo);
+    SDNode n = new AtomicSDNode(opc, dl, vts, memVT, chain, ptr, cmp, swap, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
   }
 
-  public SDValue getConvertRndSat(EVT vt, SDValue val, SDValue dty,
+  public SDValue getConvertRndSat(EVT vt, DebugLoc dl, SDValue val, SDValue dty,
                                   SDValue sty, SDValue rnd, SDValue sat, CvtCode cc) {
     if (dty.equals(sty) && (cc == CvtCode.CVT_UU || cc == CvtCode.CVT_SS
         || cc == CvtCode.CVT_FF))
@@ -2156,15 +2117,15 @@ public class SelectionDAG {
     int id = compute.computeHash();
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
-    SDNode res = new CvtRndSatSDNode(vt, cc, ops);
+    SDNode res = new CvtRndSatSDNode(vt, dl, cc, ops);
     cseMap.put(id, res);
     add(res);
     return new SDValue(res, 0);
   }
 
-  public SDValue getVAArg(EVT vt, SDValue chain, SDValue ptr, SDValue sv) {
+  public SDValue getVAArg(EVT vt, DebugLoc dl, SDValue chain, SDValue ptr, SDValue sv) {
     SDValue[] ops = {chain, ptr, sv};
-    return getNode(ISD.VAARG, getVTList(vt, new EVT(MVT.Other)), ops);
+    return getNode(ISD.VAARG, dl, getVTList(vt, new EVT(MVT.Other)), ops);
   }
 
   public void deleteNode(SDNode node) {
@@ -2173,17 +2134,20 @@ public class SelectionDAG {
   }
 
 
-  public SDValue getMemIntrinsicNode(int opc, SDVTList vts,
+  public SDValue getMemIntrinsicNode(int opc, DebugLoc dl,
+                                     SDVTList vts,
                                      SDValue[] ops,
                                      EVT memVT, Value srcVal,
                                      int offset, int align,
                                      boolean vol, boolean readMem,
                                      boolean writeMem) {
     ArrayList<SDValue> temp = new ArrayList<>(Arrays.asList(ops));
-    return getMemIntrinsicNode(opc, vts, temp, memVT, srcVal, offset, align, vol, readMem, writeMem);
+    return getMemIntrinsicNode(opc, dl, vts, temp, memVT, srcVal,
+            offset, align, vol, readMem, writeMem);
   }
 
-  public SDValue getMemIntrinsicNode(int opc, SDVTList vts,
+  public SDValue getMemIntrinsicNode(int opc, DebugLoc dl,
+                                     SDVTList vts,
                                      ArrayList<SDValue> ops,
                                      EVT memVT, Value srcVal,
                                      int offset, int align,
@@ -2209,16 +2173,17 @@ public class SelectionDAG {
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
 
-      n = new MemIntrinsicSDNode(opc, vts, temp, memVT, mmo);
+      n = new MemIntrinsicSDNode(opc, dl, vts, temp, memVT, mmo);
       cseMap.put(id, n);
     } else {
-      n = new MemIntrinsicSDNode(opc, vts, temp, memVT,mmo);
+      n = new MemIntrinsicSDNode(opc, dl, vts, temp, memVT,mmo);
     }
     allNodes.add(n);
     return new SDValue(n, 0);
   }
 
-  public SDValue getMemIntrinsicNode(int opc, SDVTList vts,
+  public SDValue getMemIntrinsicNode(int opc, DebugLoc dl,
+                                     SDVTList vts,
                                      ArrayList<SDValue> ops,
                                      EVT memVT, MachineMemOperand mmo) {
     Util.assertion(opc == ISD.INTRINSIC_VOID ||
@@ -2235,16 +2200,17 @@ public class SelectionDAG {
       if (cseMap.containsKey(id))
         return new SDValue(cseMap.get(id), 0);
 
-      n = new MemIntrinsicSDNode(opc, vts, temp, memVT, mmo);
+      n = new MemIntrinsicSDNode(opc, dl, vts, temp, memVT, mmo);
       cseMap.put(id, n);
     } else {
-      n = new MemIntrinsicSDNode(opc, vts, temp, memVT,mmo);
+      n = new MemIntrinsicSDNode(opc, dl, vts, temp, memVT,mmo);
     }
     allNodes.add(n);
     return new SDValue(n, 0);
   }
 
   public SDValue getMemset(SDValue chain,
+                           DebugLoc dl,
                            SDValue dst,
                            SDValue src,
                            SDValue size,
@@ -2257,13 +2223,13 @@ public class SelectionDAG {
       if (csd.isNullValue())
         return chain;
 
-      SDValue result = getMemsetStores(chain, dst, src, csd.getZExtValue(),
+      SDValue result = getMemsetStores(chain, dl, dst, src, csd.getZExtValue(),
           align, destSV, dstSVOff);
       if (result.getNode() != null)
         return result;
     }
 
-    SDValue result = tli.emitTargetCodeForMemset(this, chain, dst, src,
+    SDValue result = tli.emitTargetCodeForMemset(this, dl, chain, dst, src,
         size, align, isVolatile, destSV, dstSVOff);
     if (result.getNode() != null)
       return result;
@@ -2277,9 +2243,9 @@ public class SelectionDAG {
     args.add(entry);
     // extend or truncate the argument to be an i32 value for the call.
     if (src.getValueType().bitsGT(new EVT(MVT.i32)))
-      src = getNode(ISD.TRUNCATE, new EVT(MVT.i32), src);
+      src = getNode(ISD.TRUNCATE, dl, new EVT(MVT.i32), src);
     else
-      src = getNode(ISD.ZERO_EXTEND, new EVT(MVT.i32), src);
+      src = getNode(ISD.ZERO_EXTEND, dl, new EVT(MVT.i32), src);
 
     entry = new ArgListEntry();
     entry.node = src;
@@ -2297,18 +2263,19 @@ public class SelectionDAG {
         false, false, false, false, 0,
         tli.getLibCallCallingConv(RTLIB.MEMSET),
         false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMSET),
-            new EVT(tli.getPointerTy())), args, this);
+            new EVT(tli.getPointerTy())), args, this, dl);
 
     return callResult.second;
   }
 
   private SDValue getMemsetStores(SDValue chain,
-                                 SDValue dst,
-                                 SDValue src,
-                                 long size,
-                                 int align,
-                                 Value dstSV,
-                                 long dstSVOff) {
+                                  DebugLoc dl,
+                                  SDValue dst,
+                                  SDValue src,
+                                  long size,
+                                  int align,
+                                  Value dstSV,
+                                  long dstSVOff) {
     TargetLowering tli = getTargetLoweringInfo();
     ArrayList<EVT> memOps = new ArrayList<>();
     OutRef<String> str = new OutRef<>("");
@@ -2325,12 +2292,12 @@ public class SelectionDAG {
       EVT vt = memOps.get(i);
       int vtSize = vt.getSizeInBits()/8;
       SDValue value = getMemsetValue(src, vt);
-      SDValue store = getStore(chain, value, getMemBasePlusOffset(dst, (int) dstOff),
+      SDValue store = getStore(chain, dl, value, getMemBasePlusOffset(dst, (int) dstOff),
           dstSV, (int) (dstSVOff+dstOff), false, 0);
       outChains.add(store);
       dstOff += vtSize;
     }
-    return getNode(ISD.TokenFactor, new EVT(MVT.Other), outChains);
+    return getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), outChains);
   }
 
   private SDValue getMemsetValue(SDValue value, EVT vt) {
@@ -2366,9 +2333,9 @@ public class SelectionDAG {
    * @param operand
    * @return
    */
-  public SDValue getTargetExtractSubreg(int srIdx, EVT vt, SDValue operand) {
+  public SDValue getTargetExtractSubreg(int srIdx, DebugLoc dl, EVT vt, SDValue operand) {
     SDValue srIdxVal = getTargetConstant(srIdx, new EVT(MVT.i32));
-    SDNode subreg = getMachineNode(TargetOpcode.EXTRACT_SUBREG, vt, operand, srIdxVal);
+    SDNode subreg = getMachineNode(TargetOpcode.EXTRACT_SUBREG, dl, vt, operand, srIdxVal);
     return new SDValue(subreg, 0);
   }
 
@@ -2379,42 +2346,42 @@ public class SelectionDAG {
    * @param operand
    * @return
    */
-  public SDValue getTargetInsertSubreg(int srIdx, EVT vt,
+  public SDValue getTargetInsertSubreg(int srIdx, DebugLoc dl, EVT vt,
                                        SDValue operand, SDValue subreg) {
     SDValue srIdxVal = getTargetConstant(srIdx, new EVT(MVT.i32));
-    SDNode result = getMachineNode(TargetOpcode.INSERT_SUBREG, vt,
+    SDNode result = getMachineNode(TargetOpcode.INSERT_SUBREG, dl, vt,
         operand, subreg, srIdxVal);
     return new SDValue(result, 0);
   }
 
   public SDValue getGLOBAL_OFFSET_TABLE(EVT vt) {
-    return getNode(ISD.GLOBAL_OFFSET_TABLE, vt);
+    return getNode(ISD.GLOBAL_OFFSET_TABLE, new DebugLoc(), vt);
   }
 
-  public SDValue getAnyExtOrTrunc(SDValue op, EVT vt) {
+  public SDValue getAnyExtOrTrunc(SDValue op, DebugLoc dl, EVT vt) {
     return vt.bitsGT(op.getValueType()) ?
-        getNode(ISD.ANY_EXTEND, vt, op):
-        getNode(ISD.TRUNCATE, vt, op);
+        getNode(ISD.ANY_EXTEND, dl, vt, op):
+        getNode(ISD.TRUNCATE, dl, vt, op);
   }
 
-  public SDValue getSExtOrTrunc(SDValue op, EVT vt) {
+  public SDValue getSExtOrTrunc(SDValue op, DebugLoc dl, EVT vt) {
     return vt.bitsGT(op.getValueType()) ?
-        getNode(ISD.SIGN_EXTEND, vt, op):
-        getNode(ISD.TRUNCATE, vt, op);
+        getNode(ISD.SIGN_EXTEND, dl, vt, op):
+        getNode(ISD.TRUNCATE, dl, vt, op);
   }
-  public SDValue getZExtOrTrunc(SDValue op, EVT vt) {
+  public SDValue getZExtOrTrunc(SDValue op, DebugLoc dl, EVT vt) {
     return vt.bitsGT(op.getValueType()) ?
-        getNode(ISD.ZERO_EXTEND, vt, op):
-        getNode(ISD.TRUNCATE, vt, op);
+        getNode(ISD.ZERO_EXTEND, dl, vt, op):
+        getNode(ISD.TRUNCATE, dl, vt, op);
   }
 
-  public SDValue getZeroExtendInReg(SDValue op, EVT vt) {
+  public SDValue getZeroExtendInReg(SDValue op, DebugLoc dl, EVT vt) {
     Util.assertion(!vt.isVector(),
         "getZeroExtendInReg should use the vector element type instead of the vector type");
     if (op.getValueType().equals(vt)) return op;
     int bitWidth = op.getValueType().getScalarType().getSizeInBits();
     APInt imm = APInt.getLowBitsSet(bitWidth, vt.getSizeInBits());
-    return getNode(ISD.AND, op.getValueType(), op, getConstant(imm, op.getValueType(), false));
+    return getNode(ISD.AND, dl, op.getValueType(), op, getConstant(imm, op.getValueType(), false));
   }
 
   public SDDbgValue getDbgValue(MDNode mdPtr,
@@ -2983,54 +2950,54 @@ public class SelectionDAG {
     return new SDValue(n, 0);
   }
 
-  public SDNode getTargetNode(int opc, EVT vt) {
-    return getNode(~opc, vt).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt) {
+    return getNode(~opc, dl, vt).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt, SDValue op1) {
-    return getNode(~opc, vt, op1).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt, SDValue op1) {
+    return getNode(~opc, dl, vt, op1).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt, SDValue op1, SDValue op2) {
-    return getNode(~opc, vt, op1, op2).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt, SDValue op1, SDValue op2) {
+    return getNode(~opc, dl, vt, op1, op2).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt, SDValue op1, SDValue op2,
-                              SDValue op3) {
-    return getNode(~opc, vt, op1, op2, op3).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt, SDValue op1, SDValue op2,
+                               SDValue op3) {
+    return getNode(~opc, dl, vt, op1, op2, op3).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt, ArrayList<SDValue> ops) {
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt, ArrayList<SDValue> ops) {
     SDValue[] temp = new SDValue[ops.size()];
     ops.toArray(temp);
-    return getTargetNode(opc, vt, temp);
+    return getMachineNode(opc, dl, vt, temp);
   }
 
-  public SDNode getTargetNode(int opc, EVT vt, SDValue[] ops) {
-    return getNode(~opc, vt, ops).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt, SDValue[] ops) {
+    return getNode(~opc, dl, vt, ops).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2) {
-    return getNode(~opc, getVTList(vt1, vt2)).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2) {
+    return getNode(~opc, dl, getVTList(vt1, vt2)).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue op1) {
-    return getNode(~opc, getVTList(vt1, vt2), op1).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, SDValue op1) {
+    return getNode(~opc, dl, getVTList(vt1, vt2), op1).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue op1, SDValue op2) {
-    return getNode(~opc, getVTList(vt1, vt2), op1, op2).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, SDValue op1, SDValue op2) {
+    return getNode(~opc, dl, getVTList(vt1, vt2), op1, op2).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue op1, SDValue op2, SDValue op3) {
-    return getNode(~opc, getVTList(vt1, vt2), op1, op2, op3).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, SDValue op1, SDValue op2, SDValue op3) {
+    return getNode(~opc, dl, getVTList(vt1, vt2), op1, op2, op3).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue[] ops) {
-    return getNode(~opc, getVTList(vt1, vt2), ops).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, SDValue[] ops) {
+    return getNode(~opc, dl, getVTList(vt1, vt2), ops).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, SDValue[] ops, int len) {
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, SDValue[] ops, int len) {
     Util.assertion(len >= 0 && len <= ops.length);
     if (ops.length == len) {
       SDValue[] temp = new SDValue[len];
@@ -3038,54 +3005,55 @@ public class SelectionDAG {
       ops = temp;
     }
 
-    return getNode(~opc, getVTList(vt1, vt2), ops).getNode();
+    return getNode(~opc, dl, getVTList(vt1, vt2), ops).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, SDValue op1,
-                              SDValue op2) {
-    return getNode(~opc, getVTList(vt1, vt2, vt3), op1, op2).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, EVT vt3, SDValue op1,
+                               SDValue op2) {
+    return getNode(~opc, dl, getVTList(vt1, vt2, vt3), op1, op2).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, SDValue op1,
-                              SDValue op2, SDValue op3) {
-    return getNode(~opc, getVTList(vt1, vt2, vt3), op1, op2, op3).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, EVT vt3, SDValue op1,
+                               SDValue op2, SDValue op3) {
+    return getNode(~opc, dl, getVTList(vt1, vt2, vt3), op1, op2, op3).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, SDValue[] ops) {
-    return getNode(~opc, getVTList(vt1, vt2, vt3), ops).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, EVT vt3, SDValue[] ops) {
+    return getNode(~opc, dl, getVTList(vt1, vt2, vt3), ops).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT vt1, EVT vt2, EVT vt3, EVT vt4,
-                              SDValue[] ops) {
-    return getNode(~opc, getVTList(vt1, vt2, vt3, vt4), ops).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT vt1, EVT vt2, EVT vt3, EVT vt4,
+                               SDValue[] ops) {
+    return getNode(~opc, dl, getVTList(vt1, vt2, vt3, vt4), ops).getNode();
   }
 
-  public SDNode getTargetNode(int opc, ArrayList<EVT> resultTys, ArrayList<SDValue> ops) {
+  public SDNode getMachineNode(int opc, DebugLoc dl, ArrayList<EVT> resultTys, ArrayList<SDValue> ops) {
     EVT[] vts = new EVT[resultTys.size()];
     resultTys.toArray(vts);
     SDValue[] temp = new SDValue[ops.size()];
     ops.toArray(temp);
-    return getNode(~opc, getVTList(vts), temp).getNode();
+    return getNode(~opc, dl, getVTList(vts), temp).getNode();
   }
 
-  public SDNode getTargetNode(int opc, ArrayList<EVT> resultTys, SDValue[] ops) {
+  public SDNode getMachineNode(int opc, DebugLoc dl, ArrayList<EVT> resultTys, SDValue[] ops) {
     EVT[] vts = new EVT[resultTys.size()];
     resultTys.toArray(vts);
-    return getNode(~opc, getVTList(vts), ops).getNode();
+    return getNode(~opc, dl, getVTList(vts), ops).getNode();
   }
 
-  public SDNode getTargetNode(int opc, EVT[] resultTys, SDValue[] ops) {
-    return getNode(~opc, getVTList(resultTys), ops).getNode();
+  public SDNode getMachineNode(int opc, DebugLoc dl, EVT[] resultTys, SDValue[] ops) {
+    return getNode(~opc, dl, getVTList(resultTys), ops).getNode();
   }
 
   public SDValue getTargetFrameIndex(int fi, EVT vt) {
     return getFrameIndex(fi, vt, true);
   }
 
-  public SDValue getGlobalAddress(GlobalValue gv, EVT vt, long offset,
+  public SDValue getGlobalAddress(GlobalValue gv, DebugLoc dl,
+                                  EVT vt, long offset,
                                   boolean isTargetGA, int targetFlags) {
-    Util.assertion(targetFlags == 0 || isTargetGA, "Can't set target flags on target-independent globals!");
-
+    Util.assertion(targetFlags == 0 || isTargetGA,
+            "Can't set target flags on target-independent globals!");
     EVT ptr = new EVT(tli.getPointerTy());
     int bitwidth = ptr.getSizeInBits();
     if (bitwidth < 64)
@@ -3108,15 +3076,17 @@ public class SelectionDAG {
     int id = compute.computeHash();
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
-    SDNode n = new GlobalAddressSDNode(opc, vt, gv, offset, targetFlags);
+    SDNode n = new GlobalAddressSDNode(opc, dl, vt, gv, offset, targetFlags);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
   }
 
-  public SDValue getTargetGlobalAddress(GlobalValue gv, EVT vt, long offset,
+  public SDValue getTargetGlobalAddress(GlobalValue gv,
+                                        DebugLoc dl,
+                                        EVT vt, long offset,
                                         int targetFlags) {
-    return getGlobalAddress(gv, vt, offset, true, targetFlags);
+    return getGlobalAddress(gv, dl, vt, offset, true, targetFlags);
   }
 
   public SDValue getFrameIndex(int fi, EVT vt, boolean isTarget) {
@@ -3135,7 +3105,8 @@ public class SelectionDAG {
   }
 
   public SDValue getJumpTable(int jti, EVT vt, boolean isTarget, int targetFlags) {
-    Util.assertion(targetFlags == 0 || isTarget, "Can't set target flags on target-independent jump table");
+    Util.assertion(targetFlags == 0 || isTarget,
+            "Can't set target flags on target-independent jump table");
 
     int opc = isTarget ? ISD.TargetJumpTable : ISD.JumpTable;
     FoldingSetNodeID compute = new FoldingSetNodeID();
@@ -3174,7 +3145,8 @@ public class SelectionDAG {
 
   public SDValue getConstantPool(Constant c, EVT vt, int align, int offset,
                                  boolean isTarget, int targetFlags) {
-    Util.assertion(targetFlags == 0 || isTarget, "Can't set target flags on target-independent constant pool");
+    Util.assertion(targetFlags == 0 || isTarget,
+            "Can't set target flags on target-independent constant pool");
 
     int opc = isTarget ? ISD.TargetConstantPool : ISD.ConstantPool;
     FoldingSetNodeID compute = new FoldingSetNodeID();
@@ -3200,7 +3172,8 @@ public class SelectionDAG {
                                        int offset,
                                        boolean isTarget,
                                        int targetFlags) {
-    Util.assertion(targetFlags == 0 || isTarget, "Can't set target flags on target-independent constant pool");
+    Util.assertion(targetFlags == 0 || isTarget,
+            "Can't set target flags on target-independent constant pool");
 
     if (alignment == 0)
       alignment = tli.getTargetData().getPrefTypeAlignment(c.getType());
@@ -3280,22 +3253,6 @@ public class SelectionDAG {
     return new SDValue(n, 0);
   }
 
-  public SDValue getLabel(int opc, SDValue root, int labelID) {
-    FoldingSetNodeID compute = new FoldingSetNodeID();
-    SDValue[] ops = {root};
-    addNodeToIDNode(compute, ISD.BasicBlock, getVTList(new EVT(MVT.Other)),
-        ops);
-    compute.addInteger(labelID);
-
-    int id = compute.computeHash();
-    if (cseMap.containsKey(id))
-      return new SDValue(cseMap.get(id), 0);
-    SDNode n = new LabelSDNode(opc, root, labelID);
-    cseMap.put(id, n);
-    add(n);
-    return new SDValue(n, 0);
-  }
-
   public SDValue getEHLabel(DebugLoc dl, SDValue root, MCSymbol label) {
     FoldingSetNodeID compute = new FoldingSetNodeID();
     SDValue[] ops = {root};
@@ -3329,44 +3286,43 @@ public class SelectionDAG {
     return new SDValue(n, 0);
   }
 
-  public SDValue getCopyFromReg(SDValue chain, int reg, EVT vt) {
+  public SDValue getCopyFromReg(SDValue chain, DebugLoc dl, int reg, EVT vt) {
     SDVTList vts = getVTList(vt, new EVT(MVT.Other));
     SDValue[] ops = {chain, getRegister(reg, vt)};
-    return getNode(ISD.CopyFromReg, vts, ops);
+    return getNode(ISD.CopyFromReg, dl, vts, ops);
   }
 
-  public SDValue getCopyFromReg(SDValue chain, int reg, EVT vt, SDValue flag) {
+  public SDValue getCopyFromReg(SDValue chain, DebugLoc dl, int reg, EVT vt, SDValue flag) {
     SDVTList vts = getVTList(vt, new EVT(MVT.Other), new EVT(MVT.Glue));
     if (flag.getNode() != null) {
       SDValue[] ops = {chain, getRegister(reg, vt), flag};
-      return getNode(ISD.CopyFromReg, vts, ops);
+      return getNode(ISD.CopyFromReg, dl, vts, ops);
     } else {
       SDValue[] ops = {chain, getRegister(reg, vt)};
-      return getNode(ISD.CopyFromReg, vts, ops);
+      return getNode(ISD.CopyFromReg, dl, vts, ops);
     }
   }
 
-  public SDValue getCopyToReg(SDValue chain, SDValue reg, SDValue node,
+  public SDValue getCopyToReg(SDValue chain, DebugLoc dl, SDValue reg, SDValue node,
                               SDValue flag) {
     SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
 
     if (flag.getNode() != null) {
       SDValue[] ops = {chain, reg, node, flag};
-      return getNode(ISD.CopyToReg, vts, ops);
+      return getNode(ISD.CopyToReg, dl, vts, ops);
     } else {
       SDValue[] ops = {chain, reg, node};
-      return getNode(ISD.CopyToReg, vts, ops);
+      return getNode(ISD.CopyToReg, dl, vts, ops);
     }
   }
 
-  public SDValue getCopyToReg(SDValue chain, int reg, SDValue node) {
-    return getNode(ISD.CopyToReg, new EVT(MVT.Other), chain,
+  public SDValue getCopyToReg(SDValue chain, DebugLoc dl, int reg, SDValue node) {
+    return getNode(ISD.CopyToReg, dl, new EVT(MVT.Other), chain,
         getRegister(reg, node.getValueType()), node);
   }
 
-  public SDValue getCopyToReg(SDValue chain, int reg, SDValue node, SDValue flag) {
-    return getCopyToReg(chain, getRegister(reg, node.getValueType()), node,
-        flag);
+  public SDValue getCopyToReg(SDValue chain, DebugLoc dl, int reg, SDValue node, SDValue flag) {
+    return getCopyToReg(chain, dl, getRegister(reg, node.getValueType()), node, flag);
   }
 
   public SDValue createStackTemporary(EVT vt) {
@@ -3395,17 +3351,18 @@ public class SelectionDAG {
     return getFrameIndex(frameInde, new EVT(tli.getPointerTy()), false);
   }
 
-  public SDValue getTruncStore(SDValue chain, SDValue val, SDValue ptr, Value sv,
+  public SDValue getTruncStore(SDValue chain, DebugLoc dl, SDValue val, SDValue ptr, Value sv,
                                int svOffset, EVT svt) {
-    return getTruncStore(chain, val, ptr, sv, svOffset, svt, false, 0);
+    return getTruncStore(chain, dl, val, ptr, sv, svOffset, svt, false, 0);
   }
 
-  public SDValue getTruncStore(SDValue chain, SDValue val, SDValue ptr, Value sv,
+  public SDValue getTruncStore(SDValue chain, DebugLoc dl,
+                               SDValue val, SDValue ptr, Value sv,
                                int svOffset, EVT svt,
                                boolean isVolatile, int alignment) {
     EVT vt = val.getValueType();
     if (vt.equals(svt))
-      return getStore(chain, val, ptr, sv, svOffset, isVolatile, alignment);
+      return getStore(chain, dl, val, ptr, sv, svOffset, isVolatile, alignment);
 
     Util.assertion(vt.bitsGT(svt));
     Util.assertion(vt.isInteger() == svt.isInteger());
@@ -3428,13 +3385,13 @@ public class SelectionDAG {
     if (isVolatile)
       flags |= MOVolatile;
     MachineMemOperand mmo = new MachineMemOperand(sv, flags, svOffset, svt.getStoreSize(), alignment);
-    SDNode n = new StoreSDNode(ops, vts, UNINDEXED, true, svt, mmo);
+    SDNode n = new StoreSDNode(ops, dl, vts, UNINDEXED, true, svt, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
   }
 
-  public SDValue getStore(SDValue chain, SDValue val, SDValue ptr, Value sv,
+  public SDValue getStore(SDValue chain, DebugLoc dl, SDValue val, SDValue ptr, Value sv,
                           int svOffset, boolean isVolatile, int alignment) {
     EVT vt = val.getValueType();
     if (alignment == 0)
@@ -3456,7 +3413,7 @@ public class SelectionDAG {
     if (isVolatile)
       flags |= MOVolatile;
     MachineMemOperand mmo = new MachineMemOperand(sv, flags, svOffset, vt.getStoreSize(), alignment);
-    SDNode n = new StoreSDNode(ops, vts, UNINDEXED, false, vt, mmo);
+    SDNode n = new StoreSDNode(ops, dl, vts, UNINDEXED, false, vt, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
@@ -3475,21 +3432,22 @@ public class SelectionDAG {
     return tli.getTargetData().getABITypeAlignment(ty);
   }
 
-  public SDValue getExtLoad(LoadExtType extType, EVT vt, SDValue chain,
+  public SDValue getExtLoad(DebugLoc dl, LoadExtType extType, EVT vt, SDValue chain,
                             SDValue ptr, Value sv, int svOffset, EVT evt) {
-    return getExtLoad(extType, vt, chain, ptr, sv, svOffset, evt, false, 0);
+    return getExtLoad(dl, extType, vt, chain, ptr, sv, svOffset, evt, false, 0);
   }
 
-  public SDValue getExtLoad(LoadExtType extType, EVT vt, SDValue chain,
+  public SDValue getExtLoad(DebugLoc dl, LoadExtType extType, EVT vt, SDValue chain,
                             SDValue ptr, Value sv, int svOffset, EVT evt,
                             boolean isVolatile,
                             int alignment) {
     SDValue undef = getUNDEF(ptr.getValueType());
-    return getLoad(UNINDEXED, extType, vt, chain, ptr, undef, sv, svOffset,
+    return getLoad(dl, UNINDEXED, extType, vt, chain, ptr, undef, sv, svOffset,
         evt, isVolatile, alignment);
   }
 
-  public SDValue getLoad(MemIndexedMode am,
+  public SDValue getLoad(DebugLoc dl,
+                         MemIndexedMode am,
                          LoadExtType extType, EVT vt,
                          SDValue chain, SDValue ptr,
                          SDValue offset, Value sv,
@@ -3510,10 +3468,11 @@ public class SelectionDAG {
       flags |= MOVolatile;
     MachineMemOperand mmo = new MachineMemOperand(sv, flags, svOffset,
         evt.getStoreSizeInBits()*8, alignment);
-    return getLoad(am, extType, vt, chain, ptr, offset, evt, mmo);
+    return getLoad(dl, am, extType, vt, chain, ptr, offset, evt, mmo);
   }
 
-  public SDValue getLoad(MemIndexedMode am,
+  public SDValue getLoad(DebugLoc dl,
+                         MemIndexedMode am,
                          LoadExtType extType,
                          EVT vt,
                          SDValue chain,
@@ -3546,35 +3505,36 @@ public class SelectionDAG {
     int id = compute.computeHash();
     if (cseMap.containsKey(id))
       return new SDValue(cseMap.get(id), 0);
-    SDNode n = new LoadSDNode(ops, vts, am, extType, memVT, mmo);
+    SDNode n = new LoadSDNode(ops, dl, vts, am, extType, memVT, mmo);
     cseMap.put(id, n);
     add(n);
     return new SDValue(n, 0);
   }
 
 
-  public SDValue getLoad(EVT vt, SDValue chain, SDValue ptr, Value sv, int svOffset) {
-    return getLoad(vt, chain, ptr, sv, svOffset, false, 0);
+  public SDValue getLoad(DebugLoc dl, EVT vt, SDValue chain, SDValue ptr, Value sv, int svOffset) {
+    return getLoad(dl, vt, chain, ptr, sv, svOffset, false, 0);
   }
 
-  public SDValue getLoad(EVT vt, SDValue chain, SDValue ptr, Value sv, int svOffset,
+  public SDValue getLoad(DebugLoc dl, EVT vt, SDValue chain, SDValue ptr, Value sv, int svOffset,
                          boolean isVolatile, int alignment) {
     SDValue undef = getUNDEF(ptr.getValueType());
-    return getLoad(UNINDEXED, LoadExtType.NON_EXTLOAD, vt, chain, ptr, undef,
+    return getLoad(dl, UNINDEXED, LoadExtType.NON_EXTLOAD, vt, chain, ptr, undef,
         sv, svOffset, vt, isVolatile, alignment);
   }
 
-  public SDValue getIndexedLoad(SDValue origLoad, SDValue base, SDValue offset,
+  public SDValue getIndexedLoad(DebugLoc dl, SDValue origLoad,
+                                SDValue base, SDValue offset,
                                 MemIndexedMode am) {
     LoadSDNode ld = (LoadSDNode) origLoad.getNode();
     Util.assertion(ld.getOffset().getOpcode() == ISD.UNDEF);
-    return getLoad(am, ld.getExtensionType(), origLoad.getValueType(),
+    return getLoad(dl, am, ld.getExtensionType(), origLoad.getValueType(),
         ld.getChain(), base, offset, ld.getSrcValue(),
         ld.getRawSubclassData(), ld.getMemoryVT(),
         ld.isVolatile(), ld.getAlignment());
   }
 
-  public SDValue getIndexedStore(SDValue origStore, SDValue base,
+  public SDValue getIndexedStore(DebugLoc dl, SDValue origStore, SDValue base,
                                  SDValue offset, MemIndexedMode am) {
     StoreSDNode st = (StoreSDNode) origStore.getNode();
     Util.assertion(st.getOffset().getOpcode() == ISD.UNDEF);
@@ -3586,7 +3546,7 @@ public class SelectionDAG {
     if (cseMap.containsValue(id))
       return new SDValue(cseMap.get(id), 0);
 
-    SDNode n = new StoreSDNode(ops, vts, am, st.isTruncatingStore(),
+    SDNode n = new StoreSDNode(ops, dl, vts, am, st.isTruncatingStore(),
         st.getMemoryVT(), st.getMemOperand());
     cseMap.put(id, n);
     add(n);
@@ -3636,13 +3596,13 @@ public class SelectionDAG {
     return cseMap.get(id);
   }
 
-  public SDValue getCALLSEQ_START(SDValue chain, SDValue op) {
+  public SDValue getCALLSEQ_START(SDValue chain, DebugLoc dl, SDValue op) {
     SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     SDValue[] ops = {chain, op};
-    return getNode(ISD.CALLSEQ_START, vts, ops);
+    return getNode(ISD.CALLSEQ_START, dl, vts, ops);
   }
 
-  public SDValue getCALLSEQ_END(SDValue chain, SDValue op1, SDValue op2,
+  public SDValue getCALLSEQ_END(SDValue chain, DebugLoc dl, SDValue op1, SDValue op2,
                                 SDValue inFlag) {
     SDVTList vts = getVTList(new EVT(MVT.Other), new EVT(MVT.Glue));
     ArrayList<SDValue> ops = new ArrayList<>();
@@ -3651,12 +3611,13 @@ public class SelectionDAG {
     ops.add(op2);
     if (inFlag.getNode() != null)
       ops.add(inFlag);
-    return getNode(ISD.CALLSEQ_END, vts, ops);
+    return getNode(ISD.CALLSEQ_END, dl, vts, ops);
   }
 
-  public SDValue getMemcpy(SDValue chain, SDValue dst,
-                           SDValue src, SDValue size,
-                           int align, boolean alwaysInline,
+  public SDValue getMemcpy(SDValue chain, DebugLoc dl,
+                           SDValue dst, SDValue src,
+                           SDValue size, int align,
+                           boolean alwaysInline,
                            Value dstVal, long dstOff,
                            Value srcVal, long srcOff) {
     ConstantSDNode constantSize = size.getNode() instanceof ConstantSDNode ?
@@ -3665,21 +3626,21 @@ public class SelectionDAG {
       if (constantSize.isNullValue())
         return chain;
 
-      SDValue result = getMemcpyLoadsAndStores(chain, dst, src,
+      SDValue result = getMemcpyLoadsAndStores(chain, dl, dst, src,
           constantSize.getZExtValue(), align, false, dstVal,
           dstOff, srcVal, srcOff);
       if (result.getNode() != null)
         return result;
     }
 
-    SDValue result = tli.emitTargetCodeForMemcpy(this, chain, dst, src,
+    SDValue result = tli.emitTargetCodeForMemcpy(this, dl, chain, dst, src,
         size, align, alwaysInline, dstVal, dstOff, srcVal, srcOff);
     if (result.getNode() != null)
       return result;
 
     if (alwaysInline) {
       Util.assertion(constantSize != null);
-      return getMemcpyLoadsAndStores(chain, dst, src,
+      return getMemcpyLoadsAndStores(chain, dl, dst, src,
           constantSize.getZExtValue(), align, true, dstVal,
           dstOff, srcVal, srcOff);
     }
@@ -3706,14 +3667,13 @@ public class SelectionDAG {
         false, false, false, false, 0,
         tli.getLibCallCallingConv(RTLIB.MEMCPY), false,
         false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMCPY),
-            new EVT(tli.getPointerTy())), args, this);
+            new EVT(tli.getPointerTy())), args, this, dl);
     return callResult.second;
   }
 
-  public SDValue getMemmove(SDValue chain, SDValue dst,
-                            SDValue src, SDValue size,
-                            int align,
-                            Value dstSV, long dstDiff,
+  public SDValue getMemmove(SDValue chain, DebugLoc dl,
+                            SDValue dst, SDValue src, SDValue size,
+                            int align, Value dstSV, long dstDiff,
                             Value srcSV, long srcDiff) {
     // Check to see if we should lower the memmove to loads and stores first.
     // For cases within the target-specified limits, this is the best choice.
@@ -3722,7 +3682,7 @@ public class SelectionDAG {
       if (csd.isNullValue())
         return chain;
 
-      SDValue result = getMemmoveLoadsAndStores(chain, dst, src, csd.getZExtValue(),
+      SDValue result = getMemmoveLoadsAndStores(chain, dl, dst, src, csd.getZExtValue(),
           align, false, dstSV, dstDiff, srcSV, srcDiff);
       if (result.getNode() != null)
         return result;
@@ -3730,7 +3690,7 @@ public class SelectionDAG {
 
     // Then check to see if we should lower the memmove with target-specific
     // code. If the target chooses to do this, this is the next best.
-    SDValue result = tli.emitTargetCodeForMemmove(this, chain, dst, src, size, align,
+    SDValue result = tli.emitTargetCodeForMemmove(this, dl, chain, dst, src, size, align,
         dstSV, dstDiff, srcSV, srcDiff);
 
     if (result.getNode() != null)
@@ -3754,15 +3714,17 @@ public class SelectionDAG {
     args.add(entry);
 
     Pair<SDValue, SDValue> callResult = tli.lowerCallTo(context, chain, Type.getVoidTy(context),
-        false, false, false, false, 0, tli.getLibCallCallingConv(RTLIB.MEMMOVE),
-        false, false, getExternalSymbol(tli.getLibCallName(RTLIB.MEMMOVE),
-            new EVT(tli.getPointerTy())), args, this);
+        false, false, false, false, 0,
+            tli.getLibCallCallingConv(RTLIB.MEMMOVE), false, false,
+            getExternalSymbol(tli.getLibCallName(RTLIB.MEMMOVE),
+            new EVT(tli.getPointerTy())), args, this, dl);
     return callResult.second;
   }
 
-  private SDValue getMemmoveLoadsAndStores(SDValue chain, SDValue dst,
-                                           SDValue src, long size,
-                                           int align, boolean alwaysInline,
+  private SDValue getMemmoveLoadsAndStores(SDValue chain, DebugLoc dl,
+                                           SDValue dst, SDValue src,
+                                           long size, int align,
+                                           boolean alwaysInline,
                                            Value dstSV, long dstDiff,
                                            Value srcSV, long srcDiff) {
     if (src.getOpcode() == ISD.UNDEF)
@@ -3789,31 +3751,33 @@ public class SelectionDAG {
       EVT vt = memOps.get(i);
       int vtSize = vt.getSizeInBits()/8;
 
-      SDValue value = getLoad(vt, chain, getMemBasePlusOffset(src, (int) srcOff),
+      SDValue value = getLoad(dl, vt, chain, getMemBasePlusOffset(src, (int) srcOff),
           srcSV, (int) (srcDiff + srcOff), false, align);
       loadValues.add(value);
       loadChains.add(value.getValue(1));
       srcOff += vtSize;
     }
 
-    chain = getNode(ISD.TokenFactor, new EVT(MVT.Other), loadChains);
+    chain = getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), loadChains);
     outChains.clear();
 
     for (int i = 0; i < numMemOps; i++) {
       EVT vt = memOps.get(i);
       int vtSize = vt.getSizeInBits()/8;
-      SDValue store = getStore(chain, loadValues.get(i),
-          getMemBasePlusOffset(dst, (int) dstOff), dstSV, (int) (dstDiff + dstOff), false, dstAlign);
+      SDValue store = getStore(chain, dl, loadValues.get(i),
+              getMemBasePlusOffset(dst, (int) dstOff), dstSV,
+              (int) (dstDiff + dstOff), false, dstAlign);
       outChains.add(store);
       dstOff += vtSize;
     }
 
-    return getNode(ISD.TokenFactor, new EVT(MVT.Other), outChains);
+    return getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), outChains);
   }
 
-  private SDValue getMemcpyLoadsAndStores(SDValue chain, SDValue dst,
-                                          SDValue src, long size,
-                                          int align, boolean alwaysInline,
+  private SDValue getMemcpyLoadsAndStores(SDValue chain, DebugLoc dl,
+                                          SDValue dst, SDValue src,
+                                          long size, int align,
+                                          boolean alwaysInline,
                                           Value dstVal, long dstValOff,
                                           Value srcVal, long srcValOff) {
     ArrayList<EVT> memOps = new ArrayList<>();
@@ -3836,19 +3800,19 @@ public class SelectionDAG {
       int vtSize = vt.getSizeInBits() / 8;
       SDValue value, store;
       if (copyFromStr.get() && (isZeroStr || !vt.isVector())) {
-        value = getMemsetStringVal(vt, str.get(), srcOffset);
-        store = getStore(chain, value,
+        value = getMemsetStringVal(vt, dl, str.get(), srcOffset);
+        store = getStore(chain, dl, value,
             getMemBasePlusOffset(dst, destOffset),
             dstVal, (int) (dstValOff + dstValOff),
             false, destAlign);
       } else {
         EVT nvt = tli.getTypeToTransformTo(context, vt);
         Util.assertion(nvt.bitsGE(vt));
-        value = getExtLoad(LoadExtType.EXTLOAD, nvt, chain,
+        value = getExtLoad(dl, LoadExtType.EXTLOAD, nvt, chain,
             getMemBasePlusOffset(src, srcOffset),
             srcVal, (int) (srcValOff + srcOffset), vt, false,
             align);
-        store = getTruncStore(chain, value,
+        store = getTruncStore(chain, dl, value,
             getMemBasePlusOffset(dst, (int) dstValOff),
             dstVal, (int) (dstValOff + destOffset), vt, false, destAlign);
       }
@@ -3856,11 +3820,11 @@ public class SelectionDAG {
       srcOffset += vtSize;
       destOffset += vtSize;
     }
-    return getNode(ISD.TokenFactor, new EVT(MVT.Other),
-        outChains);
+    return getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), outChains);
   }
 
   private SDValue getMemsetStringVal(EVT vt,
+                                     DebugLoc dl,
                                      String str,
                                      int offset) {
     // Handle vector with all elements zero.
@@ -3870,7 +3834,7 @@ public class SelectionDAG {
       int numElts = vt.getVectorNumElements();
       EVT eltVT = vt.getVectorElementType().equals(new EVT(MVT.f32))
           ? new EVT(MVT.i32) : new EVT(MVT.i64);
-      return getNode(ISD.BIT_CONVERT, vt,
+      return getNode(ISD.BIT_CONVERT, dl, vt,
           getConstant(0, EVT.getVectorVT(context, eltVT, numElts), false));
     }
     Util.assertion(!vt.isVector(), "Can't handle vector type here!");
@@ -3888,7 +3852,7 @@ public class SelectionDAG {
 
   private SDValue getMemBasePlusOffset(SDValue base, int offset) {
     EVT vt = base.getValueType();
-    return getNode(ISD.ADD, vt, base, getConstant(offset, vt, false));
+    return getNode(ISD.ADD, base.getDebugLoc(), vt, base, getConstant(offset, vt, false));
   }
 
   /**
@@ -4109,7 +4073,7 @@ public class SelectionDAG {
         }
       }
     }
-    return getNode(ISD.TokenFactor, new EVT(MVT.Other), argChains);
+    return getNode(ISD.TokenFactor, chain.getDebugLoc(), new EVT(MVT.Other), argChains);
   }
 
   public boolean legalizeTypes() {
@@ -4327,7 +4291,7 @@ public class SelectionDAG {
     return Math.max(firstAnswer, Math.min(vtBits, mask.countLeadingZeros()));
   }
 
-  public SDValue getVectorShuffle(EVT vt, SDValue op0, SDValue op1, int[] mask) {
+  public SDValue getVectorShuffle(EVT vt, DebugLoc dl, SDValue op0, SDValue op1, int[] mask) {
     Util.assertion(op0.getValueType().equals(op1.getValueType()), "Invalid VECTOR_SHUFFLE!");
 
     Util.assertion(vt.isVector() && op0.getValueType().isVector());
@@ -4403,7 +4367,7 @@ public class SelectionDAG {
       return new SDValue(cseMap.get(key), 0);
 
     int[] masks = maskVec.toArray();
-    ShuffleVectorSDNode n = new ShuffleVectorSDNode(getVTList(vt), op0, op1, masks);
+    ShuffleVectorSDNode n = new ShuffleVectorSDNode(getVTList(vt), dl, op0, op1, masks);
     cseMap.put(key, n);
     allNodes.add(n);
     return new SDValue(n, 0);
@@ -4441,16 +4405,16 @@ public class SelectionDAG {
       return op;
 
     int opc = ty.bitsGT(shTy) ? ISD.TRUNCATE : ISD.ZERO_EXTEND;
-    return getNode(opc, shTy, op);
+    return getNode(opc, op.getDebugLoc(), shTy, op);
   }
 
   public SDValue getNOT(SDValue op, EVT vt) {
     EVT eltVT = vt.isVector() ? vt.getVectorElementType() : vt;
     SDValue negOne = getConstant(APInt.getAllOnesValue(eltVT.getSizeInBits()), vt, false);
-    return getNode(ISD.XOR, vt, op, negOne);
+    return getNode(ISD.XOR, op.getDebugLoc(), vt, op, negOne);
   }
 
-  public SDValue foldSetCC(EVT vt, SDValue lhs, SDValue rhs, CondCode cc) {
+  public SDValue foldSetCC(DebugLoc dl, EVT vt, SDValue lhs, SDValue rhs, CondCode cc) {
     switch (cc) {
       default:
         break;
@@ -4583,7 +4547,7 @@ public class SelectionDAG {
             return getConstant(r != cmpLessThan, vt, false);
         }
       } else {
-        return getSetCC(vt, rhs, lhs, getSetCCSwappedOperands(cc));
+        return getSetCC(dl, vt, rhs, lhs, getSetCCSwappedOperands(cc));
       }
     }
     return new SDValue();
@@ -4617,20 +4581,6 @@ public class SelectionDAG {
     DefaultDotGraphTrait trait = DefaultDotGraphTrait.createSelectionDAGTrait(this, false);
     GraphWriter.viewGraph(title, filename, trait);
   }
-
-  /*public void repositionNode(SDNode position, SDNode n) {
-    Util.assertion(position != null);
-    if (position.equals(n))
-      return;
-    int index = allNodes.indexOf(position);
-    Util.assertion(index != -1);
-    int nIdx = allNodes.indexOf(n);
-    Util.assertion(nIdx != -1);
-    allNodes.add(index, n);
-    if (index < nIdx)
-      ++nIdx;
-    allNodes.remove(nIdx);
-  }*/
 
   public SDNode getNodeIfExists(int opc, SDVTList vts, SDValue[] ops) {
     if (!vts.vts[vts.vts.length - 1].equals(new EVT(MVT.Glue))) {

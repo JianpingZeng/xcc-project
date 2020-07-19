@@ -19,6 +19,7 @@ package backend.codegen.dagisel;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.debug.DebugLoc;
 import backend.support.CallingConv;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
@@ -109,11 +110,14 @@ public class SelectionDAGLegalizer {
       return val;
 
     SDNode node = val.getNode();
+    DebugLoc dl = node.getDebugLoc();
     for (int i = 0, e = node.getNumValues(); i < e; i++)
-      Util.assertion(getTypeAction(node.getValueType(i)) == TargetLowering.LegalizeAction.Legal, "Unexpected illegal type!");
+      Util.assertion(getTypeAction(node.getValueType(i)) ==
+              TargetLowering.LegalizeAction.Legal, "Unexpected illegal type!");
 
     for (int i = 0, e = node.getNumOperands(); i < e; i++)
-      Util.assertion(isTypeLegal(node.getOperand(i).getValueType()) || node.getOperand(i).getOpcode() == ISD.TargetConstant,
+      Util.assertion(isTypeLegal(node.getOperand(i).getValueType()) ||
+                      node.getOperand(i).getOpcode() == ISD.TargetConstant,
           "Unexpected illegal type!");
 
     if (legalizeNodes.containsKey(val))
@@ -217,8 +221,9 @@ public class SelectionDAGLegalizer {
         case ISD.BR_JT:
         case ISD.BR_CC:
         case ISD.BRCOND:
-          ops.set(0, dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
-              ops.get(0), lastCALLSEQ_END));
+          ops.set(0, dag.getNode(ISD.TokenFactor, node.getDebugLoc(),
+                  new EVT(MVT.Other),
+                  ops.get(0), lastCALLSEQ_END));
           ops.set(0, legalizeOp(ops.get(0)));
           lastCALLSEQ_END = dag.getEntryNode();
           break;
@@ -291,7 +296,7 @@ public class SelectionDAGLegalizer {
 
         temp1 = legalizeOp(node.getOperand(0));
         if (lastCALLSEQ_END.getOpcode() != ISD.TokenFactor) {
-          temp1 = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+          temp1 = dag.getNode(ISD.TokenFactor, node.getDebugLoc(), new EVT(MVT.Other),
               temp1, lastCALLSEQ_END);
           temp1 = legalizeOp(temp1);
         }
@@ -318,8 +323,8 @@ public class SelectionDAGLegalizer {
       case ISD.CALLSEQ_END: {
         if (!lastCALLSEQ_END.getNode().equals(node)) {
           legalizeOp(new SDValue(findCallStartFromCallEnd(node), 0));
-          Util.assertion(legalizeNodes.containsKey(val), "Legalizing the call start should have legalized this node!");
-
+          Util.assertion(legalizeNodes.containsKey(val),
+                  "Legalizing the call start should have legalized this node!");
           return legalizeNodes.get(val);
         }
 
@@ -392,10 +397,10 @@ public class SelectionDAGLegalizer {
             case Promote: {
               Util.assertion(vt.isVector(), "Can't promote this load!");
               EVT nvt = tli.getTypeToPromoteType(node.getOpcode(), vt);
-              temp1 = dag.getLoad(nvt, temp1, temp2, ld.getSrcValue(),
+              temp1 = dag.getLoad(dl, nvt, temp1, temp2, ld.getSrcValue(),
                   ld.getSrcValueOffset(), ld.isVolatile(),
                   ld.getAlignment());
-              temp3 = legalizeOp(dag.getNode(ISD.BIT_CONVERT, vt, temp1));
+              temp3 = legalizeOp(dag.getNode(ISD.BIT_CONVERT, dl, vt, temp1));
               temp4 = legalizeOp(temp1.getValue(1));
               break;
             }
@@ -419,17 +424,20 @@ public class SelectionDAGLegalizer {
             LoadExtType newExtType = extType == LoadExtType.ZEXTLOAD ?
                 LoadExtType.ZEXTLOAD : EXTLOAD;
 
-            result = dag.getExtLoad(newExtType, node.getValueType(0),
+            result = dag.getExtLoad(dl, newExtType, node.getValueType(0),
                 temp1, temp2, ld.getSrcValue(), svOffset,
                 nvt, isVolatile, alignment);
             ch = result.getValue(1);
 
             if (extType == LoadExtType.SEXTLOAD) {
               result = dag.getNode(ISD.SIGN_EXTEND_INREG,
+                  dl,
                   result.getValueType(), result, dag.getValueType(srcVT));
             } else if (extType == LoadExtType.ZEXTLOAD || nvt.equals(result.getValueType())) {
-              result = dag.getNode(ISD.AssertSext, result.getValueType(), result,
-                  dag.getValueType(srcVT));
+              result = dag.getNode(ISD.AssertSext,
+                      dl,
+                      result.getValueType(), result,
+                      dag.getValueType(srcVT));
             }
             temp1 = legalizeOp(result);
             temp2 = legalizeOp(ch);
@@ -440,7 +448,8 @@ public class SelectionDAGLegalizer {
             Util.assertion(roundWidth < srcWidth);
             int extraWidth = srcWidth - roundWidth;
             Util.assertion(extraWidth < roundWidth);
-            Util.assertion((roundWidth & 7) == 0 && (extraWidth & 7) == 0, "Load size not an integeral number of bytes!");
+            Util.assertion((roundWidth & 7) == 0 && (extraWidth & 7) == 0,
+                    "Load size not an integeral number of bytes!");
 
             EVT roundVT = EVT.getIntegerVT(dag.getContext(),roundWidth);
             EVT extraVT = EVT.getIntegerVT(dag.getContext(),extraWidth);
@@ -449,40 +458,40 @@ public class SelectionDAGLegalizer {
             if (tli.isLittleEndian()) {
               // EXTLOAD:i24 -> ZEXTLOAD:i16 | (shl EXTLOAD@+2:i8, 16)
               // Load the bottom RoundWidth bits.
-              lo = dag.getExtLoad(LoadExtType.ZEXTLOAD, node.getValueType(0),
+              lo = dag.getExtLoad(dl, LoadExtType.ZEXTLOAD, node.getValueType(0),
                   temp1, temp2, ld.getSrcValue(), svOffset, roundVT,
                   isVolatile, alignment);
               incrementSize = roundWidth / 8;
-              temp2 = dag.getNode(ISD.ADD, temp2.getValueType(), temp2,
+              temp2 = dag.getNode(ISD.ADD, dl, temp2.getValueType(), temp2,
                   dag.getIntPtrConstant(incrementSize));
-              hi = dag.getExtLoad(extType, node.getValueType(0),
+              hi = dag.getExtLoad(dl, extType, node.getValueType(0),
                   temp1, temp2, ld.getSrcValue(), svOffset + incrementSize,
                   extraVT, isVolatile, Util.minAlign(alignment, incrementSize));
 
-              ch = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo.getValue(1),
+              ch = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), lo.getValue(1),
                   hi.getValue(1));
-              hi = dag.getNode(ISD.SHL, hi.getValueType(), hi,
+              hi = dag.getNode(ISD.SHL, dl, hi.getValueType(), hi,
                   dag.getConstant(roundWidth, new EVT(tli.getShiftAmountTy()), false));
-              result = dag.getNode(ISD.OR, node.getValueType(0), lo, hi);
+              result = dag.getNode(ISD.OR, dl, node.getValueType(0), lo, hi);
             } else {
               // Big endian - avoid unaligned loads.
               // EXTLOAD:i24 -> (shl EXTLOAD:i16, 8) | ZEXTLOAD@+2:i8
               // Load the top RoundWidth bits.
-              hi = dag.getExtLoad(extType, node.getValueType(0),
+              hi = dag.getExtLoad(dl, extType, node.getValueType(0),
                   temp1, temp2, ld.getSrcValue(), svOffset, roundVT,
                   isVolatile, alignment);
               incrementSize = roundWidth / 8;
-              temp2 = dag.getNode(ISD.ADD, temp2.getValueType(), temp2,
+              temp2 = dag.getNode(ISD.ADD, dl, temp2.getValueType(), temp2,
                   dag.getIntPtrConstant(incrementSize));
-              lo = dag.getExtLoad(LoadExtType.ZEXTLOAD, node.getValueType(0),
+              lo = dag.getExtLoad(dl, LoadExtType.ZEXTLOAD, node.getValueType(0),
                   temp1, temp2, ld.getSrcValue(), svOffset + incrementSize,
                   extraVT, isVolatile, Util.minAlign(alignment, incrementSize));
 
-              ch = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo.getValue(1),
+              ch = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), lo.getValue(1),
                   hi.getValue(1));
-              hi = dag.getNode(ISD.SHL, hi.getValueType(), hi,
+              hi = dag.getNode(ISD.SHL, dl, hi.getValueType(), hi,
                   dag.getConstant(extraWidth, new EVT(tli.getShiftAmountTy()), false));
-              result = dag.getNode(ISD.OR, node.getValueType(0), lo, hi);
+              result = dag.getNode(ISD.OR, dl, node.getValueType(0), lo, hi);
             }
             temp1 = legalizeOp(result);
             temp2 = legalizeOp(ch);
@@ -522,26 +531,28 @@ public class SelectionDAGLegalizer {
                 // f64 = EXTLOAD f32 should expand to LOAD, FP_EXTEND
                 if (srcVT.getSimpleVT().simpleVT == MVT.f32 &&
                     node.getValueType(0).getSimpleVT().simpleVT == MVT.f64) {
-                  SDValue load = dag.getLoad(srcVT, temp1, temp2, ld.getSrcValue(),
+                  SDValue load = dag.getLoad(dl, srcVT, temp1, temp2, ld.getSrcValue(),
                       ld.getSrcValueOffset(), ld.isVolatile(), ld.getAlignment());
-                  result = dag.getNode(ISD.FP_EXTEND, node.getValueType(0), load);
+                  result = dag.getNode(ISD.FP_EXTEND, dl, node.getValueType(0), load);
                   temp1 = legalizeOp(result);
                   temp2 = legalizeOp(load.getValue(1));
                   break;
                 }
                 Util.assertion(extType != EXTLOAD);
-                result = dag.getExtLoad(EXTLOAD,
-                    node.getValueType(0),
-                    temp1, temp2, ld.getSrcValue(),
-                    ld.getRawSubclassData(), srcVT,
-                    ld.isVolatile(), ld.getAlignment());
+                result = dag.getExtLoad(dl,
+                        EXTLOAD,
+                        node.getValueType(0),
+                        temp1, temp2, ld.getSrcValue(),
+                        ld.getRawSubclassData(), srcVT,
+                        ld.isVolatile(), ld.getAlignment());
                 SDValue valRes;
                 if (extType == LoadExtType.SEXTLOAD)
                   valRes = dag.getNode(ISD.SIGN_EXTEND_INREG,
+                      dl,
                       result.getValueType(), result,
                       dag.getValueType(srcVT));
                 else
-                  valRes = dag.getZeroExtendInReg(result, srcVT);
+                  valRes = dag.getZeroExtendInReg(result, dl, srcVT);
                 temp1 = legalizeOp(valRes);
                 temp2 = legalizeOp(result.getValue(1));
               }
@@ -592,9 +603,9 @@ public class SelectionDAGLegalizer {
               break;
             case Promote:
               Util.assertion(vt.isVector(), "Unknown legal promote case!");
-              temp3 = dag.getNode(ISD.BIT_CONVERT, tli.getTypeToPromoteType(
+              temp3 = dag.getNode(ISD.BIT_CONVERT, dl, tli.getTypeToPromoteType(
                   ISD.STORE, vt), temp3);
-              result = dag.getStore(temp1, temp3, temp2, st.getSrcValue(),
+              result = dag.getStore(temp1, dl, temp3, temp2, st.getSrcValue(),
                   svOffset, isVolatile, alignment);
               break;
           }
@@ -605,8 +616,8 @@ public class SelectionDAGLegalizer {
           int stWidth = stVT.getSizeInBits();
           if (stWidth != stVT.getStoreSizeInBits()) {
             EVT nvt = EVT.getIntegerVT(dag.getContext(),stVT.getStoreSizeInBits());
-            temp3 = dag.getZeroExtendInReg(temp3, stVT);
-            result = dag.getTruncStore(temp1, temp3, temp2,
+            temp3 = dag.getZeroExtendInReg(temp3, dl, stVT);
+            result = dag.getTruncStore(temp1, dl, temp3, temp2,
                 st.getSrcValue(), svOffset, nvt, isVolatile,
                 alignment);
           } else if ((stWidth & (stWidth - 1)) != 0) {
@@ -626,32 +637,32 @@ public class SelectionDAGLegalizer {
             if (tli.isLittleEndian()) {
               // TRUNCSTORE:i24 X -> TRUNCSTORE:i16 X, TRUNCSTORE@+2:i8 (srl X, 16)
               // Store the bottom RoundWidth bits.
-              lo = dag.getTruncStore(temp1, temp3, temp2,
+              lo = dag.getTruncStore(temp1, dl, temp3, temp2,
                   st.getSrcValue(), svOffset, roundVT,
                   isVolatile, alignment);
               incrementSize = roundWidth / 8;
-              temp2 = dag.getNode(ISD.ADD, temp2.getValueType(),
+              temp2 = dag.getNode(ISD.ADD, dl, temp2.getValueType(),
                   temp2, dag.getIntPtrConstant(incrementSize));
-              hi = dag.getNode(ISD.SRL, temp3.getValueType(), temp3,
+              hi = dag.getNode(ISD.SRL, dl, temp3.getValueType(), temp3,
                   dag.getConstant(roundWidth, new EVT(tli.getShiftAmountTy()), false));
-              hi = dag.getTruncStore(temp1, hi, temp2, st.getSrcValue(),
+              hi = dag.getTruncStore(temp1,dl,  hi, temp2, st.getSrcValue(),
                   svOffset + incrementSize, extraVT, isVolatile,
                   Util.minAlign(alignment, incrementSize));
             } else {
               // Big endian - avoid unaligned stores.
               // TRUNCSTORE:i24 X -> TRUNCSTORE:i16 (srl X, 8), TRUNCSTORE@+2:i8 X
               // Store the top RoundWidth bits.
-              hi = dag.getNode(ISD.SRL, temp3.getValueType(), temp3,
+              hi = dag.getNode(ISD.SRL, dl, temp3.getValueType(), temp3,
                   dag.getConstant(extraWidth, new EVT(tli.getShiftAmountTy()), false));
               incrementSize = roundWidth / 8;
-              temp2 = dag.getNode(ISD.ADD, temp2.getValueType(), temp2,
+              temp2 = dag.getNode(ISD.ADD, dl, temp2.getValueType(), temp2,
                   dag.getIntPtrConstant(incrementSize));
-              lo = dag.getTruncStore(temp1, temp3, temp2, st.getSrcValue(),
+              lo = dag.getTruncStore(temp1, dl, temp3, temp2, st.getSrcValue(),
                   svOffset + incrementSize, extraVT, isVolatile,
                   Util.minAlign(alignment, incrementSize));
             }
 
-            result = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo, hi);
+            result = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), lo, hi);
           } else {
             if (!temp1.equals(st.getChain()) || !temp3.equals(st.getValue()) || !temp2
                 .equals(st.getBasePtr())) {
@@ -677,8 +688,8 @@ public class SelectionDAGLegalizer {
                 break;
               case Expand:
                 Util.assertion(isTypeLegal(stVT));
-                temp3 = dag.getNode(ISD.TRUNCATE, stVT, temp3);
-                result = dag.getStore(temp1, temp3, temp2, st.getSrcValue(),
+                temp3 = dag.getNode(ISD.TRUNCATE, dl, stVT, temp3);
+                result = dag.getStore(temp1, dl, temp3, temp2, st.getSrcValue(),
                     svOffset, isVolatile, alignment);
                 break;
             }
@@ -713,12 +724,13 @@ public class SelectionDAGLegalizer {
     int alignment = st.getAlignment();
     int svOffset = st.getSrcValueOffset();
     boolean isVolatile = st.isVolatile();
+    DebugLoc dl = st.getDebugLoc();
     if (st.getMemoryVT().isFloatingPoint() ||
         st.getMemoryVT().isVector()) {
       EVT inVT = EVT.getIntegerVT(dag.getContext(),vt.getSizeInBits());
       if (tli.isTypeLegal(inVT)) {
-        SDValue result = dag.getNode(ISD.BIT_CONVERT, inVT, val);
-        return dag.getStore(chain, result, ptr, st.getSrcValue(),
+        SDValue result = dag.getNode(ISD.BIT_CONVERT, dl, inVT, val);
+        return dag.getStore(chain, dl, result, ptr, st.getSrcValue(),
             svOffset, isVolatile, alignment);
       } else {
         EVT storedVT = st.getMemoryVT();
@@ -728,26 +740,26 @@ public class SelectionDAGLegalizer {
         int numRegs = (storedBytes + regBytes - 1) / regBytes;
         SDValue stackPtr = dag.createStackTemporary(storedVT, regVT);
 
-        SDValue store = dag.getTruncStore(chain, val, stackPtr, null, 0, storedVT);
+        SDValue store = dag.getTruncStore(chain, dl, val, stackPtr, null, 0, storedVT);
         SDValue increment = dag.getConstant(regBytes, new EVT(tli.getPointerTy()), false);
         ArrayList<SDValue> stores = new ArrayList<>();
         int offset = 0;
 
         for (int i = 1; i < numRegs; i++) {
-          SDValue load = dag.getLoad(regVT, store, stackPtr, null, 0);
-          stores.add(dag.getStore(load.getValue(1), load, ptr,
+          SDValue load = dag.getLoad(dl, regVT, store, stackPtr, null, 0);
+          stores.add(dag.getStore(load.getValue(1), dl, load, ptr,
               st.getSrcValue(), svOffset + offset, isVolatile,
               Util.minAlign(alignment, offset)));
           offset += regBytes;
-          stackPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(), stackPtr, increment);
-          ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, increment);
+          stackPtr = dag.getNode(ISD.ADD, dl, stackPtr.getValueType(), stackPtr, increment);
+          ptr = dag.getNode(ISD.ADD, dl, ptr.getValueType(), ptr, increment);
         }
 
         EVT memVT = EVT.getIntegerVT(dag.getContext(),8 * (storedBytes - offset));
-        SDValue load = dag.getExtLoad(EXTLOAD, regVT, store, stackPtr, null, 0, memVT);
-        stores.add(dag.getTruncStore(load.getValue(1), load, ptr, st.getSrcValue(),
+        SDValue load = dag.getExtLoad(dl, EXTLOAD, regVT, store, stackPtr, null, 0, memVT);
+        stores.add(dag.getTruncStore(load.getValue(1), dl, load, ptr, st.getSrcValue(),
             svOffset + offset, memVT, isVolatile, Util.minAlign(alignment, offset)));
-        return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), stores);
+        return dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), stores);
       }
     }
     EVT newStoredVT = new EVT(st.getMemoryVT().getSimpleVT().simpleVT - 1);
@@ -756,16 +768,16 @@ public class SelectionDAGLegalizer {
 
     SDValue shiftAmount = dag.getConstant(numBits, new EVT(tli.getShiftAmountTy()), false);
     SDValue lo = val;
-    SDValue hi = dag.getNode(ISD.SRL, vt, val, shiftAmount);
-    SDValue store1 = dag.getTruncStore(chain, tli.isLittleEndian() ? lo : hi,
+    SDValue hi = dag.getNode(ISD.SRL, dl, vt, val, shiftAmount);
+    SDValue store1 = dag.getTruncStore(chain, dl, tli.isLittleEndian() ? lo : hi,
         ptr, st.getSrcValue(), svOffset, newStoredVT, isVolatile, alignment);
-    ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+    ptr = dag.getNode(ISD.ADD, dl, ptr.getValueType(), ptr,
         dag.getConstant(incrementSize, new EVT(tli.getPointerTy()), false));
     alignment = Util.minAlign(alignment, incrementSize);
-    SDValue store2 = dag.getTruncStore(chain, tli.isLittleEndian() ? hi : lo,
+    SDValue store2 = dag.getTruncStore(chain, dl, tli.isLittleEndian() ? hi : lo,
         ptr, st.getSrcValue(), svOffset + incrementSize,
         newStoredVT, isVolatile, alignment);
-    return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), store1, store2);
+    return dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), store1, store2);
   }
 
   private static SDValue expandUnalignedLoad(LoadSDNode ld, SelectionDAG dag,
@@ -775,16 +787,17 @@ public class SelectionDAGLegalizer {
     SDValue ptr = ld.getBasePtr();
     EVT vt = ld.getValueType(0);
     EVT loadedVT = ld.getMemoryVT();
+    DebugLoc dl = ld.getDebugLoc();
     if (vt.isFloatingPoint() || vt.isVector()) {
       EVT intVT = EVT.getIntegerVT(dag.getContext(),loadedVT.getSizeInBits());
       if (tli.isTypeLegal(intVT)) {
-        SDValue newLoad = dag.getLoad(intVT, chain, ptr, ld.getSrcValue(),
+        SDValue newLoad = dag.getLoad(dl, intVT, chain, ptr, ld.getSrcValue(),
             svOffset, ld.isVolatile(), ld.getAlignment());
-        SDValue result = dag.getNode(ISD.BIT_CONVERT, loadedVT, newLoad);
+        SDValue result = dag.getNode(ISD.BIT_CONVERT, dl, loadedVT, newLoad);
         if (vt.isFloatingPoint() && !loadedVT.equals(vt))
-          result = dag.getNode(ISD.FP_EXTEND, vt, result);
+          result = dag.getNode(ISD.FP_EXTEND, dl, vt, result);
         SDValue[] ops = {result, chain};
-        return dag.getMergeValues(ops);
+        return dag.getMergeValues(dl, ops);
       } else {
         EVT regVT = tli.getRegisterType(dag.getContext(), intVT);
         int loadedBytes = loadedVT.getSizeInBits() / 8;
@@ -797,24 +810,24 @@ public class SelectionDAGLegalizer {
         SDValue stackPtr = stackBase;
         int offset = 0;
         for (int i = 1; i < numRegs; i++) {
-          SDValue load = dag.getLoad(regVT, chain, ptr, ld.getSrcValue(),
+          SDValue load = dag.getLoad(dl, regVT, chain, ptr, ld.getSrcValue(),
               svOffset + offset, ld.isVolatile(),
               Util.minAlign(ld.getAlignment(), offset));
-          stores.add(dag.getStore(load.getValue(1), load, stackPtr, null, 0, false, 0));
+          stores.add(dag.getStore(load.getValue(1), dl, load, stackPtr, null, 0, false, 0));
           offset += regBytes;
-          ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr, increment);
-          stackPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(), stackPtr, increment);
+          ptr = dag.getNode(ISD.ADD, dl, ptr.getValueType(), ptr, increment);
+          stackPtr = dag.getNode(ISD.ADD, dl, stackPtr.getValueType(), stackPtr, increment);
         }
         EVT memVT = EVT.getIntegerVT(dag.getContext(),8 * (loadedBytes - offset));
-        SDValue load = dag.getExtLoad(EXTLOAD, regVT, chain, ptr, ld.getSrcValue(),
+        SDValue load = dag.getExtLoad(dl, EXTLOAD, regVT, chain, ptr, ld.getSrcValue(),
             svOffset + offset, memVT, ld.isVolatile(),
             Util.minAlign(ld.getAlignment(), offset));
 
-        stores.add(dag.getTruncStore(load.getValue(1), load, stackPtr, null, 0, memVT));
-        SDValue tf = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), stores);
-        load = dag.getExtLoad(ld.getExtensionType(), vt, tf, stackBase, null, 0, loadedVT);
+        stores.add(dag.getTruncStore(load.getValue(1), dl, load, stackPtr, null, 0, memVT));
+        SDValue tf = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), stores);
+        load = dag.getExtLoad(dl, ld.getExtensionType(), vt, tf, stackBase, null, 0, loadedVT);
         SDValue[] ops = {load, tf};
-        return dag.getMergeValues(ops);
+        return dag.getMergeValues(dl, ops);
       }
     }
     Util.assertion(loadedVT.isInteger() && !loadedVT.isVector(), "Unaligned load of unsupported type!");
@@ -832,38 +845,37 @@ public class SelectionDAGLegalizer {
 
     SDValue lo, hi;
     if (tli.isLittleEndian()) {
-      lo = dag.getExtLoad(ZEXTLOAD, vt, chain, ptr, ld.getSrcValue(),
+      lo = dag.getExtLoad(dl, ZEXTLOAD, vt, chain, ptr, ld.getSrcValue(),
           svOffset, newLoadedVT, ld.isVolatile(), alignment);
-      ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+      ptr = dag.getNode(ISD.ADD, dl, ptr.getValueType(), ptr,
           dag.getConstant(incrementSize, new EVT(tli.getPointerTy()), false));
-      hi = dag.getExtLoad(extType, vt, chain, ptr, ld.getSrcValue(),
+      hi = dag.getExtLoad(dl, extType, vt, chain, ptr, ld.getSrcValue(),
           svOffset + incrementSize, newLoadedVT,
           ld.isVolatile(), Util.minAlign(alignment, incrementSize));
     } else {
-      hi = dag.getExtLoad(extType, vt, chain, ptr, ld.getSrcValue(),
+      hi = dag.getExtLoad(dl, extType, vt, chain, ptr, ld.getSrcValue(),
           svOffset, newLoadedVT, ld.isVolatile(), alignment);
-      ptr = dag.getNode(ISD.ADD, ptr.getValueType(), ptr,
+      ptr = dag.getNode(ISD.ADD, dl, ptr.getValueType(), ptr,
           dag.getConstant(incrementSize, new EVT(tli.getPointerTy()), false));
-      lo = dag.getExtLoad(ZEXTLOAD, vt, chain, ptr, ld.getSrcValue(),
+      lo = dag.getExtLoad(dl, ZEXTLOAD, vt, chain, ptr, ld.getSrcValue(),
           svOffset + incrementSize, newLoadedVT, ld.isVolatile(),
           Util.minAlign(alignment, incrementSize));
     }
     SDValue shiftAmount = dag.getConstant(numBits, new EVT(tli.getShiftAmountTy()), false);
-    SDValue result = dag.getNode(ISD.SHL, vt, hi, shiftAmount);
-    result = dag.getNode(ISD.OR, vt, result, lo);
-    SDValue tf = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
+    SDValue result = dag.getNode(ISD.SHL, dl, vt, hi, shiftAmount);
+    result = dag.getNode(ISD.OR, dl, vt, result, lo);
+    SDValue tf = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other),
         lo.getValue(1), hi.getValue(1));
     SDValue[] ops = {result, tf};
-    return dag.getMergeValues(ops);
+    return dag.getMergeValues(dl, ops);
   }
 
   private static SDNode findCallStartFromCallEnd(SDNode node) {
     Util.assertion(node != null, "Didn't find callseq_start for a call?");
-
     if (node.getOpcode() == ISD.CALLSEQ_START)
       return node;
-    Util.assertion(node.getOperand(0).getValueType().equals(new EVT(MVT.Other)), "node doesn't have a token chain argument!");
-
+    Util.assertion(node.getOperand(0).getValueType().equals(new EVT(MVT.Other)),
+            "node doesn't have a token chain argument!");
     return findCallStartFromCallEnd(node.getOperand(0).getNode());
   }
 
@@ -908,19 +920,20 @@ public class SelectionDAGLegalizer {
     int svOffset = st.getSrcValueOffset();
     boolean isVolatile = st.isVolatile();
     int align = st.getAlignment();
+    DebugLoc dl = st.getDebugLoc();
     if (st.getValue().getNode() instanceof ConstantFPSDNode) {
       ConstantFPSDNode fpn = (ConstantFPSDNode) st.getValue().getNode();
       if (fpn.getValueType(0).equals(new EVT(MVT.f32)) &&
           getTypeAction(new EVT(MVT.i32)) == TargetLowering.LegalizeAction.Legal) {
         temp3 = dag.getConstant(fpn.getValueAPF().bitcastToAPInt().zextOrTrunc(32),
             new EVT(MVT.i32), false);
-        return dag.getStore(temp1, temp3, temp2, st.getSrcValue(),
+        return dag.getStore(temp1, dl, temp3, temp2, st.getSrcValue(),
             svOffset, isVolatile, align);
       } else if (fpn.getValueType(0).equals(new EVT(MVT.f64))) {
         if (getTypeAction(new EVT(MVT.i64)) == TargetLowering.LegalizeAction.Legal) {
           temp3 = dag.getConstant(fpn.getValueAPF().bitcastToAPInt().
               zextOrTrunc(64), new EVT(MVT.i64), false);
-          return dag.getStore(temp1, temp3, temp2, st.getSrcValue(),
+          return dag.getStore(temp1, dl, temp3, temp2, st.getSrcValue(),
               svOffset, isVolatile, align);
         } else if (getTypeAction(new EVT(MVT.i32)) == TargetLowering.LegalizeAction.Legal &&
             !st.isVolatile()) {
@@ -932,13 +945,13 @@ public class SelectionDAGLegalizer {
             lo = hi;
             hi = t;
           }
-          lo = dag.getStore(temp1, lo, temp2, st.getSrcValue(),
+          lo = dag.getStore(temp1, dl, lo, temp2, st.getSrcValue(),
               svOffset, isVolatile, align);
-          temp2 = dag.getNode(ISD.ADD, temp2.getValueType(), temp2,
+          temp2 = dag.getNode(ISD.ADD, dl, temp2.getValueType(), temp2,
               dag.getIntPtrConstant(0));
-          hi = dag.getStore(temp1, hi, temp2, st.getSrcValue(), svOffset + 4,
+          hi = dag.getStore(temp1, dl, hi, temp2, st.getSrcValue(), svOffset + 4,
               isVolatile, Util.minAlign(align, 4));
-          return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), lo, hi);
+          return dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), lo, hi);
         }
       }
     }
@@ -946,49 +959,50 @@ public class SelectionDAGLegalizer {
   }
 
   private SDValue performInsertVectorEltInMemory(SDValue vec,
-                                                 SDValue val, SDValue idx) {
+                                                 SDValue val,
+                                                 SDValue idx,
+                                                 DebugLoc dl) {
     SDValue temp3 = idx;
     EVT vt = vec.getValueType();
     EVT eltVT = vt.getVectorElementType();
     EVT idxVT = idx.getValueType();
     EVT ptrVT = new EVT(tli.getPointerTy());
     SDValue stackPtr = dag.createStackTemporary(vt);
-
     int fi = ((FrameIndexSDNode) stackPtr.getNode()).getFrameIndex();
 
-    SDValue chain = dag.getStore(dag.getEntryNode(), vec, stackPtr,
+    SDValue chain = dag.getStore(dag.getEntryNode(), dl, vec, stackPtr,
         PseudoSourceValue.getFixedStack(fi), 0, false, 0);
     int castOpc = idxVT.bitsGT(ptrVT) ? ISD.TRUNCATE : ISD.ZERO_EXTEND;
-    temp3 = dag.getNode(castOpc, ptrVT, temp3);
+    temp3 = dag.getNode(castOpc, dl, ptrVT, temp3);
     int eltSize = eltVT.getSizeInBits() / 8;
-    temp3 = dag.getNode(ISD.MUL, idxVT, temp3, dag.getConstant(eltSize, idxVT, false));
-    SDValue stackPtr2 = dag.getNode(ISD.ADD, idxVT, temp3, stackPtr);
-    chain = dag.getTruncStore(chain, val, stackPtr2,
+    temp3 = dag.getNode(ISD.MUL, dl, idxVT, temp3, dag.getConstant(eltSize, idxVT, false));
+    SDValue stackPtr2 = dag.getNode(ISD.ADD, dl, idxVT, temp3, stackPtr);
+    chain = dag.getTruncStore(chain, dl, val, stackPtr2,
         PseudoSourceValue.getFixedStack(fi), 0, eltVT);
-    return dag.getLoad(vt, chain, stackPtr, PseudoSourceValue.getFixedStack(fi), 0);
+    return dag.getLoad(dl, vt, chain, stackPtr, PseudoSourceValue.getFixedStack(fi), 0);
   }
 
-  private SDValue expandInsertVectorElt(SDValue vec, SDValue val, SDValue idx) {
+  private SDValue expandInsertVectorElt(SDValue vec, SDValue val, SDValue idx, DebugLoc dl) {
     if (idx.getNode() instanceof ConstantSDNode) {
       ConstantSDNode cnt = (ConstantSDNode) idx.getNode();
       EVT eltVT = vec.getValueType().getVectorElementType();
       if (val.getValueType().equals(eltVT) ||
           (eltVT.isInteger() && val.getValueType().bitsGE(eltVT))) {
-        SDValue scVec = dag.getNode(ISD.SCALAR_TO_VECTOR,
+        SDValue scVec = dag.getNode(ISD.SCALAR_TO_VECTOR, dl,
             vec.getValueType(), val);
 
         int numElts = vec.getValueType().getVectorNumElements();
         int[] ops = new int[numElts];
         for (int i = 0; i < numElts; i++)
           ops[i] = i != cnt.getZExtValue() ? i : numElts;
-        return dag.getVectorShuffle(vec.getValueType(), vec, scVec, ops);
+        return dag.getVectorShuffle(vec.getValueType(), dl, vec, scVec, ops);
       }
     }
-    return performInsertVectorEltInMemory(vec, val, idx);
+    return performInsertVectorEltInMemory(vec, val, idx, dl);
   }
 
   private SDValue shuffleWithNarrowerEltType(EVT nvt, EVT vt, SDValue n1,
-                                             SDValue n2, int[] mask) {
+                                             SDValue n2, int[] mask, DebugLoc dl) {
     EVT eltVT = nvt.getVectorElementType();
     int numMaskElts = vt.getVectorNumElements();
     int numDestElts = nvt.getVectorNumElements();
@@ -996,7 +1010,7 @@ public class SelectionDAGLegalizer {
 
     Util.assertion(numEltsGrowth != 0);
     if (numEltsGrowth == 1)
-      return dag.getVectorShuffle(nvt, n1, n2, mask);
+      return dag.getVectorShuffle(nvt, dl, n1, n2, mask);
 
     TIntArrayList newMask = new TIntArrayList();
     for (int i = 0; i < numMaskElts; i++) {
@@ -1010,7 +1024,7 @@ public class SelectionDAGLegalizer {
     }
     Util.assertion(newMask.size() == numDestElts);
     Util.assertion(tli.isShuffleMaskLegal(newMask, nvt));
-    return dag.getVectorShuffle(nvt, n1, n2, newMask.toArray());
+    return dag.getVectorShuffle(nvt, dl, n1, n2, newMask.toArray());
   }
 
   private boolean legalizeAllNodesNotLeadingTo(SDNode n, SDNode dest,
@@ -1051,7 +1065,8 @@ public class SelectionDAGLegalizer {
   private void legalizeSetCCCondCode(EVT vt,
                                      OutRef<SDValue> lhs,
                                      OutRef<SDValue> rhs,
-                                     OutRef<SDValue> cc) {
+                                     OutRef<SDValue> cc,
+                                     DebugLoc dl) {
     EVT opVT = lhs.get().getValueType();
     CondCode ccCode = ((CondCodeSDNode) cc.get().getNode()).getCondition();
     switch (tli.getCondCodeAction(ccCode, opVT)) {
@@ -1124,9 +1139,9 @@ public class SelectionDAGLegalizer {
             opc = ISD.OR;
             break;
         }
-        SDValue setcc1 = dag.getSetCC(vt, lhs.get(), rhs.get(), cc1);
-        SDValue setcc2 = dag.getSetCC(vt, lhs.get(), rhs.get(), cc2);
-        lhs.set(dag.getNode(opc, vt, setcc1, setcc2));
+        SDValue setcc1 = dag.getSetCC(dl, vt, lhs.get(), rhs.get(), cc1);
+        SDValue setcc2 = dag.getSetCC(dl, vt, lhs.get(), rhs.get(), cc2);
+        lhs.set(dag.getNode(opc, dl, vt, setcc1, setcc2));
         rhs.set(new SDValue());
         cc.set(new SDValue());
         break;
@@ -1134,8 +1149,10 @@ public class SelectionDAGLegalizer {
     }
   }
 
-  private SDValue emitStackConvert(SDValue srcOp, EVT slotVT,
-                                   EVT destVT) {
+  private SDValue emitStackConvert(SDValue srcOp,
+                                   EVT slotVT,
+                                   EVT destVT,
+                                   DebugLoc dl) {
     int srcAlign = tli.getTargetData().getPrefTypeAlignment(
         srcOp.getValueType().getTypeForEVT(dag.getContext()));
     SDValue ptr = dag.createStackTemporary(slotVT, srcAlign);
@@ -1151,24 +1168,25 @@ public class SelectionDAGLegalizer {
 
     SDValue store;
     if (srcSize > slotSize)
-      store = dag.getTruncStore(dag.getEntryNode(), srcOp, ptr,
+      store = dag.getTruncStore(dag.getEntryNode(), dl, srcOp, ptr,
           sv, 0, slotVT, false, srcAlign);
     else {
       Util.assertion(srcSize == slotSize, "Invalid store!");
-      store = dag.getStore(dag.getEntryNode(), srcOp, ptr,
+      store = dag.getStore(dag.getEntryNode(), dl, srcOp, ptr,
           sv, 0, false, srcAlign);
     }
 
     if (slotSize == destSize) {
-      return dag.getLoad(destVT, store, ptr, sv, 0, false, destAlign);
+      return dag.getLoad(dl, destVT, store, ptr, sv, 0, false, destAlign);
     }
     Util.assertion(slotSize < destSize, "Unknown extension!");
-    return dag.getExtLoad(EXTLOAD, destVT, store, ptr, sv,
+    return dag.getExtLoad(dl, EXTLOAD, destVT, store, ptr, sv,
         0, slotVT, false, destAlign);
   }
 
   private SDValue expandBuildVector(SDNode node) {
     int numElts = node.getNumOperands();
+    DebugLoc dl = node.getDebugLoc();
     SDValue value1 = new SDValue(), value2 = new SDValue();
     EVT vt = node.getValueType(0);
     EVT opVT = node.getOperand(0).getValueType();
@@ -1201,7 +1219,7 @@ public class SelectionDAGLegalizer {
       return dag.getUNDEF(vt);
 
     if (isOnlyLowElt)
-      return dag.getNode(ISD.SCALAR_TO_VECTOR, vt, node.getOperand(0));
+      return dag.getNode(ISD.SCALAR_TO_VECTOR, dl, vt, node.getOperand(0));
 
     if (isConstant) {
       ArrayList<Constant> cv = new ArrayList<>();
@@ -1223,8 +1241,8 @@ public class SelectionDAGLegalizer {
       Constant cp = ConstantVector.get(cv);
       SDValue cpIdx = dag.getConstantPool(cp, new EVT(tli.getPointerTy()));
       int alignment = ((ConstantPoolSDNode)cpIdx.getNode()).getAlignment();
-      return dag.getLoad(vt, dag.getEntryNode(), cpIdx, PseudoSourceValue.getConstantPool(), 0,
-          false, alignment);
+      return dag.getLoad(dl, vt, dag.getEntryNode(), cpIdx,
+              PseudoSourceValue.getConstantPool(), 0, false, alignment);
     }
 
     if (!moreThanTwoValues) {
@@ -1237,13 +1255,13 @@ public class SelectionDAGLegalizer {
       }
 
       if (tli.isShuffleMaskLegal(shuffleNums, node.getValueType(0))) {
-        SDValue vec1 = dag.getNode(ISD.SCALAR_TO_VECTOR, vt, value1);
+        SDValue vec1 = dag.getNode(ISD.SCALAR_TO_VECTOR, dl, vt, value1);
         SDValue vec2 = value2.getNode() != null ?
-            dag.getNode(ISD.SCALAR_TO_VECTOR, vt, value2) :
+            dag.getNode(ISD.SCALAR_TO_VECTOR, dl, vt, value2) :
             dag.getUNDEF(vt);
 
         // Return shuffle(LowValVec, undef, <0,0,0,0>)
-        return dag.getVectorShuffle(vt, vec1, vec2, shuffleNums.toArray());
+        return dag.getVectorShuffle(vt, dl, vec1, vec2, shuffleNums.toArray());
       }
     }
     // Otherwise, we can't handle this case efficiently.
@@ -1251,14 +1269,15 @@ public class SelectionDAGLegalizer {
   }
 
   private SDValue expandScalarToVector(SDNode node) {
+    DebugLoc dl = node.getDebugLoc();
     SDValue stackPtr = dag.createStackTemporary(node.getValueType(0));
     FrameIndexSDNode stackPtrFI = (FrameIndexSDNode) stackPtr.getNode();
     int fi = stackPtrFI.getFrameIndex();
 
-    SDValue chain = dag.getTruncStore(dag.getEntryNode(), node.getOperand(0),
+    SDValue chain = dag.getTruncStore(dag.getEntryNode(), dl, node.getOperand(0),
         stackPtr, PseudoSourceValue.getFixedStack(fi), 0,
         node.getValueType(0).getVectorElementType());
-    return dag.getLoad(node.getValueType(0), chain, stackPtr,
+    return dag.getLoad(dl, node.getValueType(0), chain, stackPtr,
         PseudoSourceValue.getFixedStack(fi), 0);
   }
 
@@ -1275,18 +1294,19 @@ public class SelectionDAGLegalizer {
     SDValue temp2 = new SDValue(node, 1);
     SDValue temp3 = node.getOperand(2);
     SDValue chain = temp1.getOperand(0);
+    DebugLoc dl = node.getDebugLoc();
 
-    chain = dag.getCALLSEQ_START(chain, dag.getIntPtrConstant(0, true));
+    chain = dag.getCALLSEQ_START(chain, dl, dag.getIntPtrConstant(0, true));
     SDValue size = temp2.getOperand(1);
-    SDValue sp = dag.getCopyFromReg(chain, spreg, vt);
+    SDValue sp = dag.getCopyFromReg(chain, dl, spreg, vt);
     chain = sp.getValue(1);
     long align = ((ConstantSDNode) temp3.getNode()).getZExtValue();
     int stackAlign = tli.getTargetMachine().getSubtarget().getFrameLowering().getStackAlignment();
     if (align > stackAlign)
-      sp = dag.getNode(ISD.AND, vt, sp, dag.getConstant(-align, vt, false));
-    temp1 = dag.getNode(ISD.SUB, vt, sp, size);
-    chain = dag.getCopyToReg(chain, spreg, temp1);
-    temp2 = dag.getCALLSEQ_END(chain, dag.getIntPtrConstant(0, true),
+      sp = dag.getNode(ISD.AND, dl, vt, sp, dag.getConstant(-align, vt, false));
+    temp1 = dag.getNode(ISD.SUB, dl, vt, sp, size);
+    chain = dag.getCopyToReg(chain, dl, spreg, temp1);
+    temp2 = dag.getCALLSEQ_END(chain, dl, dag.getIntPtrConstant(0, true),
         dag.getIntPtrConstant(0, true), new SDValue());
     results.add(temp1);
     results.add(temp2);
@@ -1295,13 +1315,14 @@ public class SelectionDAGLegalizer {
   private SDValue expandFCopySign(SDNode node) {
     SDValue temp1 = node.getOperand(0);
     SDValue temp2 = node.getOperand(1);
+    DebugLoc dl = node.getDebugLoc();
     int simpleVT = temp2.getValueType().getSimpleVT().simpleVT;
     Util.assertion(simpleVT == MVT.f32 || simpleVT == MVT.f64);
     SDValue signBit;
     EVT iVT = temp2.getValueType().getSimpleVT().simpleVT == MVT.f64 ?
         new EVT(MVT.i64) : new EVT(MVT.i32);
     if (isTypeLegal(iVT))
-      signBit = dag.getNode(ISD.BIT_CONVERT, iVT, temp2);
+      signBit = dag.getNode(ISD.BIT_CONVERT, dl, iVT, temp2);
     else {
       Util.assertion(isTypeLegal(new EVT(tli.getPointerTy())) && (tli.getPointerTy().simpleVT == MVT.i32 ||
               tli.getPointerTy().simpleVT == MVT.i64),
@@ -1309,32 +1330,33 @@ public class SelectionDAGLegalizer {
 
       SDValue stackPtr = dag.createStackTemporary(temp2.getValueType());
       SDValue storePtr = stackPtr, loadPtr = stackPtr;
-      SDValue ch = dag.getStore(dag.getEntryNode(), temp2, storePtr,
+      SDValue ch = dag.getStore(dag.getEntryNode(), dl, temp2, storePtr,
           null, 0, false, 0);
       if (temp2.getValueType().getSimpleVT().simpleVT == MVT.f64 &&
           tli.isLittleEndian()) {
-        loadPtr = dag.getNode(ISD.ADD, stackPtr.getValueType(),
+        loadPtr = dag.getNode(ISD.ADD, dl, stackPtr.getValueType(),
             loadPtr, dag.getIntPtrConstant(4));
       }
-      signBit = dag.getExtLoad(LoadExtType.SEXTLOAD, new EVT(tli.getPointerTy()),
+      signBit = dag.getExtLoad(dl, LoadExtType.SEXTLOAD, new EVT(tli.getPointerTy()),
           ch, loadPtr, null, 0, new EVT(MVT.i32));
     }
-    signBit = dag.getSetCC(new EVT(tli.getSetCCResultType(signBit.getValueType())),
+    signBit = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(signBit.getValueType())),
         signBit, dag.getConstant(0, signBit.getValueType(), false),
         CondCode.SETLT);
-    SDValue absVal = dag.getNode(ISD.FABS, temp1.getValueType(), temp1);
-    return dag.getNode(ISD.SELECT, absVal.getValueType(), signBit,
-        dag.getNode(ISD.FNEG, absVal.getValueType(), absVal), absVal);
+    SDValue absVal = dag.getNode(ISD.FABS, dl, temp1.getValueType(), temp1);
+    return dag.getNode(ISD.SELECT, dl, absVal.getValueType(), signBit,
+        dag.getNode(ISD.FNEG, dl, absVal.getValueType(), absVal), absVal);
   }
 
   private SDValue expandLegalIntToFP(SDValue op,
-                                     EVT destVT, boolean isSigned) {
+                                     EVT destVT,
+                                     boolean isSigned) {
+    DebugLoc dl = op.getDebugLoc();
     if (op.getValueType().getSimpleVT().simpleVT == MVT.i32) {
       SDValue stackSlot = dag.createStackTemporary(new EVT(MVT.f64));
       SDValue wordOff = dag.getConstant(32, new EVT(tli.getPointerTy()), false);
       SDValue hi = stackSlot;
-      SDValue lo = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), stackSlot,
-          wordOff);
+      SDValue lo = dag.getNode(ISD.ADD, dl, new EVT(tli.getPointerTy()), stackSlot, wordOff);
       if (tli.isLittleEndian()) {
         SDValue t = hi;
         hi = lo;
@@ -1343,37 +1365,37 @@ public class SelectionDAGLegalizer {
       SDValue op0Operand = new SDValue();
       if (isSigned) {
         SDValue signBit = dag.getConstant(0x80000000L, new EVT(MVT.i32), false);
-        op0Operand = dag.getNode(ISD.XOR, new EVT(MVT.i32), op, signBit);
+        op0Operand = dag.getNode(ISD.XOR, dl, new EVT(MVT.i32), op, signBit);
       } else {
         op0Operand = op;
       }
 
-      SDValue store1 = dag.getStore(dag.getEntryNode(), op0Operand, lo,
+      SDValue store1 = dag.getStore(dag.getEntryNode(), dl, op0Operand, lo,
           null, 0, false, 0);
       SDValue initialHi = dag.getConstant(0x43000000L, new EVT(MVT.i32), false);
-      SDValue store2 = dag.getStore(store1, initialHi, hi, null, 0, false, 0);
-      SDValue load = dag.getLoad(new EVT(MVT.i64), store2, stackSlot, null, 0);
+      SDValue store2 = dag.getStore(store1, dl, initialHi, hi, null, 0, false, 0);
+      SDValue load = dag.getLoad(dl, new EVT(MVT.i64), store2, stackSlot, null, 0);
       SDValue bias = dag.getConstantFP(isSigned ?
               Double.longBitsToDouble(0x4330000080000000L) :
               Double.longBitsToDouble(0x4330000000000000L),
           new EVT(MVT.f64), false);
-      SDValue sub = dag.getNode(ISD.FSUB, new EVT(MVT.f64), load, bias);
+      SDValue sub = dag.getNode(ISD.FSUB, dl, new EVT(MVT.f64), load, bias);
       SDValue result = new SDValue();
       if (destVT.getSimpleVT().simpleVT == MVT.f64)
         result = sub;
       else if (destVT.bitsGT(new EVT(MVT.f64)))
-        result = dag.getNode(ISD.FP_ROUND, destVT, sub, dag.getIntPtrConstant(0));
+        result = dag.getNode(ISD.FP_ROUND, dl, destVT, sub, dag.getIntPtrConstant(0));
       else if (destVT.bitsGT(new EVT(MVT.f64)))
-        result = dag.getNode(ISD.FP_EXTEND, destVT, sub);
+        result = dag.getNode(ISD.FP_EXTEND, dl, destVT, sub);
       return result;
     }
     Util.assertion(!isSigned, "Legalize can't expand SINT_TO_FP for i64 yet!");
-    SDValue temp1 = dag.getNode(ISD.SINT_TO_FP, destVT, op);
-    SDValue signSet = dag.getSetCC(new EVT(tli.getSetCCResultType(op.getValueType())),
+    SDValue temp1 = dag.getNode(ISD.SINT_TO_FP, dl, destVT, op);
+    SDValue signSet = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(op.getValueType())),
         op, dag.getConstant(0, op.getValueType(), false),
         CondCode.SETLT);
     SDValue zero = dag.getIntPtrConstant(0), four = dag.getIntPtrConstant(4);
-    SDValue cstOffset = dag.getNode(ISD.SELECT, zero.getValueType(),
+    SDValue cstOffset = dag.getNode(ISD.SELECT, dl, zero.getValueType(),
         signSet, four, zero);
 
     long ff = 0;
@@ -1401,22 +1423,23 @@ public class SelectionDAGLegalizer {
     SDValue cpIdx = dag.getConstantPool(fudgeFactor, new EVT(tli.getPointerTy()),
         0, 0, false, 0);
     int align = ((ConstantPoolSDNode) cpIdx.getNode()).getAlignment();
-    cpIdx = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), cpIdx, cstOffset);
+    cpIdx = dag.getNode(ISD.ADD, dl, new EVT(tli.getPointerTy()), cpIdx, cstOffset);
     align = Math.min(align, 4);
     SDValue fudgeInReg;
     if (destVT.getSimpleVT().simpleVT == MVT.f32) {
-      fudgeInReg = dag.getLoad(new EVT(MVT.f32), dag.getEntryNode(), cpIdx,
+      fudgeInReg = dag.getLoad(dl, new EVT(MVT.f32), dag.getEntryNode(), cpIdx,
           PseudoSourceValue.getConstantPool(), 0, false, align);
     } else {
-      fudgeInReg = legalizeOp(dag.getExtLoad(EXTLOAD, destVT,
+      fudgeInReg = legalizeOp(dag.getExtLoad(dl, EXTLOAD, destVT,
           dag.getEntryNode(), cpIdx, PseudoSourceValue.getConstantPool(),
           0, new EVT(MVT.f32), false, align));
     }
-    return dag.getNode(ISD.FADD, destVT, temp1, fudgeInReg);
+    return dag.getNode(ISD.FADD, dl, destVT, temp1, fudgeInReg);
   }
 
   private SDValue promoteLegalIntToFP(SDValue legalOp,
                                       EVT destVT, boolean isSigned) {
+    DebugLoc dl = legalOp.getDebugLoc();
     EVT newInTy = legalOp.getValueType();
     int opToUse = 0;
 
@@ -1436,8 +1459,8 @@ public class SelectionDAGLegalizer {
       }
     }
 
-    return dag.getNode(opToUse, destVT,
-        dag.getNode(isSigned ? ISD.SIGN_EXTEND : ISD.ZERO_EXTEND,
+    return dag.getNode(opToUse, dl, destVT,
+        dag.getNode(isSigned ? ISD.SIGN_EXTEND : ISD.ZERO_EXTEND, dl,
             newInTy, legalOp));
   }
 
@@ -1445,7 +1468,7 @@ public class SelectionDAGLegalizer {
                                       EVT destVT, boolean isSigned) {
     EVT newOutTy = destVT;
     int opToUse = 0;
-
+    DebugLoc dl = legalOp.getDebugLoc();
     while (true) {
       newOutTy = new EVT(newOutTy.getSimpleVT().simpleVT + 1);
       Util.assertion(newOutTy.isInteger(), "Ran out of possiblilities!");
@@ -1462,51 +1485,52 @@ public class SelectionDAGLegalizer {
       }
     }
 
-    SDValue operation = dag.getNode(opToUse, newOutTy, legalOp);
-    return dag.getNode(ISD.TRUNCATE, destVT, operation);
+    SDValue operation = dag.getNode(opToUse, dl, newOutTy, legalOp);
+    return dag.getNode(ISD.TRUNCATE, dl, destVT, operation);
   }
 
   private SDValue expandBSWAP(SDValue op) {
     EVT vt = op.getValueType();
     EVT shVT = new EVT(tli.getShiftAmountTy());
+    DebugLoc dl = op.getDebugLoc();
     SDValue temp1, temp2, temp3, temp4, temp5, temp6, temp7, temp8;
     switch (vt.getSimpleVT().simpleVT) {
       case MVT.i16:
-        temp2 = dag.getNode(ISD.SHL, vt, op, dag.getConstant(8, shVT, false));
-        temp1 = dag.getNode(ISD.SRL, vt, op, dag.getConstant(8, shVT, false));
-        return dag.getNode(ISD.OR, vt, temp1, temp2);
+        temp2 = dag.getNode(ISD.SHL, dl, vt, op, dag.getConstant(8, shVT, false));
+        temp1 = dag.getNode(ISD.SRL, dl, vt, op, dag.getConstant(8, shVT, false));
+        return dag.getNode(ISD.OR, dl, vt, temp1, temp2);
       case MVT.i32:
-        temp4 = dag.getNode(ISD.SHL, vt, op, dag.getConstant(24, shVT, false));
-        temp3 = dag.getNode(ISD.SHL, vt, op, dag.getConstant(8, shVT, false));
-        temp2 = dag.getNode(ISD.SRL, vt, op, dag.getConstant(8, shVT, false));
-        temp1 = dag.getNode(ISD.SRL, vt, op, dag.getConstant(24, shVT, false));
-        temp3 = dag.getNode(ISD.AND, vt, temp3, dag.getConstant(0xFF0000, vt, false));
-        temp2 = dag.getNode(ISD.AND, vt, temp2, dag.getConstant(0xFF00, vt, false));
-        temp4 = dag.getNode(ISD.OR, vt, temp4, temp3);
-        temp2 = dag.getNode(ISD.OR, vt, temp4, temp2);
-        return dag.getNode(ISD.OR, vt, temp4, temp2);
+        temp4 = dag.getNode(ISD.SHL, dl, vt, op, dag.getConstant(24, shVT, false));
+        temp3 = dag.getNode(ISD.SHL, dl, vt, op, dag.getConstant(8, shVT, false));
+        temp2 = dag.getNode(ISD.SRL, dl, vt, op, dag.getConstant(8, shVT, false));
+        temp1 = dag.getNode(ISD.SRL, dl, vt, op, dag.getConstant(24, shVT, false));
+        temp3 = dag.getNode(ISD.AND, dl, vt, temp3, dag.getConstant(0xFF0000, vt, false));
+        temp2 = dag.getNode(ISD.AND, dl, vt, temp2, dag.getConstant(0xFF00, vt, false));
+        temp4 = dag.getNode(ISD.OR, dl, vt, temp4, temp3);
+        temp2 = dag.getNode(ISD.OR, dl, vt, temp4, temp2);
+        return dag.getNode(ISD.OR, dl, vt, temp4, temp2);
       case MVT.i64:
-        temp8 = dag.getNode(ISD.SHL, vt, op, dag.getConstant(56, shVT, false));
-        temp7 = dag.getNode(ISD.SHL, vt, op, dag.getConstant(40, shVT, false));
-        temp6 = dag.getNode(ISD.SHL, vt, op, dag.getConstant(24, shVT, false));
-        temp5 = dag.getNode(ISD.SHL, vt, op, dag.getConstant(8, shVT, false));
-        temp4 = dag.getNode(ISD.SRL, vt, op, dag.getConstant(8, shVT, false));
-        temp3 = dag.getNode(ISD.SRL, vt, op, dag.getConstant(24, shVT, false));
-        temp2 = dag.getNode(ISD.SRL, vt, op, dag.getConstant(40, shVT, false));
-        temp1 = dag.getNode(ISD.SRL, vt, op, dag.getConstant(56, shVT, false));
-        temp7 = dag.getNode(ISD.AND, vt, temp7, dag.getConstant(255L << 48, vt, false));
-        temp6 = dag.getNode(ISD.AND, vt, temp6, dag.getConstant(255L << 40, vt, false));
-        temp5 = dag.getNode(ISD.AND, vt, temp5, dag.getConstant(255L << 32, vt, false));
-        temp4 = dag.getNode(ISD.AND, vt, temp4, dag.getConstant(255L << 24, vt, false));
-        temp3 = dag.getNode(ISD.AND, vt, temp3, dag.getConstant(255L << 16, vt, false));
-        temp2 = dag.getNode(ISD.AND, vt, temp2, dag.getConstant(255L << 8, vt, false));
-        temp8 = dag.getNode(ISD.OR, vt, temp8, temp7);
-        temp6 = dag.getNode(ISD.OR, vt, temp6, temp5);
-        temp4 = dag.getNode(ISD.OR, vt, temp4, temp3);
-        temp2 = dag.getNode(ISD.OR, vt, temp2, temp1);
-        temp8 = dag.getNode(ISD.OR, vt, temp8, temp6);
-        temp4 = dag.getNode(ISD.OR, vt, temp4, temp2);
-        return dag.getNode(ISD.OR, vt, temp8, temp4);
+        temp8 = dag.getNode(ISD.SHL, dl, vt, op, dag.getConstant(56, shVT, false));
+        temp7 = dag.getNode(ISD.SHL, dl, vt, op, dag.getConstant(40, shVT, false));
+        temp6 = dag.getNode(ISD.SHL, dl, vt, op, dag.getConstant(24, shVT, false));
+        temp5 = dag.getNode(ISD.SHL, dl, vt, op, dag.getConstant(8, shVT, false));
+        temp4 = dag.getNode(ISD.SRL, dl, vt, op, dag.getConstant(8, shVT, false));
+        temp3 = dag.getNode(ISD.SRL, dl, vt, op, dag.getConstant(24, shVT, false));
+        temp2 = dag.getNode(ISD.SRL, dl, vt, op, dag.getConstant(40, shVT, false));
+        temp1 = dag.getNode(ISD.SRL, dl, vt, op, dag.getConstant(56, shVT, false));
+        temp7 = dag.getNode(ISD.AND, dl, vt, temp7, dag.getConstant(255L << 48, vt, false));
+        temp6 = dag.getNode(ISD.AND, dl, vt, temp6, dag.getConstant(255L << 40, vt, false));
+        temp5 = dag.getNode(ISD.AND, dl, vt, temp5, dag.getConstant(255L << 32, vt, false));
+        temp4 = dag.getNode(ISD.AND, dl, vt, temp4, dag.getConstant(255L << 24, vt, false));
+        temp3 = dag.getNode(ISD.AND, dl, vt, temp3, dag.getConstant(255L << 16, vt, false));
+        temp2 = dag.getNode(ISD.AND, dl, vt, temp2, dag.getConstant(255L << 8, vt, false));
+        temp8 = dag.getNode(ISD.OR, dl, vt, temp8, temp7);
+        temp6 = dag.getNode(ISD.OR, dl, vt, temp6, temp5);
+        temp4 = dag.getNode(ISD.OR, dl, vt, temp4, temp3);
+        temp2 = dag.getNode(ISD.OR, dl, vt, temp2, temp1);
+        temp8 = dag.getNode(ISD.OR, dl, vt, temp8, temp6);
+        temp4 = dag.getNode(ISD.OR, dl, vt, temp4, temp2);
+        return dag.getNode(ISD.OR, dl, vt, temp8, temp4);
       default:
         Util.shouldNotReachHere("Unhandled expand type BSWAP!");
         return null;
@@ -1514,6 +1538,7 @@ public class SelectionDAGLegalizer {
   }
 
   private SDValue expandBitCount(int opc, SDValue op) {
+    DebugLoc dl = op.getDebugLoc();
     switch (opc) {
       default:
         Util.shouldNotReachHere("Can't handle this yet!");
@@ -1533,10 +1558,10 @@ public class SelectionDAGLegalizer {
           SDValue temp2 = dag
               .getConstant(new APInt(eltSize, mask[i]), vt, false);
           SDValue temp3 = dag.getConstant(1L << i, shVT, false);
-          op = dag.getNode(ISD.ADD, vt,
-              dag.getNode(ISD.AND, vt, op, temp2),
-              dag.getNode(ISD.AND, vt,
-                  dag.getNode(ISD.SRL, vt, op, temp3), temp2));
+          op = dag.getNode(ISD.ADD, dl, vt,
+              dag.getNode(ISD.AND, dl, vt, op, temp2),
+              dag.getNode(ISD.AND, dl, vt,
+                  dag.getNode(ISD.SRL, dl, vt, op, temp3), temp2));
         }
         return op;
       }
@@ -1554,21 +1579,21 @@ public class SelectionDAGLegalizer {
         int len = vt.getSizeInBits();
         for (int i = 0; (1L << i) <= len / 2; i++) {
           SDValue temp3 = dag.getConstant(1L << i, shVT, false);
-          op = dag.getNode(ISD.OR, vt, op, dag.getNode(ISD.SRL, vt, op, temp3));
+          op = dag.getNode(ISD.OR, dl, vt, op, dag.getNode(ISD.SRL, dl, vt, op, temp3));
         }
         op = dag.getNOT(op, vt);
-        return dag.getNode(ISD.CTPOP, vt, op);
+        return dag.getNode(ISD.CTPOP, dl, vt, op);
       }
       case ISD.CTTZ: {
         EVT vt = op.getValueType();
-        SDValue temp3 = dag.getNode(ISD.AND, vt, dag.getNOT(op, vt),
-            dag.getNode(ISD.SUB, vt, op, dag.getConstant(1, vt, false)));
+        SDValue temp3 = dag.getNode(ISD.AND, dl, vt, dag.getNOT(op, vt),
+            dag.getNode(ISD.SUB, dl, vt, op, dag.getConstant(1, vt, false)));
         if (!tli.isOperationLegalOrCustom(ISD.CTPOP, vt) &&
             tli.isOperationLegalOrCustom(ISD.CTLZ, vt)) {
-          return dag.getNode(ISD.SUB, vt, dag.getConstant(vt.getSizeInBits(), vt, false),
-              dag.getNode(ISD.CTLZ, vt, temp3));
+          return dag.getNode(ISD.SUB, dl, vt, dag.getConstant(vt.getSizeInBits(), vt, false),
+              dag.getNode(ISD.CTLZ, dl, vt, temp3));
         }
-        return dag.getNode(ISD.CTPOP, vt, temp3);
+        return dag.getNode(ISD.CTPOP, dl, vt, temp3);
       }
     }
   }
@@ -1576,24 +1601,25 @@ public class SelectionDAGLegalizer {
   private SDValue expandExtractFromVectorThroughStack(SDValue op) {
     SDValue vec = op.getOperand(0);
     SDValue idx = op.getOperand(1);
+    DebugLoc dl = op.getDebugLoc();
     SDValue stackPtr = dag.createStackTemporary(vec.getValueType());
-    SDValue chain = dag.getStore(dag.getEntryNode(), vec, stackPtr,
+    SDValue chain = dag.getStore(dag.getEntryNode(), dl, vec, stackPtr,
         null, 0, false, 0);
 
     int eltSize = vec.getValueType().getVectorElementType().getSizeInBits() / 8;
-    idx = dag.getNode(ISD.MUL, idx.getValueType(), idx,
+    idx = dag.getNode(ISD.MUL, dl, idx.getValueType(), idx,
         dag.getConstant(eltSize, idx.getValueType(), false));
 
     if (idx.getValueType().bitsGT(new EVT(tli.getPointerTy())))
-      idx = dag.getNode(ISD.TRUNCATE, new EVT(tli.getPointerTy()), idx);
+      idx = dag.getNode(ISD.TRUNCATE, dl, new EVT(tli.getPointerTy()), idx);
     else
-      idx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()), idx);
+      idx = dag.getNode(ISD.ZERO_EXTEND, dl, new EVT(tli.getPointerTy()), idx);
 
-    stackPtr = dag.getNode(ISD.ADD, idx.getValueType(), idx, stackPtr);
+    stackPtr = dag.getNode(ISD.ADD, dl, idx.getValueType(), idx, stackPtr);
     if (op.getValueType().isVector())
-      return dag.getLoad(op.getValueType(), chain, stackPtr, null, 0);
+      return dag.getLoad(dl, op.getValueType(), chain, stackPtr, null, 0);
     else
-      return dag.getExtLoad(EXTLOAD, op.getValueType(),
+      return dag.getExtLoad(dl, EXTLOAD, op.getValueType(),
           chain, stackPtr, null, 0,
           vec.getValueType().getVectorElementType());
   }
@@ -1602,6 +1628,7 @@ public class SelectionDAGLegalizer {
     EVT vt = node.getValueType(0);
     EVT opVT = node.getOperand(0).getValueType();
     SDValue fiPtr = dag.createStackTemporary(vt);
+    DebugLoc dl = node.getDebugLoc();
 
     int fi = ((FrameIndexSDNode) fiPtr.getNode()).getFrameIndex();
     Value sv = PseudoSourceValue.getFixedStack(fi);
@@ -1614,21 +1641,21 @@ public class SelectionDAGLegalizer {
 
       int offset = typeByteSize * i;
       SDValue idx = dag.getConstant(offset, fiPtr.getValueType(), false);
-      idx = dag.getNode(ISD.ADD, fiPtr.getValueType(), fiPtr, idx);
-      stores.add(dag.getStore(dag.getEntryNode(), node.getOperand(i),
+      idx = dag.getNode(ISD.ADD, dl, fiPtr.getValueType(), fiPtr, idx);
+      stores.add(dag.getStore(dag.getEntryNode(), dl, node.getOperand(i),
           idx, sv, offset, false, 0));
     }
     SDValue storeChain;
     if (!stores.isEmpty())
-      storeChain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
-          stores);
+      storeChain = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), stores);
     else
       storeChain = dag.getEntryNode();
 
-    return dag.getLoad(vt, storeChain, fiPtr, sv, 0);
+    return dag.getLoad(dl, vt, storeChain, fiPtr, sv, 0);
   }
 
   private void expandNode(SDNode node, ArrayList<SDValue> results) {
+    DebugLoc dl = node.getDebugLoc();
     SDValue temp1, temp2, temp3, temp4;
     switch (node.getOpcode()) {
       case ISD.CTPOP:
@@ -1691,21 +1718,22 @@ public class SelectionDAGLegalizer {
                 CallingConv.C, false,
                 true/*isReturnValueUsed = true*/,
                 dag.getExternalSymbol("abort", new EVT(tli.getPointerTy())),
-                args, dag);
+                args, dag, dl);
         results.add(callResult.second);
         break;
       }
       case ISD.FP_ROUND:
       case ISD.BIT_CONVERT:
         temp1 = emitStackConvert(node.getOperand(0),
-            node.getValueType(0),
-            node.getValueType(0));
+                node.getValueType(0),
+                node.getValueType(0),
+                dl);
         results.add(temp1);
         break;
       case ISD.FP_EXTEND:
         temp1 = emitStackConvert(node.getOperand(0),
             node.getOperand(0).getValueType(),
-            node.getValueType(0));
+            node.getValueType(0), dl);
         results.add(temp1);
         break;
       case ISD.SIGN_EXTEND_INREG: {
@@ -1714,16 +1742,16 @@ public class SelectionDAGLegalizer {
             extraVT.getSizeInBits();
         SDValue shiftCst = dag.getConstant(bitsDiff,
             new EVT(tli.getShiftAmountTy()), false);
-        temp1 = dag.getNode(ISD.SHL, node.getValueType(0),
+        temp1 = dag.getNode(ISD.SHL, dl, node.getValueType(0),
             node.getOperand(0), shiftCst);
-        temp1 = dag.getNode(ISD.SRA, node.getValueType(0), temp1, shiftCst);
+        temp1 = dag.getNode(ISD.SRA, dl, node.getValueType(0), temp1, shiftCst);
         results.add(temp1);
         break;
       }
       case ISD.FP_ROUND_INREG: {
         EVT extraVT = ((VTSDNode) node.getOperand(1).getNode()).getVT();
         temp1 = emitStackConvert(node.getOperand(0), extraVT,
-            node.getValueType(0));
+            node.getValueType(0), dl);
         results.add(temp1);
         break;
       }
@@ -1744,15 +1772,15 @@ public class SelectionDAGLegalizer {
         APInt x = APInt.getSignBit(nvt.getSizeInBits());
         apf.convertFromAPInt(x, false, APFloat.RoundingMode.rmNearestTiesToEven);
         temp1 = dag.getConstantFP(apf, vt, false);
-        temp2 = dag.getSetCC(new EVT(tli.getSetCCResultType(vt)),
+        temp2 = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(vt)),
             node.getOperand(0),
             temp1, CondCode.SETLT);
-        trueVal = dag.getNode(ISD.FP_TO_SINT, nvt, node.getOperand(0));
-        falseVal = dag.getNode(ISD.FP_TO_SINT, nvt,
-            dag.getNode(ISD.FSUB, vt, node.getOperand(0), temp1));
-        falseVal = dag.getNode(ISD.XOR, nvt, falseVal,
+        trueVal = dag.getNode(ISD.FP_TO_SINT, dl, nvt, node.getOperand(0));
+        falseVal = dag.getNode(ISD.FP_TO_SINT, dl, nvt,
+            dag.getNode(ISD.FSUB, dl, vt, node.getOperand(0), temp1));
+        falseVal = dag.getNode(ISD.XOR, dl, nvt, falseVal,
             dag.getConstant(x, nvt, false));
-        temp1 = dag.getNode(ISD.SELECT, nvt, temp2, trueVal, falseVal);
+        temp1 = dag.getNode(ISD.SELECT, dl, nvt, temp2, trueVal, falseVal);
         results.add(temp1);
         break;
       }
@@ -1771,35 +1799,34 @@ public class SelectionDAGLegalizer {
         // incr =  add $incr, $var_stack_addr
         // store incr, [$var_stack_offset]
 
-        SDValue valist = dag.getLoad(
-            new EVT(tli.getPointerTy()),
-            temp1, temp2, v, 0);
-        temp3 = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()),
+        SDValue valist = dag.getLoad(dl, new EVT(tli.getPointerTy()),
+                temp1, temp2, v, 0);
+        temp3 = dag.getNode(ISD.ADD, dl, new EVT(tli.getPointerTy()),
             valist, dag.getConstant(tli.getTargetData()
                     .getTypeAllocSize(vt.getTypeForEVT(dag.getContext())),
                 new EVT(tli.getPointerTy()),
                 false));
-        temp3 = dag.getStore(valist.getValue(1), temp3, temp2, v, 0, false, 0);
-        results.add(dag.getLoad(vt, temp3, valist, null, 0));
+        temp3 = dag.getStore(valist.getValue(1), dl, temp3, temp2, v, 0, false, 0);
+        results.add(dag.getLoad(dl, vt, temp3, valist, null, 0));
         results.add(results.get(0).getValue(1));
         break;
       }
       case ISD.VACOPY: {
         Value vd = ((SrcValueSDNode) node.getOperand(3).getNode()).getValue();
         Value vs = ((SrcValueSDNode) node.getOperand(4).getNode()).getValue();
-        temp1 = dag.getLoad(
+        temp1 = dag.getLoad(dl,
             new EVT(tli.getPointerTy()),
             node.getOperand(0),
             node.getOperand(2),
             vs, 0);
-        temp1 = dag.getStore(temp1.getValue(1), temp1, node.getOperand(1),
+        temp1 = dag.getStore(temp1.getValue(1), dl, temp1, node.getOperand(1),
             vd, 0, false, 0);
         results.add(temp1);
         break;
       }
       case ISD.EXTRACT_VECTOR_ELT: {
         if (node.getOperand(0).getValueType().getVectorNumElements() == 1) {
-          temp1 = dag.getNode(ISD.BIT_CONVERT, node.getValueType(0),
+          temp1 = dag.getNode(ISD.BIT_CONVERT, dl, node.getValueType(0),
               node.getOperand(0));
         } else {
           temp1 = expandExtractFromVectorThroughStack(new SDValue(node, 0));
@@ -1820,15 +1847,14 @@ public class SelectionDAGLegalizer {
         break;
       case ISD.INSERT_VECTOR_ELT:
         results.add(expandInsertVectorElt(
-            node.getOperand(0),
-            node.getOperand(1),
-            node.getOperand(2)));
+                node.getOperand(0),
+                node.getOperand(1),
+                node.getOperand(2),
+                dl));
         break;
       case ISD.VECTOR_SHUFFLE: {
         TIntArrayList mask = new TIntArrayList();
         ((ShuffleVectorSDNode) node).getMask(mask);
-        ;
-
         EVT vt = node.getValueType(0);
         EVT eltVT = vt.getVectorElementType();
         int numElts = vt.getVectorNumElements();
@@ -1841,17 +1867,19 @@ public class SelectionDAGLegalizer {
           int idx = mask.get(i);
           if (idx < numElts) {
             ops.add(dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+                dl,
                 eltVT,
                 node.getOperand(0),
                 dag.getIntPtrConstant(idx)));
           } else {
             ops.add(dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+                dl,
                 eltVT,
                 node.getOperand(1),
                 dag.getIntPtrConstant(idx - numElts)));
           }
         }
-        temp1 = dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+        temp1 = dag.getNode(ISD.BUILD_VECTOR, dl, vt, ops);
         results.add(temp1);
         break;
       }
@@ -1859,13 +1887,12 @@ public class SelectionDAGLegalizer {
         EVT opTy = node.getOperand(0).getValueType();
         if (((ConstantSDNode) node.getOperand(1).getNode()).getZExtValue() != 0) {
           // 1 > Hi
-          temp1 = dag.getNode(ISD.SRL, opTy, node.getOperand(0),
+          temp1 = dag.getNode(ISD.SRL, dl, opTy, node.getOperand(0),
               dag.getConstant(opTy.getSizeInBits() / 2,
                   new EVT(tli.getShiftAmountTy()), false));
-          temp1 = dag.getNode(ISD.TRUNCATE, node.getValueType(0), temp1);
+          temp1 = dag.getNode(ISD.TRUNCATE, dl, node.getValueType(0), temp1);
         } else {
-          temp1 = dag.getNode(ISD.TRUNCATE, node.getValueType(0),
-              node.getOperand(0));
+          temp1 = dag.getNode(ISD.TRUNCATE, dl, node.getValueType(0), node.getOperand(0));
         }
         results.add(temp1);
         break;
@@ -1875,10 +1902,8 @@ public class SelectionDAGLegalizer {
         // set stackPointerRegisterToSaveRestore.
         int sp = tli.getStackPointerRegisterToSaveRestore();
         if (sp != 0) {
-          results.add(dag.getCopyFromReg(
-              node.getOperand(0),
-              sp,
-              node.getValueType(0)));
+          results.add(dag.getCopyFromReg(node.getOperand(0),
+                  dl, sp, node.getValueType(0)));
           results.add(results.get(0).getValue(1));
         } else {
           results.add(dag.getUNDEF(node.getValueType(0)));
@@ -1889,8 +1914,7 @@ public class SelectionDAGLegalizer {
       case ISD.STACKRESTORE: {
         int sp = tli.getStackPointerRegisterToSaveRestore();
         if (sp != 0) {
-          results.add(dag.getCopyToReg(node.getOperand(0),
-              sp, node.getOperand(1)));
+          results.add(dag.getCopyToReg(node.getOperand(0), dl, sp, node.getOperand(1)));
         } else {
           results.add(node.getOperand(0));
         }
@@ -1902,7 +1926,7 @@ public class SelectionDAGLegalizer {
       case ISD.FNEG:
         // Expand Y = FNEG(X) -> Y = SUB -0.0, X
         temp1 = dag.getConstantFP(-0.0, node.getValueType(0), false);
-        temp1 = dag.getNode(ISD.FSUB, node.getValueType(0),
+        temp1 = dag.getNode(ISD.FSUB, dl, node.getValueType(0),
             temp1, node.getOperand(0));
         results.add(temp1);
         break;
@@ -1911,11 +1935,11 @@ public class SelectionDAGLegalizer {
         EVT vt = node.getValueType(0);
         temp1 = node.getOperand(0);
         temp2 = dag.getConstantFP(0.0, vt, false);
-        temp2 = dag.getSetCC(
+        temp2 = dag.getSetCC(dl,
             new EVT(tli.getSetCCResultType(temp1.getValueType())),
             temp1, temp2, CondCode.SETUGT);
-        temp3 = dag.getNode(ISD.FNEG, vt, temp1);
-        temp1 = dag.getNode(ISD.SELECT, vt, temp2, temp1, temp3);
+        temp3 = dag.getNode(ISD.FNEG, dl, vt, temp1);
+        temp1 = dag.getNode(ISD.SELECT, dl, vt, temp2, temp1, temp3);
         results.add(temp1);
         break;
       }
@@ -2005,7 +2029,7 @@ public class SelectionDAGLegalizer {
       case ISD.EXCEPTIONADDR: {
         int reg = tli.getExceptionPointerRegister();
         Util.assertion(reg != 0, "can't expand to unknown register!");
-        results.add(dag.getCopyFromReg(node.getOperand(0), reg, node.getValueType(0)));
+        results.add(dag.getCopyFromReg(node.getOperand(0), dl, reg, node.getValueType(0)));
         results.add(results.get(0).getValue(1));
         break;
       }
@@ -2019,12 +2043,12 @@ public class SelectionDAGLegalizer {
         temp2 = node.getOperand(0);
         temp3 = node.getOperand(1);
         if (tli.isOperationLegalOrCustom(divRemOpc, vt)) {
-          temp1 = dag.getNode(divRemOpc, vts, temp2, temp3).getValue(1);
+          temp1 = dag.getNode(divRemOpc, dl, vts, temp2, temp3).getValue(1);
         } else if (tli.isOperationLegalOrCustom(divOpc, vt)) {
           // X % Y -> X-X/Y*Y
-          temp1 = dag.getNode(divOpc, vt, temp2, temp3);
-          temp1 = dag.getNode(ISD.MUL, vt, temp1, temp3);
-          temp1 = dag.getNode(ISD.SUB, vt, temp2, temp1);
+          temp1 = dag.getNode(divOpc, dl, vt, temp2, temp3);
+          temp1 = dag.getNode(ISD.MUL, dl, vt, temp1, temp3);
+          temp1 = dag.getNode(ISD.SUB, dl, vt, temp2, temp1);
         } else if (isSigned) {
           temp1 = expandIntLibCall(node, true,
               RTLIB.SREM_I8,
@@ -2050,8 +2074,7 @@ public class SelectionDAGLegalizer {
         EVT vt = node.getValueType(0);
         SDVTList vts = dag.getVTList(vt, vt);
         if (tli.isOperationLegalOrCustom(divRemOpc, vt))
-          temp1 = dag.getNode(divRemOpc, vts, node.getOperand(0),
-              node.getOperand(1));
+          temp1 = dag.getNode(divRemOpc, dl, vts, node.getOperand(0), node.getOperand(1));
         else if (isSigned) {
           temp1 = expandIntLibCall(node, true,
               RTLIB.SDIV_I8,
@@ -2077,7 +2100,7 @@ public class SelectionDAGLegalizer {
         SDVTList vts = dag.getVTList(vt, vt);
         Util.assertion(tli.isOperationLegalOrCustom(expandOpc, vt),
             "If this wasn't legal, it shouldn't have been created!");
-        temp1 = dag.getNode(expandOpc, vts, node.getOperand(0), node.getOperand(1));
+        temp1 = dag.getNode(expandOpc, dl, vts, node.getOperand(0), node.getOperand(1));
         results.add(temp1);
         break;
       }
@@ -2104,8 +2127,7 @@ public class SelectionDAGLegalizer {
           opToUse = ISD.UMUL_LOHI;
         }
         if (opToUse != 0) {
-          results.add(dag.getNode(opToUse, vts, node.getOperand(0),
-              node.getOperand(1)));
+          results.add(dag.getNode(opToUse, dl, vts, node.getOperand(0), node.getOperand(1)));
           break;
         }
         temp1 = expandIntLibCall(node, false,
@@ -2120,8 +2142,7 @@ public class SelectionDAGLegalizer {
         SDValue lhs = node.getOperand(0);
         SDValue rhs = node.getOperand(1);
         SDValue sum = dag.getNode(node.getOpcode() == ISD.SADDO ?
-                ISD.ADD : ISD.SUB, lhs.getValueType(),
-            lhs, rhs);
+                ISD.ADD : ISD.SUB, dl, lhs.getValueType(), lhs, rhs);
         results.add(sum);
         EVT OType = node.getValueType(1);
 
@@ -2136,16 +2157,15 @@ public class SelectionDAGLegalizer {
         //   Sub:
         //   Overflow -> (lhsSign != rhsSign) && (lhsSign != sumSign)
         //
-        SDValue lhsSign = dag.getSetCC(OType, lhs, Zero, SETGE);
-        SDValue rhsSign = dag.getSetCC(OType, rhs, Zero, SETGE);
-        SDValue SignsMatch = dag.getSetCC(OType, lhsSign, rhsSign,
-            node.getOpcode() == ISD.SADDO ?
-                SETEQ : SETNE);
+        SDValue lhsSign = dag.getSetCC(dl, OType, lhs, Zero, SETGE);
+        SDValue rhsSign = dag.getSetCC(dl, OType, rhs, Zero, SETGE);
+        SDValue SignsMatch = dag.getSetCC(dl, OType, lhsSign, rhsSign,
+            node.getOpcode() == ISD.SADDO ? SETEQ : SETNE);
 
-        SDValue sumSign = dag.getSetCC(OType, sum, Zero, SETGE);
-        SDValue SumSignNE = dag.getSetCC(OType, lhsSign, sumSign, SETNE);
+        SDValue sumSign = dag.getSetCC(dl, OType, sum, Zero, SETGE);
+        SDValue SumSignNE = dag.getSetCC(dl, OType, lhsSign, sumSign, SETNE);
 
-        SDValue cmp = dag.getNode(ISD.AND, OType, SignsMatch, SumSignNE);
+        SDValue cmp = dag.getNode(ISD.AND, dl, OType, SignsMatch, SumSignNE);
         results.add(cmp);
         break;
       }
@@ -2154,10 +2174,9 @@ public class SelectionDAGLegalizer {
         SDValue lhs = node.getOperand(0);
         SDValue rhs = node.getOperand(1);
         SDValue sum = dag.getNode(node.getOpcode() == ISD.UADDO ?
-                ISD.ADD : ISD.SUB, lhs.getValueType(),
-            lhs, rhs);
+                ISD.ADD : ISD.SUB, dl, lhs.getValueType(), lhs, rhs);
         results.add(sum);
-        results.add(dag.getSetCC(node.getValueType(1), sum, lhs,
+        results.add(dag.getSetCC(dl, node.getValueType(1), sum, lhs,
             node.getOpcode() == ISD.UADDO ? SETULT : SETUGT));
         break;
       }
@@ -2180,21 +2199,18 @@ public class SelectionDAGLegalizer {
 
         int isSigned = node.getOpcode() == ISD.SMULO ? 1 : 0;
         if (tli.isOperationLegalOrCustom(ops[isSigned][0], vt)) {
-          bottomHalf = dag.getNode(ISD.MUL, vt, lhs, rhs);
-          topHalf = dag.getNode(ops[isSigned][0], vt, lhs, rhs);
+          bottomHalf = dag.getNode(ISD.MUL, dl, vt, lhs, rhs);
+          topHalf = dag.getNode(ops[isSigned][0], dl, vt, lhs, rhs);
         } else if (tli.isOperationLegalOrCustom(ops[isSigned][1], vt)) {
-          bottomHalf = dag.getNode(ops[isSigned][1], dag.getVTList(vt, vt), lhs,
-              rhs);
+          bottomHalf = dag.getNode(ops[isSigned][1], dl, dag.getVTList(vt, vt), lhs, rhs);
           topHalf = bottomHalf.getValue(1);
         } else if (tli.isTypeLegal(EVT.getIntegerVT(dag.getContext(),vt.getSizeInBits() * 2))) {
           EVT WideVT = EVT.getIntegerVT(dag.getContext(),vt.getSizeInBits() * 2);
-          lhs = dag.getNode(ops[isSigned][2], WideVT, lhs);
-          rhs = dag.getNode(ops[isSigned][2], WideVT, rhs);
-          temp1 = dag.getNode(ISD.MUL, WideVT, lhs, rhs);
-          bottomHalf = dag.getNode(ISD.EXTRACT_ELEMENT, vt, temp1,
-              dag.getIntPtrConstant(0));
-          topHalf = dag.getNode(ISD.EXTRACT_ELEMENT, vt, temp1,
-              dag.getIntPtrConstant(1));
+          lhs = dag.getNode(ops[isSigned][2], dl, WideVT, lhs);
+          rhs = dag.getNode(ops[isSigned][2], dl, WideVT, rhs);
+          temp1 = dag.getNode(ISD.MUL, dl, WideVT, lhs, rhs);
+          bottomHalf = dag.getNode(ISD.EXTRACT_ELEMENT, dl, vt, temp1, dag.getIntPtrConstant(0));
+          topHalf = dag.getNode(ISD.EXTRACT_ELEMENT, dl, vt, temp1, dag.getIntPtrConstant(1));
         } else {
           // FIXME: We should be able to fall back to a libcall with an illegal
           // type in some cases.
@@ -2204,11 +2220,10 @@ public class SelectionDAGLegalizer {
         }
         if (isSigned != 0) {
           temp1 = dag.getConstant(vt.getSizeInBits() - 1, new EVT(tli.getShiftAmountTy()), false);
-          temp1 = dag.getNode(ISD.SRA, vt, bottomHalf, temp1);
-          topHalf = dag.getSetCC(new EVT(tli.getSetCCResultType(vt)), topHalf, temp1,
-              SETNE);
+          temp1 = dag.getNode(ISD.SRA, dl, vt, bottomHalf, temp1);
+          topHalf = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(vt)), topHalf, temp1, SETNE);
         } else {
-          topHalf = dag.getSetCC(new EVT(tli.getSetCCResultType(vt)), topHalf,
+          topHalf = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(vt)), topHalf,
               dag.getConstant(0, vt, false), SETNE);
         }
         results.add(bottomHalf);
@@ -2217,12 +2232,12 @@ public class SelectionDAGLegalizer {
       }
       case ISD.BUILD_PAIR: {
         EVT pairTy = node.getValueType(0);
-        temp1 = dag.getNode(ISD.ZERO_EXTEND, pairTy, node.getOperand(0));
-        temp2 = dag.getNode(ISD.ANY_EXTEND, pairTy, node.getOperand(1));
-        temp2 = dag.getNode(ISD.SHL, pairTy, temp2,
+        temp1 = dag.getNode(ISD.ZERO_EXTEND, dl, pairTy, node.getOperand(0));
+        temp2 = dag.getNode(ISD.ANY_EXTEND, dl, pairTy, node.getOperand(1));
+        temp2 = dag.getNode(ISD.SHL, dl, pairTy, temp2,
             dag.getConstant(pairTy.getSizeInBits() / 2,
                 new EVT(tli.getShiftAmountTy()), false));
-        results.add(dag.getNode(ISD.OR, pairTy, temp1, temp2));
+        results.add(dag.getNode(ISD.OR, dl, pairTy, temp1, temp2));
         break;
       }
       case ISD.SELECT:
@@ -2230,10 +2245,10 @@ public class SelectionDAGLegalizer {
         temp2 = node.getOperand(1);
         temp3 = node.getOperand(2);
         if (temp1.getOpcode() == ISD.SETCC) {
-          temp1 = dag.getSelectCC(temp1.getOperand(0), temp1.getOperand(1),
+          temp1 = dag.getSelectCC(dl, temp1.getOperand(0), temp1.getOperand(1),
               temp2, temp3, ((CondCodeSDNode) (temp1.getOperand(2)).getNode()).getCondition());
         } else {
-          temp1 = dag.getSelectCC(temp1,
+          temp1 = dag.getSelectCC(dl, temp1,
               dag.getConstant(0, temp1.getValueType(), false),
               temp2, temp3, SETNE);
         }
@@ -2248,12 +2263,12 @@ public class SelectionDAGLegalizer {
         TargetData td = dag.getMachineFunction().getTarget().getTargetData();
         int EntrySize = dag.getMachineFunction().getJumpTableInfo().getEntrySize(td);
 
-        index = dag.getNode(ISD.MUL, pty,
+        index = dag.getNode(ISD.MUL, dl, pty,
             index, dag.getConstant(EntrySize, pty, false));
-        SDValue addr = dag.getNode(ISD.ADD, pty, index, table);
+        SDValue addr = dag.getNode(ISD.ADD, dl, pty, index, table);
 
         EVT memVT = EVT.getIntegerVT(dag.getContext(),EntrySize * 8);
-        SDValue ld = dag.getExtLoad(SEXTLOAD, pty, chain, addr,
+        SDValue ld = dag.getExtLoad(dl, SEXTLOAD, pty, chain, addr,
             PseudoSourceValue.getJumpTable(), 0, memVT,
             false, 0);
         addr = ld;
@@ -2261,10 +2276,10 @@ public class SelectionDAGLegalizer {
           // For PIC, the sequence is:
           // BRIND(load(Jumptable + index) + RelocBase)
           // RelocBase can be JumpTable, GOT or some sort of global base.
-          addr = dag.getNode(ISD.ADD, pty, addr,
+          addr = dag.getNode(ISD.ADD, dl, pty, addr,
               tli.getPICJumpTableRelocBase(table, dag));
         }
-        temp1 = dag.getNode(ISD.BRIND, new EVT(MVT.Other), ld.getValue(1), addr);
+        temp1 = dag.getNode(ISD.BRIND, dl, new EVT(MVT.Other), ld.getValue(1), addr);
         results.add(temp1);
         break;
       }
@@ -2275,13 +2290,14 @@ public class SelectionDAGLegalizer {
         temp2 = node.getOperand(1);
         if (temp2.getOpcode() == ISD.SETCC) {
           temp1 = dag.getNode(ISD.BR_CC,
+              dl,
               new EVT(MVT.Other),
               temp1, temp2.getOperand(2),
               temp2.getOperand(0),
               temp2.getOperand(1),
               node.getOperand(2));
         } else {
-          temp1 = dag.getNode(ISD.BR_CC, new EVT(MVT.Other), temp1,
+          temp1 = dag.getNode(ISD.BR_CC, dl, new EVT(MVT.Other), temp1,
               dag.getCondCode(SETNE), temp2,
               dag.getConstant(0, temp2.getValueType(), false),
               node.getOperand(2));
@@ -2295,7 +2311,7 @@ public class SelectionDAGLegalizer {
         OutRef<SDValue> lhsRef = new OutRef<>(temp1);
         OutRef<SDValue> rhsRef = new OutRef<>(temp2);
         OutRef<SDValue> ccRef = new OutRef<>(temp3);
-        legalizeSetCCCondCode(node.getValueType(0), lhsRef, rhsRef, ccRef);
+        legalizeSetCCCondCode(node.getValueType(0), lhsRef, rhsRef, ccRef, dl);
         temp1 = lhsRef.get();
         temp2 = rhsRef.get();
         temp3 = ccRef.get();
@@ -2309,7 +2325,7 @@ public class SelectionDAGLegalizer {
         // Otherwise, SETCC for the given comparison type must be completely
         // illegal; expand it into a SELECT_CC.
         EVT vt = node.getValueType(0);
-        temp1 = dag.getNode(ISD.SELECT_CC, vt, temp1, temp2,
+        temp1 = dag.getNode(ISD.SELECT_CC, dl, vt, temp1, temp2,
             dag.getConstant(1, vt, false), dag.getConstant(0, vt, false), temp3);
         results.add(temp1);
         break;
@@ -2325,7 +2341,7 @@ public class SelectionDAGLegalizer {
         OutRef<SDValue> rhsRef = new OutRef<>(temp2);
         OutRef<SDValue> ccRef = new OutRef<>(cc);
         legalizeSetCCCondCode(new EVT(tli.getSetCCResultType(temp1.getValueType())),
-            lhsRef, rhsRef, ccRef);
+            lhsRef, rhsRef, ccRef, dl);
         temp1 = lhsRef.get();
         temp2 = rhsRef.get();
         cc = ccRef.get();
@@ -2333,7 +2349,7 @@ public class SelectionDAGLegalizer {
         Util.assertion(temp2.getNode() == null, "Can't legalize SELECT_CC with legal condition!");
         temp2 = dag.getConstant(0, temp1.getValueType(), false);
         cc = dag.getCondCode(SETNE);
-        temp1 = dag.getNode(ISD.SELECT_CC, node.getValueType(0), temp1, temp2,
+        temp1 = dag.getNode(ISD.SELECT_CC, dl, node.getValueType(0), temp1, temp2,
             temp3, temp4, cc);
         results.add(temp1);
         break;
@@ -2348,7 +2364,7 @@ public class SelectionDAGLegalizer {
         OutRef<SDValue> rhsRef = new OutRef<>(temp3);
         OutRef<SDValue> ccRef = new OutRef<>(temp4);
         legalizeSetCCCondCode(new EVT(tli.getSetCCResultType(temp2.getValueType())),
-            lhsRef, rhsRef, ccRef);
+            lhsRef, rhsRef, ccRef, dl);
         temp2 = lhsRef.get();
         temp3 = rhsRef.get();
         temp4 = ccRef.get();
@@ -2358,7 +2374,7 @@ public class SelectionDAGLegalizer {
         Util.assertion(temp3.getNode() == null, "Can't legalize BR_CC with legal condition!");
         temp3 = dag.getConstant(0, temp2.getValueType(), false);
         temp4 = dag.getCondCode(SETNE);
-        temp1 = dag.getNode(ISD.BR_CC, node.getValueType(0), temp1, temp4, temp2,
+        temp1 = dag.getNode(ISD.BR_CC, dl, node.getValueType(0), temp1, temp4, temp2,
             temp3, node.getOperand(4));
         results.add(temp1);
         break;
@@ -2379,7 +2395,7 @@ public class SelectionDAGLegalizer {
       case ISD.EHSELECTION: {
         int reg = tli.getExceptionSelectorRegister();
         Util.assertion(reg != 0, "can't expand to unknow register");
-        results.add(dag.getCopyFromReg(node.getOperand(1), reg, node.getValueType(0)));
+        results.add(dag.getCopyFromReg(node.getOperand(1), dl, reg, node.getValueType(0)));
         results.add(results.get(0).getValue(1));
         break;
       }
@@ -2404,9 +2420,12 @@ public class SelectionDAGLegalizer {
    * @return
    */
   private static SDValue expandConstantFP(ConstantFPSDNode fp,
-                                          boolean useCP, SelectionDAG dag, TargetLowering tli) {
+                                          boolean useCP,
+                                          SelectionDAG dag,
+                                          TargetLowering tli) {
     boolean extend = false;
     EVT vt = fp.getValueType(0);
+    DebugLoc dl = fp.getDebugLoc();
     ConstantFP c = fp.getConstantFPValue();
     if (!useCP) {
       Util.assertion(vt.equals(new EVT(MVT.f64)) || vt.equals(new EVT(MVT.f32)), "Invalid type expansion!");
@@ -2435,11 +2454,11 @@ public class SelectionDAGLegalizer {
         false, 0);
     int alignment = ((ConstantPoolSDNode) cpIdx.getNode()).getAlignment();
     if (extend) {
-      return dag.getExtLoad(EXTLOAD, origVT, dag.getEntryNode(),
+      return dag.getExtLoad(dl, EXTLOAD, origVT, dag.getEntryNode(),
           cpIdx, PseudoSourceValue.getConstantPool(),
           0, vt, false, alignment);
     }
-    return dag.getLoad(origVT, dag.getEntryNode(), cpIdx,
+    return dag.getLoad(dl, origVT, dag.getEntryNode(), cpIdx,
         PseudoSourceValue.getConstantPool(), 0, false, alignment);
   }
 
@@ -2495,6 +2514,7 @@ public class SelectionDAGLegalizer {
   private SDValue expandLibCall(RTLIB lc, SDNode node, boolean isSigned) {
     Util.assertion(!isLegalizingCall, "Can't overlap legalization of calls!");
     SDValue inChain = dag.getEntryNode();
+    DebugLoc dl = node.getDebugLoc();
 
     ArrayList<ArgListEntry> args = new ArrayList<>();
     for (int i = 0, e = node.getNumOperands(); i < e; i++) {
@@ -2515,7 +2535,7 @@ public class SelectionDAGLegalizer {
         inChain, retTy,
         isSigned, !isSigned, false, false,
         0, tli.getLibCallCallingConv(lc),
-        false, true, callee, args, dag);
+        false, true, callee, args, dag, dl);
 
     // Legalize the call sequence, starting with the chain.  This will advance
     // the LastCALLSEQ_END to the legalized version of the CALLSEQ_END node that
@@ -2525,6 +2545,7 @@ public class SelectionDAGLegalizer {
   }
 
   private void promoteNode(SDNode node, ArrayList<SDValue> results) {
+    DebugLoc dl = node.getDebugLoc();
     EVT ovt = node.getValueType(0);
     int opc = node.getOpcode();
     if (opc == ISD.UINT_TO_FP ||
@@ -2538,28 +2559,28 @@ public class SelectionDAGLegalizer {
       case ISD.CTTZ:
       case ISD.CTLZ:
       case ISD.CTPOP: {
-        temp1 = dag.getNode(ISD.ZERO_EXTEND, nvt, node.getOperand(0));
-        temp1 = dag.getNode(opc, nvt, temp1);
+        temp1 = dag.getNode(ISD.ZERO_EXTEND, dl, nvt, node.getOperand(0));
+        temp1 = dag.getNode(opc, dl, nvt, temp1);
         if (opc == ISD.CTTZ) {
-          temp2 = dag.getSetCC(new EVT(tli.getSetCCResultType(nvt)),
+          temp2 = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(nvt)),
               temp1, dag.getConstant(nvt.getSizeInBits(), nvt, false),
               SETEQ);
-          temp1 = dag.getNode(ISD.SELECT, nvt, temp2,
+          temp1 = dag.getNode(ISD.SELECT, dl, nvt, temp2,
               dag.getConstant(ovt.getSizeInBits(), nvt, false),
               temp1);
         } else if (opc == ISD.CTLZ) {
-          temp1 = dag.getNode(ISD.SUB, nvt, temp1,
+          temp1 = dag.getNode(ISD.SUB, dl, nvt, temp1,
               dag.getConstant(nvt.getSizeInBits() -
                   ovt.getSizeInBits(), nvt, false));
         }
-        results.add(dag.getNode(ISD.TRUNCATE, ovt, temp1));
+        results.add(dag.getNode(ISD.TRUNCATE, dl, ovt, temp1));
         break;
       }
       case ISD.BSWAP: {
         int diffBits = nvt.getSizeInBits() - ovt.getSizeInBits();
-        temp1 = dag.getNode(ISD.ZERO_EXTEND, nvt, temp1);
-        temp1 = dag.getNode(ISD.BSWAP, nvt, temp1);
-        temp1 = dag.getNode(ISD.SRL, nvt, temp1,
+        temp1 = dag.getNode(ISD.ZERO_EXTEND, dl, nvt, temp1);
+        temp1 = dag.getNode(ISD.BSWAP, dl, nvt, temp1);
+        temp1 = dag.getNode(ISD.SRL, dl, nvt, temp1,
             dag.getConstant(diffBits, new EVT(tli.getShiftAmountTy()), false));
         results.add(temp1);
         break;
@@ -2590,10 +2611,10 @@ public class SelectionDAGLegalizer {
         } else {
           Util.shouldNotReachHere("Unknown promote logic operation");
         }
-        temp1 = dag.getNode(extOp, nvt, node.getOperand(0));
-        temp2 = dag.getNode(extOp, nvt, node.getOperand(1));
-        temp1 = dag.getNode(opc, nvt, temp1, temp2);
-        results.add(dag.getNode(truncOp, ovt, temp1));
+        temp1 = dag.getNode(extOp, dl, nvt, node.getOperand(0));
+        temp2 = dag.getNode(extOp, dl, nvt, node.getOperand(1));
+        temp1 = dag.getNode(opc, dl, nvt, temp1, temp2);
+        results.add(dag.getNode(truncOp, dl, ovt, temp1));
         break;
       }
       case ISD.SELECT: {
@@ -2610,13 +2631,13 @@ public class SelectionDAGLegalizer {
           truncOp = ISD.FP_ROUND;
         }
         temp1 = node.getOperand(0);
-        temp2 = dag.getNode(extOp, nvt, node.getOperand(1));
-        temp3 = dag.getNode(extOp, nvt, node.getOperand(2));
-        temp1 = dag.getNode(ISD.SELECT, nvt, temp1, temp2, temp3);
+        temp2 = dag.getNode(extOp, dl, nvt, node.getOperand(1));
+        temp3 = dag.getNode(extOp, dl, nvt, node.getOperand(2));
+        temp1 = dag.getNode(ISD.SELECT, dl, nvt, temp1, temp2, temp3);
         if (truncOp != ISD.FP_ROUND)
-          temp1 = dag.getNode(truncOp, node.getValueType(0), temp1);
+          temp1 = dag.getNode(truncOp, dl, node.getValueType(0), temp1);
         else
-          temp1 = dag.getNode(truncOp, node.getValueType(0), temp1,
+          temp1 = dag.getNode(truncOp, dl, node.getValueType(0), temp1,
               dag.getIntPtrConstant(0));
 
         results.add(temp1);
@@ -2626,11 +2647,11 @@ public class SelectionDAGLegalizer {
         TIntArrayList mask = new TIntArrayList();
         ((ShuffleVectorSDNode) node).getMask(mask);
 
-        temp1 = dag.getNode(ISD.BIT_CONVERT, nvt, node.getOperand(0));
-        temp2 = dag.getNode(ISD.BIT_CONVERT, nvt, node.getOperand(1));
+        temp1 = dag.getNode(ISD.BIT_CONVERT, dl, nvt, node.getOperand(0));
+        temp2 = dag.getNode(ISD.BIT_CONVERT, dl, nvt, node.getOperand(1));
 
-        temp1 = shuffleWithNarrowerEltType(nvt, ovt, temp1, temp2, mask.toArray());
-        temp1 = dag.getNode(ISD.BIT_CONVERT, ovt, temp1);
+        temp1 = shuffleWithNarrowerEltType(nvt, ovt, temp1, temp2, mask.toArray(), dl);
+        temp1 = dag.getNode(ISD.BIT_CONVERT, dl, ovt, temp1);
         results.add(temp1);
         break;
       }
@@ -2641,9 +2662,9 @@ public class SelectionDAGLegalizer {
           extOp = cc.isSignedIntSetCC() ? ISD.SIGN_EXTEND : ISD.ZERO_EXTEND;
           ;
         }
-        temp1 = dag.getNode(extOp, nvt, node.getOperand(0));
-        temp2 = dag.getNode(extOp, nvt, node.getOperand(1));
-        results.add(dag.getNode(ISD.SETCC, node.getValueType(0),
+        temp1 = dag.getNode(extOp, dl, nvt, node.getOperand(0));
+        temp2 = dag.getNode(extOp, dl, nvt, node.getOperand(1));
+        results.add(dag.getNode(ISD.SETCC, dl, node.getValueType(0),
             temp1, temp2, node.getOperand(2)));
         break;
       }

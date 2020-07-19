@@ -1084,8 +1084,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     return list;
   }
 
-  protected SDNode(int opc, SDVTList vts, ArrayList<SDValue> ops) {
+  protected SDNode(int opc, DebugLoc dl, SDVTList vts, ArrayList<SDValue> ops) {
     this.opcode = opc;
+    this.debugLoc = dl;
     sublassData = 0;
     nodeID = -1;
     operandList = new SDUse[ops.size()];
@@ -1098,9 +1099,10 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     useList = new ArrayList<>();
   }
 
-  protected SDNode(int opc, SDVTList vts, SDValue[] ops) {
+  protected SDNode(int opc, DebugLoc dl, SDVTList vts, SDValue[] ops) {
     Util.assertion(ops != null);
     this.opcode = opc;
+    debugLoc = dl;
     sublassData = 0;
     nodeID = -1;
     operandList = new SDUse[ops.length];
@@ -1113,8 +1115,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     useList = new ArrayList<>();
   }
 
-  protected SDNode(int opc, SDVTList list) {
+  protected SDNode(int opc,  DebugLoc dl, SDVTList list) {
     opcode = opc;
+    debugLoc = dl;
     sublassData = 0;
     nodeID = -1;
     operandList = null;
@@ -1202,22 +1205,22 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public static class UnarySDNode extends SDNode {
-    public UnarySDNode(int opc, SDVTList vts, SDValue op) {
-      super(opc, vts);
+    public UnarySDNode(int opc, DebugLoc dl, SDVTList vts, SDValue op) {
+      super(opc, dl, vts);
       initOperands(op);
     }
   }
 
   public static class BinarySDNode extends SDNode {
-    public BinarySDNode(int opc, SDVTList vts, SDValue op0, SDValue op1) {
-      super(opc, vts);
+    public BinarySDNode(int opc, DebugLoc dl, SDVTList vts, SDValue op0, SDValue op1) {
+      super(opc, dl, vts);
       initOperands(op0, op1);
     }
   }
 
   public static class TernarySDNode extends SDNode {
-    public TernarySDNode(int opc, SDVTList vts, SDValue op0, SDValue op1, SDValue op2) {
-      super(opc, vts);
+    public TernarySDNode(int opc, DebugLoc dl, SDVTList vts, SDValue op0, SDValue op1, SDValue op2) {
+      super(opc, dl, vts);
       initOperands(op0, op1, op2);
     }
   }
@@ -1238,8 +1241,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private EVT memoryVT;
     private MachineMemOperand mmo;
 
-    public MemSDNode(int opc, SDVTList vts, EVT memVT, MachineMemOperand mmo) {
-      super(opc, vts);
+    public MemSDNode(int opc, DebugLoc dl, SDVTList vts, EVT memVT, MachineMemOperand mmo) {
+      super(opc, dl, vts);
       this.memoryVT = memVT;
       this.mmo = mmo;
       sublassData = encodeMemSDNodeFlags(0, UNINDEXED, mmo.isVolatile(), mmo.getAlignment());
@@ -1248,9 +1251,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
       Util.assertion(isVolatile() == mmo.isVolatile());
     }
 
-    public MemSDNode(int opc, SDVTList vts, SDValue[] ops, EVT memVT,
+    public MemSDNode(int opc, DebugLoc dl, SDVTList vts, SDValue[] ops, EVT memVT,
                      MachineMemOperand mmo) {
-      super(opc, vts, ops);
+      super(opc, dl, vts, ops);
       this.memoryVT = memVT;
       this.mmo = mmo;
       sublassData = encodeMemSDNodeFlags(0, UNINDEXED, mmo.isVolatile(), mmo.getAlignment());
@@ -1297,24 +1300,28 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
 
   public static class AtomicSDNode extends MemSDNode {
 
-    public AtomicSDNode(int opc, SDVTList vts,
+    public AtomicSDNode(int opc,
+                        DebugLoc dl,
+                        SDVTList vts,
                         EVT memVT,
                         SDValue chain,
                         SDValue ptr,
                         SDValue cmp,
                         SDValue swp,
                         MachineMemOperand mmo) {
-      super(opc, vts, memVT, mmo);
+      super(opc, dl, vts, memVT, mmo);
       initOperands(chain, ptr, cmp, swp);
     }
 
-    public AtomicSDNode(int opc, SDVTList vts,
+    public AtomicSDNode(int opc,
+                        DebugLoc dl,
+                        SDVTList vts,
                         EVT memVT,
                         SDValue chain,
                         SDValue ptr,
                         SDValue val,
                         MachineMemOperand mmo) {
-      super(opc, vts, memVT, mmo);
+      super(opc, dl, vts, memVT, mmo);
       initOperands(chain, ptr, val);
     }
 
@@ -1334,9 +1341,9 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
 
   public static class MemIntrinsicSDNode extends MemSDNode {
 
-    public MemIntrinsicSDNode(int opc, SDVTList vts, SDValue[] ops,
+    public MemIntrinsicSDNode(int opc, DebugLoc dl, SDVTList vts, SDValue[] ops,
                               EVT memVT, MachineMemOperand mmo) {
-      super(opc, vts, ops, memVT, mmo);
+      super(opc, dl, vts, ops, memVT, mmo);
     }
   }
 
@@ -1344,7 +1351,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private ConstantInt value;
 
     public ConstantSDNode(boolean isTarget, ConstantInt val, EVT vt) {
-      super(isTarget ? ISD.TargetConstant : ISD.Constant, getSDVTList(vt));
+      super(isTarget ? ISD.TargetConstant : ISD.Constant, new DebugLoc(), getSDVTList(vt));
       value = val;
     }
 
@@ -1377,8 +1384,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private ConstantFP value;
 
     public ConstantFPSDNode(boolean isTarget, ConstantFP val, EVT vt) {
-      super(isTarget ? ISD.TargetConstantFP : ISD.ConstantFP, getSDVTList(vt));
-      ;
+      super(isTarget ? ISD.TargetConstantFP : ISD.ConstantFP, new DebugLoc(), getSDVTList(vt));
       value = val;
     }
 
@@ -1417,8 +1423,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private long offset;
     private int tsFlags;
 
-    public GlobalAddressSDNode(int opc, EVT vt, GlobalValue gv, long off, int targetFlags) {
-      super(opc, getSDVTList(vt));
+    public GlobalAddressSDNode(int opc, DebugLoc dl, EVT vt, GlobalValue gv, long off, int targetFlags) {
+      super(opc, dl, getSDVTList(vt));
       this.gv = gv;
       this.offset = off;
       this.tsFlags = targetFlags;
@@ -1441,7 +1447,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private int frameIndex;
 
     public FrameIndexSDNode(int fi, EVT vt, boolean isTarget) {
-      super(isTarget ? ISD.TargetFrameIndex : ISD.FrameIndex, getSDVTList(vt));
+      super(isTarget ? ISD.TargetFrameIndex : ISD.FrameIndex, new DebugLoc(), getSDVTList(vt));
       this.frameIndex = fi;
     }
 
@@ -1459,7 +1465,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private int targetFlags;
 
     public JumpTableSDNode(int jti, EVT vt, boolean isTarget, int tf) {
-      super(isTarget ? ISD.TargetJumpTable : ISD.JumpTable, getSDVTList(vt));
+      super(isTarget ? ISD.TargetJumpTable : ISD.JumpTable, new DebugLoc(), getSDVTList(vt));
       jumpTableIndex = jti;
       targetFlags = tf;
     }
@@ -1483,16 +1489,18 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private int align;
     private int targetFlags;
 
-    public ConstantPoolSDNode(boolean isTarget, Constant cnt, EVT vt, int off, int align, int targetFlags) {
-      super(isTarget ? ISD.TargetConstantPool : ISD.ConstantPool, getSDVTList(vt));
+    public ConstantPoolSDNode(boolean isTarget, Constant cnt, EVT vt,
+                              int off, int align, int targetFlags) {
+      super(isTarget ? ISD.TargetConstantPool : ISD.ConstantPool, new DebugLoc(), getSDVTList(vt));
       val = cnt;
       offset = off;
       this.align = align;
       this.targetFlags = targetFlags;
     }
 
-    public ConstantPoolSDNode(boolean isTarget, MachineConstantPoolValue machPoolVal, EVT vt, int off, int align, int targetFlags) {
-      super(isTarget ? ISD.TargetConstantPool : ISD.ConstantPool, getSDVTList(vt));
+    public ConstantPoolSDNode(boolean isTarget, MachineConstantPoolValue machPoolVal,
+                              EVT vt, int off, int align, int targetFlags) {
+      super(isTarget ? ISD.TargetConstantPool : ISD.ConstantPool, new DebugLoc(), getSDVTList(vt));
       val = machPoolVal;
       offset = off;
       this.align = align;
@@ -1536,7 +1544,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private MachineBasicBlock bb;
 
     public BasicBlockSDNode(MachineBasicBlock bb) {
-      super(ISD.BasicBlock, getSDVTList(new EVT(MVT.Other)));
+      super(ISD.BasicBlock, new DebugLoc(), getSDVTList(new EVT(MVT.Other)));
       this.bb = bb;
     }
 
@@ -1549,7 +1557,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private MachineMemOperand mmo;
 
     public MemOperandSDNode(MachineMemOperand mmo) {
-      super(ISD.MEMOPERAND, getSDVTList(new EVT(MVT.Other)));
+      super(ISD.MEMOPERAND, new DebugLoc(), getSDVTList(new EVT(MVT.Other)));
       this.mmo = mmo;
     }
 
@@ -1562,7 +1570,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private int reg;
 
     public RegisterSDNode(EVT vt, int reg) {
-      super(ISD.Register, getSDVTList(vt));
+      super(ISD.Register, new DebugLoc(), getSDVTList(vt));
       this.reg = reg;
     }
 
@@ -1571,24 +1579,10 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     }
   }
 
-  public static class LabelSDNode extends SDNode {
-    private int labelID;
-
-    public LabelSDNode(int nodeTy, SDValue ch, int labelID) {
-      super(nodeTy, getSDVTList(new EVT(MVT.Other)));
-      initOperands(ch);
-      this.labelID = labelID;
-    }
-
-    public int getLabelID() {
-      return labelID;
-    }
-  }
-
   public static class EHLabelSDNode extends SDNode {
     private MCSymbol label;
     public EHLabelSDNode(DebugLoc dl, SDValue ch, MCSymbol l) {
-      super(ISD.EH_LABEL, getSDVTList(new EVT(MVT.Other)));
+      super(ISD.EH_LABEL, dl, getSDVTList(new EVT(MVT.Other)));
       initOperands(ch);
       this.label = l;
     }
@@ -1601,7 +1595,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private int targetFlags;
 
     protected BlockAddressSDNode(int opc, EVT vt, BlockAddress ba, int ts) {
-      super(opc, getSDVTList(vt));
+      super(opc, new DebugLoc(), getSDVTList(vt));
       this.ba = ba;
       targetFlags = ts;
     }
@@ -1615,7 +1609,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private int targetFlags;
 
     public ExternalSymbolSDNode(boolean isTarget, EVT vt, String sym, int flags) {
-      super(isTarget ? ISD.TargetExternalSymbol : ISD.ExternalSymbol, getSDVTList(vt));
+      super(isTarget ? ISD.TargetExternalSymbol : ISD.ExternalSymbol, new DebugLoc(), getSDVTList(vt));
       this.extSymol = sym;
       this.targetFlags = flags;
     }
@@ -1633,7 +1627,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private CondCode condition;
 
     public CondCodeSDNode(CondCode cc) {
-      super(ISD.CONDCODE, getSDVTList(new EVT(MVT.Other)));
+      super(ISD.CONDCODE, new DebugLoc(), getSDVTList(new EVT(MVT.Other)));
       condition = cc;
     }
 
@@ -1646,25 +1640,24 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private EVT vt;
 
     public VTSDNode(EVT vt) {
-      super(ISD.VALUETYPE, getSDVTList(new EVT(MVT.Other)));
+      super(ISD.VALUETYPE, new DebugLoc(), getSDVTList(new EVT(MVT.Other)));
       this.vt = vt;
     }
 
-    public EVT getVT() {
-      return vt;
-    }
+    public EVT getVT() { return vt; }
   }
 
   public static class LSBaseSDNode extends MemSDNode {
-    public LSBaseSDNode(int nodeTy, SDValue[] operands, SDVTList vts,
+    public LSBaseSDNode(int nodeTy, DebugLoc dl, SDValue[] operands, SDVTList vts,
                         MemIndexedMode mode, EVT memVT, MachineMemOperand mmo) {
-      super(nodeTy, vts, memVT, mmo);
-      Util.assertion(mmo.getAlignment() != 0, "Loads and Stores should have non-zero alignment!");
+      super(nodeTy, dl, vts, memVT, mmo);
+      Util.assertion(mmo.getAlignment() != 0,
+              "Loads and Stores should have non-zero alignment!");
       sublassData |= mode.ordinal() << 2;
       Util.assertion(getAddressingMode() == mode);
       initOperands(operands);
-      Util.assertion(getOffset().getOpcode() == ISD.UNDEF || isIndexed(), "Only indexed loads and stores have a non-undef offset operand!");
-
+      Util.assertion(getOffset().getOpcode() == ISD.UNDEF || isIndexed(),
+              "Only indexed loads and stores have a non-undef offset operand!");
     }
 
     public SDValue getOffset() {
@@ -1685,11 +1678,11 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public static class LoadSDNode extends LSBaseSDNode {
-    public LoadSDNode(SDValue[] chainPtrOff, SDVTList vts,
-                      MemIndexedMode mode,
+    public LoadSDNode(SDValue[] chainPtrOff, DebugLoc dl,
+                      SDVTList vts, MemIndexedMode mode,
                       LoadExtType ety,
                       EVT memvt, MachineMemOperand mmo) {
-      super(ISD.LOAD, chainPtrOff, vts, mode, memvt, mmo);
+      super(ISD.LOAD, dl, chainPtrOff, vts, mode, memvt, mmo);
       sublassData |= ety.ordinal();
       Util.assertion(getExtensionType() == ety, "LoadExtType encoding error!");
     }
@@ -1710,9 +1703,12 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   }
 
   public static class StoreSDNode extends LSBaseSDNode {
-    public StoreSDNode(SDValue[] chainPtrOff, SDVTList vts, MemIndexedMode mode,
-                       boolean isTrunc, EVT vt, MachineMemOperand mmo) {
-      super(ISD.STORE, chainPtrOff, vts, mode, vt, mmo);
+    public StoreSDNode(SDValue[] chainPtrOff,
+                       DebugLoc dl, SDVTList vts,
+                       MemIndexedMode mode,
+                       boolean isTrunc, EVT vt,
+                       MachineMemOperand mmo) {
+      super(ISD.STORE, dl, chainPtrOff, vts, mode, vt, mmo);
       sublassData |= isTrunc ? 1 : 0;
       Util.assertion(isTruncatingStore() == isTrunc);
     }
@@ -1738,7 +1734,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
 
   public static class HandleSDNode extends SDNode {
     public HandleSDNode(SDValue x) {
-      super(ISD.HANDLENODE, getSDVTList(new EVT(MVT.Other)));
+      super(ISD.HANDLENODE, new DebugLoc(), getSDVTList(new EVT(MVT.Other)));
       initOperands(x);
     }
 
@@ -1750,8 +1746,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   public static class CvtRndSatSDNode extends SDNode {
     private CvtCode code;
 
-    public CvtRndSatSDNode(EVT vt, CvtCode code, SDValue[] ops) {
-      super(ISD.CONVERT_RNDSAT, getSDVTList(vt), ops);
+    public CvtRndSatSDNode(EVT vt, DebugLoc dl, CvtCode code, SDValue[] ops) {
+      super(ISD.CONVERT_RNDSAT, dl, getSDVTList(vt), ops);
       this.code = code;
     }
 
@@ -1764,17 +1760,19 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private int[] mask;
 
     public ShuffleVectorSDNode(SDVTList vts,
+                               DebugLoc dl,
                                ArrayList<SDValue> ops,
                                int[] mask) {
-      super(ISD.VECTOR_SHUFFLE, vts, ops);
+      super(ISD.VECTOR_SHUFFLE, dl, vts, ops);
       this.mask = mask;
     }
 
     public ShuffleVectorSDNode(SDVTList vts,
+                               DebugLoc dl,
                                SDValue op0,
                                SDValue op1,
                                int[] mask) {
-      super(ISD.VECTOR_SHUFFLE, vts, new SDValue[] {op0, op1});
+      super(ISD.VECTOR_SHUFFLE, dl, vts, new SDValue[] {op0, op1});
       this.mask = mask;
     }
 
@@ -1816,7 +1814,7 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
     private Value val;
 
     public SrcValueSDNode(Value val) {
-      super(ISD.SRCVALUE, getSDVTList(new EVT(MVT.Other)));
+      super(ISD.SRCVALUE, new DebugLoc(), getSDVTList(new EVT(MVT.Other)));
       this.val = val;
     }
 
@@ -1833,8 +1831,8 @@ public class SDNode implements Comparable<SDNode>, FoldingSetNode {
   public static class MachineSDNode extends SDNode {
     private MachineMemOperand[] memRefs;
 
-    public MachineSDNode(int opc, SDVTList vts) {
-      super(opc, vts);
+    public MachineSDNode(int opc, DebugLoc dl, SDVTList vts) {
+      super(opc, dl, vts);
     }
 
     public void setMemRefs(MachineMemOperand[] memRefs) {

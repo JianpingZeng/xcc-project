@@ -57,6 +57,7 @@ public abstract class Instruction extends User {
       setParent(insertBefore.getParent());
     }
     setName(name);
+    dbgLoc = new DebugLoc();
   }
 
   public Instruction(Type ty,
@@ -70,8 +71,8 @@ public abstract class Instruction extends User {
     setName(name);
     // append this instruction into the basic block
     Util.assertion((insertAtEnd != null), "Basic block to append to may not be NULL!");
-
     insertAtEnd.appendInst(this);
+    dbgLoc = new DebugLoc();
   }
 
   public Instruction(

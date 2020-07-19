@@ -321,7 +321,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     }
     SDValue[] vals = new SDValue[pendingLoads.size()];
     pendingLoads.toArray(vals);
-    SDValue root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), vals);
+    SDValue root = dag.getNode(ISD.TokenFactor, getCurDebugLoc(), new EVT(MVT.Other), vals);
     pendingLoads.clear();
     dag.setRoot(root);
     return root;
@@ -347,7 +347,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
     SDValue[] vals = new SDValue[pendingExports.size()];
     pendingExports.toArray(vals);
-    root = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), vals);
+    root = dag.getNode(ISD.TokenFactor, getCurDebugLoc(), new EVT(MVT.Other), vals);
     pendingExports.clear();
     dag.setRoot(root);
     return root;
@@ -363,7 +363,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     RegsForValue rfv = new RegsForValue(tli, reg, val.getType());
     SDValue chain = dag.getEntryNode();
     OutRef<SDValue> x = new OutRef<>(chain);
-    rfv.getCopyToRegs(op, dag, x, null);
+    rfv.getCopyToRegs(getCurDebugLoc(), op, dag, x, null);
     chain = x.get();
     pendingExports.add(chain);
   }
@@ -382,7 +382,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
       if (cnt instanceof GlobalValue) {
         SDValue n = dag
-            .getGlobalAddress((GlobalValue) cnt, vt, 0, false, 0);
+            .getGlobalAddress((GlobalValue) cnt, getCurDebugLoc(), vt, 0, false, 0);
         nodeMap.put(val, n);
         return n;
       }
@@ -416,7 +416,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           for (int j = 0, ee = elt.getNumValues(); j < ee; j++)
             constants.add(new SDValue(elt, j));
         }
-        return dag.getMergeValues(constants);
+        return dag.getMergeValues(getCurDebugLoc(), constants);
       }
 
       if (cnt.getType() instanceof StructType || cnt.getType() instanceof ArrayType) {
@@ -439,7 +439,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           else
             constants.add(dag.getConstant(0, eltVT, false));
         }
-        return dag.getMergeValues(constants);
+        return dag.getMergeValues(getCurDebugLoc(), constants);
       }
 
       if (cnt instanceof BlockAddress) {
@@ -468,7 +468,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         // fill the ops array with the same element.
         Arrays.fill(ops, 0, ops.length, op);
       }
-      SDValue res = dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+      SDValue res = dag.getNode(ISD.BUILD_VECTOR, getCurDebugLoc(), vt, ops);
       nodeMap.put(val, res);
       return res;
     }
@@ -482,7 +482,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     RegsForValue rfv = new RegsForValue(tli, inReg, val.getType());
     SDValue chain = dag.getEntryNode();
     OutRef<SDValue> x = new OutRef<>(chain);
-    SDValue res = rfv.getCopyFromRegs(dag, x, null);
+    SDValue res = rfv.getCopyFromRegs(dag, getCurDebugLoc(), x, null);
     chain = x.get();
     return res;
   }
@@ -541,11 +541,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       isTailCall = false;
 
     Pair<SDValue, SDValue> result = tli.lowerCallTo(dag.getContext(), getRoot(), cs.getType(),
-        cs.paramHasAttr(0, Attribute.SExt),
-        cs.paramHasAttr(0, Attribute.ZExt), fty.isVarArg(),
-        cs.paramHasAttr(0, Attribute.InReg), fty.getNumParams(),
-        cs.getCallingConv(), isTailCall,
-        !cs.getInstruction().isUseEmpty(), callee, args, dag);
+            cs.paramHasAttr(0, Attribute.SExt),
+            cs.paramHasAttr(0, Attribute.ZExt), fty.isVarArg(),
+            cs.paramHasAttr(0, Attribute.InReg), fty.getNumParams(),
+            cs.getCallingConv(), isTailCall,
+            !cs.getInstruction().isUseEmpty(), callee, args, dag,
+            getCurDebugLoc());
     Util.assertion(!isTailCall || result.second.getNode() != null);
     Util.assertion(result.second.getNode() != null || result.first.getNode() == null);
     if (result.first.getNode() != null)
@@ -831,7 +832,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       indirectBrMBB.addSuccessor(mbb);
     }
 
-    dag.setRoot(dag.getNode(ISD.BRIND, new EVT(MVT.Other), getControlRoot(),
+    dag.setRoot(dag.getNode(ISD.BRIND, getCurDebugLoc(), new EVT(MVT.Other), getControlRoot(),
         getValue(indbr.getAddress())));
     return null;
   }
@@ -867,7 +868,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         int numParts = tli.getNumRegisters(dag.getContext(), vt);
         EVT partVT = tli.getRegisterType(dag.getContext(), vt);
         SDValue[] parts = new SDValue[numParts];
-        getCopyToParts(dag,
+        getCopyToParts(dag, getCurDebugLoc(),
             new SDValue(retOp.getNode(), retOp.getResNo() + j),
             parts, partVT, extendKind);
 
@@ -886,7 +887,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
     boolean isVarArg = dag.getMachineFunction().getFunction().isVarArg();
     CallingConv cc = dag.getMachineFunction().getFunction().getCallingConv();
-    chain = tli.lowerReturn(chain, cc, isVarArg, outs, dag);
+    chain = tli.lowerReturn(chain, cc, isVarArg, outs, dag, getCurDebugLoc());
     Util.assertion(chain.getNode() != null && chain.getValueType().getSimpleVT().simpleVT == MVT.Other);
 
     dag.setRoot(chain);
@@ -906,7 +907,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     if (bi.isUnconditional()) {
       curMBB.addSuccessor(succ0MBB);
       if (!Objects.equals(succ0MBB, nextMBB)) {
-        dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+        dag.setRoot(dag.getNode(ISD.BR, getCurDebugLoc(), new EVT(MVT.Other),
             getControlRoot(), dag.getBasicBlock(succ0MBB)));
       }
       return null;
@@ -1072,9 +1073,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
       else if (cb.cmpRHS.equals(ConstantInt.getFalse(dag.getContext())) & cb.cc == CondCode.SETEQ) {
         SDValue one = dag.getConstant(1, condLHS.getValueType(), false);
-        cond = dag.getNode(ISD.XOR, condLHS.getValueType(), condLHS, one);
+        cond = dag.getNode(ISD.XOR, getCurDebugLoc(), condLHS.getValueType(), condLHS, one);
       } else {
-        cond = dag.getSetCC(new EVT(MVT.i1), condLHS, getValue(cb.cmpRHS),
+        cond = dag.getSetCC(getCurDebugLoc(), new EVT(MVT.i1), condLHS, getValue(cb.cmpRHS),
             cb.cc);
       }
     } else {
@@ -1086,12 +1087,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       EVT vt = cmpOp.getValueType();
 
       if (((ConstantInt) cb.cmpLHS).isMinValue(true)) {
-        cond = dag.getSetCC(new EVT(MVT.i1), cmpOp,
+        cond = dag.getSetCC(getCurDebugLoc(), new EVT(MVT.i1), cmpOp,
             dag.getConstant(high, vt, false), CondCode.SETLE);
       } else {
-        SDValue sub = dag.getNode(ISD.SUB, vt, cmpOp,
+        SDValue sub = dag.getNode(ISD.SUB, getCurDebugLoc(), vt, cmpOp,
             dag.getConstant(low, vt, false));
-        cond = dag.getSetCC(new EVT(MVT.i1), sub,
+        cond = dag.getSetCC(getCurDebugLoc(), new EVT(MVT.i1), sub,
             dag.getConstant(high.sub(low), vt, false),
             CondCode.SETULE);
       }
@@ -1110,16 +1111,16 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       cb.trueMBB = cb.falseMBB;
       cb.falseMBB = temp;
       SDValue one = dag.getConstant(1, cond.getValueType(), false);
-      cond = dag.getNode(ISD.XOR, cond.getValueType(), cond, one);
+      cond = dag.getNode(ISD.XOR, getCurDebugLoc(), cond.getValueType(), cond, one);
     }
 
-    SDValue brCond = dag.getNode(ISD.BRCOND, new EVT(MVT.Other), getControlRoot(),
+    SDValue brCond = dag.getNode(ISD.BRCOND, getCurDebugLoc(), new EVT(MVT.Other), getControlRoot(),
         cond, dag.getBasicBlock(cb.trueMBB));
 
     // Insert the false branch. Do this even if it's a fall through branch,
     // this makes it easier to do DAG optimizations which require inverting
     // the branch condition.
-      dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+      dag.setRoot(dag.getNode(ISD.BR, getCurDebugLoc(), new EVT(MVT.Other),
           brCond, dag.getBasicBlock(cb.falseMBB)));
   }
 
@@ -1136,7 +1137,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       // equivalent to unconditional branch.
       curMBB.addSuccessor(defaultBB);
       if (!defaultBB.equals(nextBB)) {
-        dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+        dag.setRoot(dag.getNode(ISD.BR, getCurDebugLoc(), new EVT(MVT.Other),
             getControlRoot(), dag.getBasicBlock(defaultBB)));
         return null;
       }
@@ -1319,7 +1320,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       exportFromCurrentBlock(condVal);
     }
 
-    BitTestBlock btb = new BitTestBlock(lowBound, cmpRange, condVal, -1, cr.mbb.equals(curMBB), cr.mbb, defaultMBB,
+    BitTestBlock btb = new BitTestBlock(lowBound, cmpRange, condVal,
+            -1, cr.mbb.equals(curMBB), cr.mbb, defaultMBB,
         btc);
     if (cr.mbb.equals(curMBB))
       visitBitTestHeader(btb);
@@ -1381,7 +1383,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         mhs = val;
         rhs = cr.caseRanges.get(i).high;
       }
-      CaseBlock cb = new CaseBlock(cc, lhs, rhs, mhs, cr.caseRanges.get(i).mbb, fallThrough, curBlock);
+      CaseBlock cb = new CaseBlock(cc, lhs, rhs, mhs,
+              cr.caseRanges.get(i).mbb, fallThrough, curBlock);
 
       if (curBlock.equals(curMBB))
         visitSwitchCase(cb);
@@ -1465,20 +1468,20 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public void visitJumpTableHeader(JumpTable jt, JumpTableHeader jht) {
     SDValue switchOp = getValue(jht.val);
     EVT vt = switchOp.getValueType();
-    SDValue sub = dag.getNode(ISD.SUB, vt, switchOp, dag.getConstant(jht.first, vt, false));
-
+    SDValue sub = dag.getNode(ISD.SUB, getCurDebugLoc(), vt,
+            switchOp, dag.getConstant(jht.first, vt, false));
 
     if (vt.bitsGT(new EVT(tli.getPointerTy())))
-      switchOp = dag.getNode(ISD.TRUNCATE, new EVT(tli.getPointerTy()), sub);
+      switchOp = dag.getNode(ISD.TRUNCATE, getCurDebugLoc(), new EVT(tli.getPointerTy()), sub);
     else
-      switchOp = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()), sub);
+      switchOp = dag.getNode(ISD.ZERO_EXTEND, getCurDebugLoc(), new EVT(tli.getPointerTy()), sub);
 
     int jumpTableReg = funcInfo.makeReg(new EVT(tli.getPointerTy()));
-    SDValue copyTo = dag.getCopyToReg(getControlRoot(), jumpTableReg, switchOp);
+    SDValue copyTo = dag.getCopyToReg(getControlRoot(), getCurDebugLoc(), jumpTableReg, switchOp);
 
     jt.reg = jumpTableReg;
 
-    SDValue cmp = dag.getSetCC(
+    SDValue cmp = dag.getSetCC(getCurDebugLoc(),
         new EVT(tli.getSetCCResultType(sub.getValueType())),
         sub,
         dag.getConstant(jht.last.sub(jht.first), vt, false),
@@ -1489,22 +1492,22 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     if (++itr < funcInfo.mf.size())
       nextBlock = funcInfo.mf.getMBBAt(itr);
 
-    SDValue brCond = dag.getNode(ISD.BRCOND, new EVT(MVT.Other),
+    SDValue brCond = dag.getNode(ISD.BRCOND, getCurDebugLoc(), new EVT(MVT.Other),
         copyTo, cmp, dag.getBasicBlock(jt.defaultMBB));
 
     if (jt.mbb.equals(nextBlock))
       dag.setRoot(brCond);
     else
-      dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brCond,
+      dag.setRoot(dag.getNode(ISD.BR, getCurDebugLoc(), new EVT(MVT.Other), brCond,
           dag.getBasicBlock(jt.mbb)));
   }
 
   public void visitJumpTable(JumpTable jt) {
     Util.assertion(jt.reg != -1, "Should lower JT header first!");
     EVT pty = new EVT(tli.getPointerTy());
-    SDValue index = dag.getCopyFromReg(getControlRoot(), jt.reg, pty);
+    SDValue index = dag.getCopyFromReg(getControlRoot(), getCurDebugLoc(), jt.reg, pty);
     SDValue table = dag.getJumpTable(jt.jti, pty, false, 0);
-    dag.setRoot(dag.getNode(ISD.BR_JT, new EVT(MVT.Other),
+    dag.setRoot(dag.getNode(ISD.BR_JT, getCurDebugLoc(), new EVT(MVT.Other),
         index.getValue(1), table, index));
   }
 
@@ -1606,23 +1609,22 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   void visitBitTestHeader(BitTestBlock btb) {
     SDValue switchOp = getValue(btb.val);
     EVT vt = switchOp.getValueType();
-    SDValue sub = dag.getNode(ISD.SUB, vt, switchOp, dag.getConstant(btb.first, vt, false));
+    SDValue sub = dag.getNode(ISD.SUB, getCurDebugLoc(), vt, switchOp, dag.getConstant(btb.first, vt, false));
 
-    SDValue rangeCmp = dag.getSetCC(
+    SDValue rangeCmp = dag.getSetCC(getCurDebugLoc(),
         new EVT(tli.getSetCCResultType(sub.getValueType())),
         sub, dag.getConstant(btb.range, vt, false),
         CondCode.SETUGT);
     SDValue shiftOp;
     if (vt.bitsGT(new EVT(tli.getPointerTy())))
-      shiftOp = dag.getNode(ISD.TRUNCATE, new EVT(tli.getPointerTy()),
-          sub);
+      shiftOp = dag.getNode(ISD.TRUNCATE, getCurDebugLoc(),
+              new EVT(tli.getPointerTy()), sub);
     else
-      shiftOp = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
-          sub);
+      shiftOp = dag.getNode(ISD.ZERO_EXTEND, getCurDebugLoc(),
+              new EVT(tli.getPointerTy()), sub);
 
     btb.reg = funcInfo.makeReg(new EVT(tli.getPointerTy()));
-    SDValue copyTo = dag.getCopyToReg(getControlRoot(), btb.reg,
-        shiftOp);
+    SDValue copyTo = dag.getCopyToReg(getControlRoot(),getCurDebugLoc(), btb.reg, shiftOp);
 
     MachineBasicBlock nextBlock = null;
     int itr = funcInfo.mf.getIndexOfMBB(curMBB);
@@ -1634,31 +1636,31 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     curMBB.addSuccessor(btb.defaultMBB);
     curMBB.addSuccessor(mbb);
 
-    SDValue brRange = dag.getNode(ISD.BRCOND, new EVT(MVT.Other),
+    SDValue brRange = dag.getNode(ISD.BRCOND, getCurDebugLoc(), new EVT(MVT.Other),
         copyTo, rangeCmp, dag.getBasicBlock(btb.defaultMBB));
     if (mbb.equals(nextBlock))
       dag.setRoot(brRange);
     else
-      dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other),
+      dag.setRoot(dag.getNode(ISD.BR, getCurDebugLoc(), new EVT(MVT.Other),
           copyTo, dag.getBasicBlock(mbb)));
   }
 
   public void visitBitTestCase(MachineBasicBlock nextMBB, int reg, BitTestCase btc) {
-    SDValue shiftOp = dag.getCopyFromReg(getControlRoot(),
+    SDValue shiftOp = dag.getCopyFromReg(getControlRoot(),getCurDebugLoc(),
         reg, new EVT(tli.getPointerTy()));
-    SDValue switchVal = dag.getNode(ISD.SHL, new EVT(tli.getPointerTy()),
+    SDValue switchVal = dag.getNode(ISD.SHL, getCurDebugLoc(), new EVT(tli.getPointerTy()),
         dag.getConstant(1, new EVT(tli.getPointerTy()), false),
         shiftOp);
-    SDValue andOp = dag.getNode(ISD.AND, new EVT(tli.getPointerTy()),
+    SDValue andOp = dag.getNode(ISD.AND, getCurDebugLoc(), new EVT(tli.getPointerTy()),
         switchVal, dag.getConstant(btc.mask, new EVT(tli.getPointerTy()), false));
-    SDValue andCMp = dag.getSetCC(
+    SDValue andCMp = dag.getSetCC(getCurDebugLoc(),
         new EVT(tli.getSetCCResultType(andOp.getValueType())),
         andOp, dag.getConstant(0, new EVT(tli.getPointerTy()), false),
         CondCode.SETNE);
     curMBB.addSuccessor(btc.targetMBB);
     curMBB.addSuccessor(nextMBB);
 
-    SDValue brAnd = dag.getNode(ISD.BRCOND, new EVT(MVT.Other),
+    SDValue brAnd = dag.getNode(ISD.BRCOND, getCurDebugLoc(), new EVT(MVT.Other),
         getControlRoot(), andCMp, dag.getBasicBlock(btc.targetMBB));
 
     MachineBasicBlock nextBlock = curMBB;
@@ -1669,7 +1671,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     if (nextBlock.equals(nextMBB))
       dag.setRoot(brAnd);
     else
-      dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), brAnd,
+      dag.setRoot(dag.getNode(ISD.BR, getCurDebugLoc(), new EVT(MVT.Other), brAnd,
           dag.getBasicBlock(nextMBB)));
   }
 
@@ -1724,7 +1726,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue op0 = getValue(inst.operand(0));
     SDValue op1 = getValue(inst.operand(1));
     int opc = getSDOpc(op);
-    setValue(inst, dag.getNode(opc, op0.getValueType(), op0, op1));
+    setValue(inst, dag.getNode(opc, getCurDebugLoc(), op0.getValueType(), op0, op1));
     return null;
   }
 
@@ -1743,21 +1745,21 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
       // if trhe operand is smaller than the shift count type, promote it.
       if (op1Size < shiftSize)
-          op1 = dag.getNode(ISD.ZERO_EXTEND, shiftTy, op1);
+          op1 = dag.getNode(ISD.ZERO_EXTEND, getCurDebugLoc(), shiftTy, op1);
 
         // If the operand is larger than the shift count type but the shift
         // count type has enough bits to represent any shift value, truncate
         // it now. This is a common case and it exposes the truncate to
         // optimization early.
       else if (shiftSize >= Util.log2Ceil(op1.getValueType().getSizeInBits())) {
-        op1 = dag.getNode(ISD.TRUNCATE, shiftTy, op1);
+        op1 = dag.getNode(ISD.TRUNCATE, getCurDebugLoc(), shiftTy, op1);
       }
       else {
         // Otherwise, we will need to temporarily settle for some other convenient type.
-        op1 = dag.getZExtOrTrunc(op1, new EVT(MVT.i32));
+        op1 = dag.getZExtOrTrunc(op1, getCurDebugLoc(), new EVT(MVT.i32));
       }
     }
-    setValue(inst, dag.getNode(opc, op0.getValueType(), op0, op1));
+    setValue(inst, dag.getNode(opc, getCurDebugLoc(), op0.getValueType(), op0, op1));
     return null;
   }
 
@@ -1785,7 +1787,6 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return CondCode.SETUGT;
       default:
         Util.shouldNotReachHere("Invalid ICmp predicate opcode!");
-        ;
         return CondCode.SETNE;
     }
   }
@@ -1869,7 +1870,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue op2 = getValue(inst.operand(1));
     CondCode opc = getICmpCondCode(pred);
     EVT destVT = tli.getValueType(inst.getType());
-    setValue(inst, dag.getSetCC(destVT, op1, op2, opc));
+    setValue(inst, dag.getSetCC(getCurDebugLoc(), destVT, op1, op2, opc));
     return null;
   }
 
@@ -1882,7 +1883,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue op2 = getValue(inst.operand(1));
     CondCode opc = getFCmpCondCode(pred);
     EVT destVT = tli.getValueType(inst.getType());
-    setValue(inst, dag.getSetCC(destVT, op1, op2, opc));
+    setValue(inst, dag.getSetCC(getCurDebugLoc(), destVT, op1, op2, opc));
     return null;
   }
 
@@ -1890,7 +1891,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitTrunc(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.TRUNCATE, destVT, op1));
+    setValue(inst, dag.getNode(ISD.TRUNCATE, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1898,7 +1899,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitZExt(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.ZERO_EXTEND, destVT, op1));
+    setValue(inst, dag.getNode(ISD.ZERO_EXTEND, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1906,7 +1907,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitSExt(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.SIGN_EXTEND, destVT, op1));
+    setValue(inst, dag.getNode(ISD.SIGN_EXTEND, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1914,7 +1915,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitFPToUI(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.FP_TO_UINT, destVT, op1));
+    setValue(inst, dag.getNode(ISD.FP_TO_UINT, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1922,7 +1923,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitFPToSI(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.FP_TO_SINT, destVT, op1));
+    setValue(inst, dag.getNode(ISD.FP_TO_SINT, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1930,7 +1931,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitUIToFP(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.UINT_TO_FP, destVT, op1));
+    setValue(inst, dag.getNode(ISD.UINT_TO_FP, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1938,7 +1939,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitSIToFP(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.SINT_TO_FP, destVT, op1));
+    setValue(inst, dag.getNode(ISD.SINT_TO_FP, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1946,7 +1947,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitFPTrunc(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.FP_ROUND, destVT, op1, dag.getIntPtrConstant(0)));
+    setValue(inst, dag.getNode(ISD.FP_ROUND, getCurDebugLoc(), destVT, op1, dag.getIntPtrConstant(0)));
     return null;
   }
 
@@ -1954,7 +1955,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitFPExt(User inst) {
     EVT destVT = tli.getValueType(inst.getType());
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(ISD.FP_EXTEND, destVT, op1));
+    setValue(inst, dag.getNode(ISD.FP_EXTEND, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1968,7 +1969,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     else
       opc = ISD.ZERO_EXTEND;
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(opc, destVT, op1));
+    setValue(inst, dag.getNode(opc, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1982,7 +1983,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     else
       opc = ISD.ZERO_EXTEND;
     SDValue op1 = getValue(inst.operand(0));
-    setValue(inst, dag.getNode(opc, destVT, op1));
+    setValue(inst, dag.getNode(opc, getCurDebugLoc(), destVT, op1));
     return null;
   }
 
@@ -1992,7 +1993,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue op1 = getValue(inst.operand(0));
     EVT srcVT = tli.getValueType(inst.operand(0).getType());
     if (!destVT.equals(srcVT))
-      setValue(inst, dag.getNode(ISD.BIT_CONVERT, destVT, op1));
+      setValue(inst, dag.getNode(ISD.BIT_CONVERT, getCurDebugLoc(), destVT, op1));
     else
       setValue(inst, op1);
     return null;
@@ -2008,26 +2009,26 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     long size = tli.getTargetData().getTypeAllocSize(ty);
     int align = Math.max(tli.getTargetData().getPrefTypeAlignment(ty), ai.getAlignment());
     SDValue allocaSize = getValue(ai.getArraySize());
-    allocaSize = dag.getNode(ISD.MUL, allocaSize.getValueType(), allocaSize,
+    allocaSize = dag.getNode(ISD.MUL, getCurDebugLoc(), allocaSize.getValueType(), allocaSize,
         dag.getConstant(size, allocaSize.getValueType(), false));
 
     EVT intPtr = new EVT(tli.getPointerTy());
     if (intPtr.bitsLT(allocaSize.getValueType()))
-      allocaSize = dag.getNode(ISD.TRUNCATE, intPtr, allocaSize);
+      allocaSize = dag.getNode(ISD.TRUNCATE, getCurDebugLoc(), intPtr, allocaSize);
     else if (intPtr.bitsGT(allocaSize.getValueType()))
-      allocaSize = dag.getNode(ISD.ZERO_EXTEND, intPtr, allocaSize);
+      allocaSize = dag.getNode(ISD.ZERO_EXTEND, getCurDebugLoc(), intPtr, allocaSize);
 
     int stackAlign = tli.getTargetMachine().getSubtarget().getFrameLowering().getStackAlignment();
     if (align <= stackAlign)
       align = 0;
 
-    allocaSize = dag.getNode(ISD.ADD, allocaSize.getValueType(), allocaSize,
+    allocaSize = dag.getNode(ISD.ADD, getCurDebugLoc(), allocaSize.getValueType(), allocaSize,
         dag.getIntPtrConstant(stackAlign - 1));
-    allocaSize = dag.getNode(ISD.AND, allocaSize.getValueType(), allocaSize,
+    allocaSize = dag.getNode(ISD.AND, getCurDebugLoc(), allocaSize.getValueType(), allocaSize,
         dag.getIntPtrConstant(~(stackAlign - 1)));
     SDValue[] ops = {getRoot(), allocaSize, dag.getIntPtrConstant(align)};
     SDNode.SDVTList vts = dag.getVTList(allocaSize.getValueType(), new EVT(MVT.Other));
-    SDValue dsa = dag.getNode(ISD.DYNAMIC_STACKALLOC, vts, ops);
+    SDValue dsa = dag.getNode(ISD.DYNAMIC_STACKALLOC, getCurDebugLoc(), vts, ops);
     setValue(inst, dsa);
     dag.setRoot(dsa.getValue(1));
 
@@ -2075,20 +2076,20 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     ArrayList<SDValue> chains = new ArrayList<>(valueVTs.size());
     EVT ptrVT = ptr.getValueType();
     for (int i = 0; i < valueVTs.size(); i++) {
-      SDValue l = dag.getLoad(valueVTs.get(i), root,
-          dag.getNode(ISD.ADD, ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
+      SDValue l = dag.getLoad(getCurDebugLoc(), valueVTs.get(i), root,
+          dag.getNode(ISD.ADD, getCurDebugLoc(), ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
           sv, (int) offsets.get(i), isVolatile, alignment);
       values.add(l);
       chains.add(l.getValue(1));
     }
     if (!constantMemory) {
-      SDValue chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), chains);
+      SDValue chain = dag.getNode(ISD.TokenFactor, getCurDebugLoc(), new EVT(MVT.Other), chains);
       if (isVolatile)
         dag.setRoot(chain);
       else
         addPendingLoad(chain);
     }
-    setValue(li, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs), values));
+    setValue(li, dag.getNode(ISD.MERGE_VALUES, getCurDebugLoc(), dag.getVTList(valueVTs), values));
     return null;
   }
 
@@ -2114,11 +2115,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     boolean isVolatile = si.isVolatile();
     int align = si.getAlignment();
     for (int i = 0; i < numValues; i++) {
-      chains.add(dag.getStore(root, new SDValue(src.getNode(), i),
-          dag.getNode(ISD.ADD, ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
+      chains.add(dag.getStore(root, getCurDebugLoc(), new SDValue(src.getNode(), i),
+          dag.getNode(ISD.ADD, getCurDebugLoc(), ptrVT, ptr, dag.getConstant(offsets.get(i), ptrVT, false)),
           ptrVal, (int) offsets.get(i), isVolatile, align));
     }
-    dag.setRoot(dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), chains));
+    dag.setRoot(dag.getNode(ISD.TokenFactor, getCurDebugLoc(), new EVT(MVT.Other), chains));
     return null;
   }
 
@@ -2156,7 +2157,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
                 ci.getType().equals(ci.getArgOperand(1).getType())) {
               SDValue lhs = getValue(ci.getArgOperand(0));
               SDValue rhs = getValue(ci.getArgOperand(1));
-              setValue(ci, dag.getNode(ISD.FCOPYSIGN, lhs.getValueType(),
+              setValue(ci, dag.getNode(ISD.FCOPYSIGN, getCurDebugLoc(), lhs.getValueType(),
                   lhs, rhs));
               return null;
             }
@@ -2168,7 +2169,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
                 ci.getArgOperand(0).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.getArgOperand(0).getType())) {
               SDValue lhs = getValue(ci.getArgOperand(0));
-              setValue(ci, dag.getNode(ISD.FABS, lhs.getValueType(), lhs));
+              setValue(ci, dag.getNode(ISD.FABS, getCurDebugLoc(), lhs.getValueType(), lhs));
               return null;
             }
             break;
@@ -2179,7 +2180,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
                 ci.getArgOperand(0).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.getArgOperand(0).getType())) {
               SDValue lhs = getValue(ci.getArgOperand(0));
-              setValue(ci, dag.getNode(ISD.FSIN, lhs.getValueType(), lhs));
+              setValue(ci, dag.getNode(ISD.FSIN, getCurDebugLoc(), lhs.getValueType(), lhs));
               return null;
             }
             break;
@@ -2191,7 +2192,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
                 ci.getArgOperand(0).getType().isFloatingPointType() &&
                 ci.getType().equals(ci.getArgOperand(0).getType())) {
               SDValue lhs = getValue(ci.getArgOperand(0));
-              setValue(ci, dag.getNode(ISD.FCOS, lhs.getValueType(), lhs));
+              setValue(ci, dag.getNode(ISD.FCOS, getCurDebugLoc(), lhs.getValueType(), lhs));
               return null;
             }
             break;
@@ -2237,11 +2238,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         visitVACopy(ci);
         return null;
       case returnaddress:
-        setValue(ci, dag.getNode(ISD.RETURNADDR, new EVT(tli.getPointerTy()),
+        setValue(ci, dag.getNode(ISD.RETURNADDR, getCurDebugLoc(), new EVT(tli.getPointerTy()),
             getValue(ci.getArgOperand(0))));
         return null;
       case frameaddress:
-        setValue(ci, dag.getNode(ISD.FRAMEADDR, new EVT(tli.getPointerTy()),
+        setValue(ci, dag.getNode(ISD.FRAMEADDR, getCurDebugLoc(), new EVT(tli.getPointerTy()),
             getValue(ci.getArgOperand(0))));
         return null;
       case setjmp:
@@ -2251,14 +2252,16 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case memset: {
         // Assert for address < 256 since we support only user defined address
         // spaces.
-        Util.assertion(((PointerType) ci.getArgOperand(0).getType()).getAddressSpace() < 256, "Unknown address space");
+        Util.assertion(((PointerType) ci.getArgOperand(0).getType()).getAddressSpace() < 256,
+                "Unknown address space");
 
         SDValue op1 = getValue(ci.getArgOperand(0));
         SDValue op2 = getValue(ci.getArgOperand(1));
         SDValue op3 = getValue(ci.getArgOperand(2));
         int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
         boolean isVolatile = ((ConstantInt) ci.getArgOperand(4)).getZExtValue() == 1;
-        dag.setRoot(dag.getMemset(getRoot(), op1, op2, op3, align, isVolatile, ci.getArgOperand(0), 0));
+        dag.setRoot(dag.getMemset(getRoot(), getCurDebugLoc(), op1, op2, op3,
+                align, isVolatile, ci.getArgOperand(0), 0));
         return null;
       }
       case memcpy: {
@@ -2272,7 +2275,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         SDValue op3 = getValue(ci.getArgOperand(2));
         int align = (int) ((ConstantInt) ci.getArgOperand(3)).getZExtValue();
         boolean isVolatile = ((ConstantInt) ci.getArgOperand(4)).getZExtValue() == 1;
-        dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3,
+        dag.setRoot(dag.getMemcpy(getRoot(), getCurDebugLoc(), op1, op2, op3,
             align, false, ci.getArgOperand(0),
             0, ci.getArgOperand(1), 0));
 
@@ -2297,12 +2300,12 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         }
         if (aa != null && aa.alias(ci.getArgOperand(0), (int) size,
             ci.getArgOperand(1), (int) size) == AliasResult.NoAlias) {
-          dag.setRoot(dag.getMemcpy(getRoot(), op1, op2, op3, align, false, ci.getArgOperand(0),
-              0, ci.getArgOperand(1), 0));
+          dag.setRoot(dag.getMemcpy(getRoot(), getCurDebugLoc(), op1, op2, op3,
+                  align, false, ci.getArgOperand(0), 0, ci.getArgOperand(1), 0));
           return null;
         }
 
-        dag.setRoot(dag.getMemmove(getRoot(), op1, op2, op3,
+        dag.setRoot(dag.getMemmove(getRoot(), getCurDebugLoc(), op1, op2, op3,
             align, ci.getArgOperand(0), 0, ci.getArgOperand(1), 0));
         return null;
       }
@@ -2311,7 +2314,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         Util.assertion(funcInfo.mbb.isLandingPad(), "Call to eh.exception not in landing pad!");
         SDNode.SDVTList vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
         SDValue[] ops = new SDValue[] {dag.getRoot()};
-        SDValue op = dag.getNode(ISD.EXCEPTIONADDR, vts, ops);
+        SDValue op = dag.getNode(ISD.EXCEPTIONADDR, getCurDebugLoc(), vts, ops);
         setValue(ci, op);
         dag.setRoot(op.getValue(1));
         return null;
@@ -2331,9 +2334,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         // insert the EHSELECTION instruction.
         SDNode.SDVTList vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
         SDValue[] ops = new SDValue[] {getValue(ci.getArgOperand(0)), getRoot()};
-        SDValue op = dag.getNode(ISD.EHSELECTION, vts, ops);
+        SDValue op = dag.getNode(ISD.EHSELECTION, getCurDebugLoc(), vts, ops);
         dag.setRoot(op.getValue(1));
-        setValue(ci, dag.getSExtOrTrunc(op, new EVT(MVT.i32)));
+        setValue(ci, dag.getSExtOrTrunc(op, getCurDebugLoc(), new EVT(MVT.i32)));
         return null;
       }
       case eh_typeid_for: {
@@ -2347,7 +2350,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case eh_return_i32:
       case eh_return_i64:
         dag.getMachineFunction().getMMI().setCallsEHReturn(true);
-        dag.setRoot(dag.getNode(ISD.EH_RETURN, new EVT(MVT.Other),
+        dag.setRoot(dag.getNode(ISD.EH_RETURN, getCurDebugLoc(),
+                new EVT(MVT.Other),
                 getControlRoot(),
                 getValue(ci.getArgOperand(0)),
                 getValue(ci.getArgOperand(1))));
@@ -2357,13 +2361,17 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         return null;
       case eh_dwarf_cfa: {
         SDValue cfaArg = dag.getSExtOrTrunc(getValue(ci.getArgOperand(0)),
+                getCurDebugLoc(),
                 new EVT(tli.getPointerTy()));
-        SDValue offset = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()),
-                dag.getNode(ISD.FRAME_TO_ARGS_OFFSET, new EVT(tli.getPointerTy())),
+        SDValue offset = dag.getNode(ISD.ADD, getCurDebugLoc(),
+                new EVT(tli.getPointerTy()),
+                dag.getNode(ISD.FRAME_TO_ARGS_OFFSET, getCurDebugLoc(),
+                        new EVT(tli.getPointerTy())),
                 cfaArg);
-        SDValue fa = dag.getNode(ISD.FRAMEADDR, new EVT(tli.getPointerTy()),
+        SDValue fa = dag.getNode(ISD.FRAMEADDR, getCurDebugLoc(),
+                new EVT(tli.getPointerTy()),
                 dag.getConstant(0, new EVT(tli.getPointerTy()), false));
-        setValue(ci, dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), fa, offset));
+        setValue(ci, dag.getNode(ISD.ADD, getCurDebugLoc(), new EVT(tli.getPointerTy()), fa, offset));
         return null;
       }
       case eh_sjlj_callsite: {
@@ -2377,14 +2385,16 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       }
       case eh_sjlj_setjmp: {
         SDValue[] ops = new SDValue[] {getRoot(), getValue(ci.getArgOperand(0))};
-        SDValue op = dag.getNode(ISD.EH_SJLJ_SETJMP, dag.getVTList(new EVT(MVT.i32), new EVT(MVT.Other)),
+        SDValue op = dag.getNode(ISD.EH_SJLJ_SETJMP, getCurDebugLoc(),
+                dag.getVTList(new EVT(MVT.i32), new EVT(MVT.Other)),
                 ops);
         setValue(ci, op.getValue(0));
         dag.setRoot(op.getValue(1));
         return null;
       }
       case eh_sjlj_longjmp: {
-        dag.setRoot(dag.getNode(ISD.EH_SJLJ_LONGJMP, new EVT(MVT.Other),
+        dag.setRoot(dag.getNode(ISD.EH_SJLJ_LONGJMP, getCurDebugLoc(),
+                new EVT(MVT.Other),
                 getRoot(), getValue(ci.getArgOperand(0))));
         return null;
       }
@@ -2438,12 +2448,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         // to be zero.
         // We must do this early because v2i32 is not a legal type.
         SDValue[] shOps = new SDValue[] {shAmt, dag.getConstant(0, new EVT(MVT.i32), false)};
-        shAmt = dag.getNode(ISD.BUILD_VECTOR, shmAmtVT, shOps);
+        shAmt = dag.getNode(ISD.BUILD_VECTOR, getCurDebugLoc(), shmAmtVT, shOps);
         EVT destVT = tli.getValueType(ci.getType());
-        shAmt = dag.getNode(ISD.BIT_CONVERT, destVT, shAmt);
-        SDValue result = dag.getNode(ISD.INTRINSIC_WO_CHAIN, destVT,
-            dag.getConstant(newIntrinsic.ordinal(), new EVT(MVT.i32), false),
-            getValue(ci.getArgOperand(0)), shAmt);
+        shAmt = dag.getNode(ISD.BIT_CONVERT, getCurDebugLoc(), destVT, shAmt);
+        SDValue result = dag.getNode(ISD.INTRINSIC_WO_CHAIN,
+                getCurDebugLoc(),
+                destVT,
+                dag.getConstant(newIntrinsic.ordinal(), new EVT(MVT.i32), false),
+                getValue(ci.getArgOperand(0)), shAmt);
         setValue(ci, result);
         return null;
       }
@@ -2459,25 +2471,31 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         CvtCode code = CvtCode.values()[iid.ordinal() - convertff.ordinal()];
         EVT destVT = tli.getValueType(ci.getType());
         Value arg1 = ci.getArgOperand(0);
-        SDValue result = dag.getConvertRndSat(destVT, getValue(arg1),
-            dag.getValueType(destVT),
-            dag.getValueType(getValue(arg1).getValueType()),
-            getValue(ci.getArgOperand(1)),
-            getValue(ci.getArgOperand(2)),
-            code);
+        SDValue result = dag.getConvertRndSat(destVT,
+                getCurDebugLoc(),
+                getValue(arg1),
+                dag.getValueType(destVT),
+                dag.getValueType(getValue(arg1).getValueType()),
+                getValue(ci.getArgOperand(1)),
+                getValue(ci.getArgOperand(2)),
+                code);
         setValue(ci, result);
         return null;
       }
       case sqrt:
-        setValue(ci, dag.getNode(ISD.FSQRT, getValue(ci.getArgOperand(0)).getValueType(),
-            getValue(ci.getArgOperand(0))));
+        setValue(ci, dag.getNode(ISD.FSQRT, getCurDebugLoc(),
+                getValue(ci.getArgOperand(0)).getValueType(),
+                getValue(ci.getArgOperand(0))));
         return null;
       case sin:
-        setValue(ci, dag.getNode(ISD.FSIN, getValue(ci.getArgOperand(0)).getValueType(),
-            getValue(ci.getArgOperand(0))));
+        setValue(ci, dag.getNode(ISD.FSIN,  getCurDebugLoc(),
+                getValue(ci.getArgOperand(0)).getValueType(),
+                getValue(ci.getArgOperand(0))));
       case cos:
-        setValue(ci, dag.getNode(ISD.FCOS, getValue(ci.getArgOperand(0)).getValueType(),
-            getValue(ci.getArgOperand(0))));
+        setValue(ci, dag.getNode(ISD.FCOS,
+                getCurDebugLoc(),
+                getValue(ci.getArgOperand(0)).getValueType(),
+                getValue(ci.getArgOperand(0))));
         return null;
       case log:
         visitLog(ci);
@@ -2498,48 +2516,54 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         visitPow(ci);
         return null;
       case powi:
-        setValue(ci, expandPowI(getValue(ci.getArgOperand(0)), getValue(ci.getArgOperand(1)), dag));
+        setValue(ci, expandPowI(dl, getValue(ci.getArgOperand(0)), getValue(ci.getArgOperand(1)), dag));
         return null;
       case pcmarker:
         SDValue tmp = getValue(ci.getArgOperand(0));
-        dag.setRoot(dag.getNode(ISD.PCMARKER, new EVT(MVT.Other),
-            getRoot(), tmp));
+        dag.setRoot(dag.getNode(ISD.PCMARKER,
+                getCurDebugLoc(),
+                new EVT(MVT.Other),
+                getRoot(), tmp));
         return null;
       case bswap:
         setValue(ci, dag.getNode(ISD.BSWAP,
-            getValue(ci.getArgOperand(0)).getValueType(),
-            getValue(ci.getArgOperand(0))));
+                getCurDebugLoc(),
+                getValue(ci.getArgOperand(0)).getValueType(),
+                getValue(ci.getArgOperand(0))));
         return null;
       case cttz: {
         SDValue arg = getValue(ci.getArgOperand(0));
         EVT vt = arg.getValueType();
-        setValue(ci, dag.getNode(ISD.CTTZ, vt, arg));
+        setValue(ci, dag.getNode(ISD.CTTZ, getCurDebugLoc(), vt, arg));
         return null;
       }
       case ctlz: {
         SDValue arg = getValue(ci.getArgOperand(0));
         EVT vt = arg.getValueType();
-        setValue(ci, dag.getNode(ISD.CTLZ, vt, arg));
+        setValue(ci, dag.getNode(ISD.CTLZ, getCurDebugLoc(), vt, arg));
         return null;
       }
       case ctpop: {
         SDValue arg = getValue(ci.getArgOperand(0));
         EVT vt = arg.getValueType();
-        setValue(ci, dag.getNode(ISD.CTPOP, vt, arg));
+        setValue(ci, dag.getNode(ISD.CTPOP, getCurDebugLoc(), vt, arg));
         return null;
       }
       case stacksave: {
         SDValue op = getRoot();
         SDValue res = dag.getNode(ISD.STACKSAVE,
-            dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other)), op);
+                getCurDebugLoc(),
+                dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other)), op);
         setValue(ci, res);
         dag.setRoot(res.getValue(1));
         return null;
       }
       case stackrestore: {
         SDValue res = getValue(ci.getArgOperand(0));
-        dag.setRoot(dag.getNode(ISD.STACKRESTORE, new EVT(MVT.Other), getRoot(),
-            res));
+        dag.setRoot(dag.getNode(ISD.STACKRESTORE,
+                getCurDebugLoc(),
+                new EVT(MVT.Other), getRoot(),
+                res));
         return null;
       }
       case stackprotector: {
@@ -2555,9 +2579,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         mfi.setStackProtectorIndex(fi);
 
         SDValue fin = dag.getFrameIndex(fi, ptrTy, false);
-        SDValue res = dag.getStore(getRoot(), src, fin,
-            PseudoSourceValue.getFixedStack(fi), 0,
-            false, 0);
+        SDValue res = dag.getStore(getRoot(),
+                getCurDebugLoc(),
+                src, fin,
+                PseudoSourceValue.getFixedStack(fi), 0,
+                false, 0);
         setValue(ci, res);
         dag.setRoot(res);
         return null;
@@ -2585,7 +2611,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         Util.shouldNotReachHere("GC failed to lower gcread/gcwrite intrinsics!");
         return null;
       case trap: {
-        dag.setRoot(dag.getNode(ISD.TRAP, new EVT(MVT.Other), getRoot()));
+        dag.setRoot(dag.getNode(ISD.TRAP, getCurDebugLoc(), new EVT(MVT.Other), getRoot()));
         return null;
       }
       case prefetch: {
@@ -2598,16 +2624,17 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
             getValue(ci.getArgOperand(3))
         };
         dag.setRoot(dag.getMemIntrinsicNode(ISD.PREFETCH,
-            dag.getVTList(new EVT(MVT.Other)),
-            ops,
-            EVT.getIntegerVT(context, 8),
-            ci.getArgOperand(0), // source value
-            0, // align
-            0, // offset
-            false, // volatile
-            rw == 0, // read
-            rw == 1 // write
-            ));
+                getCurDebugLoc(),
+                dag.getVTList(new EVT(MVT.Other)),
+                ops,
+                EVT.getIntegerVT(context, 8),
+                ci.getArgOperand(0), // source value
+                0, // align
+                0, // offset
+                false, // volatile
+                rw == 0, // read
+                rw == 1 // write
+                ));
         return null;
       }
       case uadd_with_overflow:
@@ -2780,8 +2807,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       case readcyclecounter:
         SDValue op = getRoot();
         SDValue res = dag.getNode(ISD.READCYCLECOUNTER,
-            dag.getVTList(new EVT(MVT.i64), new EVT(MVT.Other)),
-            op);
+                getCurDebugLoc(),
+                dag.getVTList(new EVT(MVT.i64), new EVT(MVT.Other)),
+                op);
         setValue(ci, res);
         dag.setRoot(res.getValue(1));
         return null;
@@ -2796,7 +2824,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
    * @param dag
    * @return
    */
-  private static SDValue expandPowI(SDValue lhs, SDValue rhs, SelectionDAG dag) {
+  private static SDValue expandPowI(DebugLoc dl, SDValue lhs, SDValue rhs, SelectionDAG dag) {
     // If RHS is a constant, we can expand this out to a multiplication tree,
     // otherwise we end up lowering to a call to __powidf2 (for example).  When
     // optimizing for size, we only want to do this if the expansion would produce
@@ -2816,9 +2844,11 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
 
       // powi(x, -1) --> 1/x
       if (val == -1)
-        return dag.getNode(ISD.FDIV, lhs.getValueType(),
-            dag.getConstantFP(1.0, lhs.getValueType(), false),
-            lhs);
+        return dag.getNode(ISD.FDIV,
+                dl,
+                lhs.getValueType(),
+                dag.getConstantFP(1.0, lhs.getValueType(), false),
+                lhs);
 
       if (val < 0) val = -val;
 
@@ -2832,23 +2862,23 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         while (val != 0) {
           if ((val & 1) != 0) {
             if (res != null)
-              res = dag.getNode(ISD.FMUL, res.getValueType(), res, curSquare);
+              res = dag.getNode(ISD.FMUL, dl, res.getValueType(), res, curSquare);
             else
               res = curSquare; // equivalent to 1.0*lhs
           }
-          curSquare = dag.getNode(ISD.FMUL, curSquare.getValueType(), curSquare, curSquare);
+          curSquare = dag.getNode(ISD.FMUL, dl, curSquare.getValueType(), curSquare, curSquare);
           val >>= 1;
         }
 
         // If the original was negative, invert the result, producing 1/(x*x*x).
         if (rhsc.getSExtValue() < 0)
-          return dag.getNode(ISD.FDIV, lhs.getValueType(),
+          return dag.getNode(ISD.FDIV, dl, lhs.getValueType(),
               dag.getConstantFP(1.0, lhs.getValueType(), false),
               res);
       }
     }
     // otherwise, generate a library call.
-    return dag.getNode(ISD.FPOWI, lhs.getValueType(), lhs, rhs);
+    return dag.getNode(ISD.FPOWI, dl, lhs.getValueType(), lhs, rhs);
   }
 
   /**
@@ -2858,37 +2888,42 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   private void visitExp(CallInst ci) {
     SDValue result;
     DebugLoc dl = getCurDebugLoc();
-    result = dag.getNode(ISD.FEXP, getValue(ci.getArgOperand(0)).getValueType(),
+    result = dag.getNode(ISD.FEXP, dl, getValue(ci.getArgOperand(0)).getValueType(),
         getValue(ci.getArgOperand(0)));
     setValue(ci, result);
   }
 
   private void visitLog(CallInst ci) {
-    SDValue result = dag.getNode(ISD.FLOG, getValue(ci.getArgOperand(0)).getValueType(),
+    DebugLoc dl = ci.getDebugLoc();
+    SDValue result = dag.getNode(ISD.FLOG, dl, getValue(ci.getArgOperand(0)).getValueType(),
         getValue(ci.getArgOperand(0)));
     setValue(ci, result);
   }
 
   private void visitLog2(CallInst ci) {
-    SDValue result = dag.getNode(ISD.FLOG2, getValue(ci.getArgOperand(0)).getValueType(),
+    DebugLoc dl = ci.getDebugLoc();
+    SDValue result = dag.getNode(ISD.FLOG2, dl, getValue(ci.getArgOperand(0)).getValueType(),
         getValue(ci.getArgOperand(0)));
     setValue(ci, result);
   }
 
   private void visitLog10(CallInst ci) {
-    SDValue result = dag.getNode(ISD.FLOG10, getValue(ci.getArgOperand(0)).getValueType(),
+    DebugLoc dl = ci.getDebugLoc();
+    SDValue result = dag.getNode(ISD.FLOG10, dl, getValue(ci.getArgOperand(0)).getValueType(),
         getValue(ci.getArgOperand(0)));
     setValue(ci, result);
   }
 
   private void visitExp2(CallInst ci) {
-    SDValue result = dag.getNode(ISD.FEXP2, getValue(ci.getArgOperand(0)).getValueType(),
+    DebugLoc dl = ci.getDebugLoc();
+    SDValue result = dag.getNode(ISD.FEXP2, dl, getValue(ci.getArgOperand(0)).getValueType(),
         getValue(ci.getArgOperand(0)));
     setValue(ci, result);
   }
 
   private void visitPow(CallInst ci) {
-    SDValue result = dag.getNode(ISD.FPOW, getValue(ci.getArgOperand(0)).getValueType(),
+    DebugLoc dl = ci.getDebugLoc();
+    SDValue result = dag.getNode(ISD.FPOW, dl, getValue(ci.getArgOperand(0)).getValueType(),
         getValue(ci.getArgOperand(0)));
     setValue(ci, result);
   }
@@ -2949,26 +2984,29 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   }
 
   private void visitVACopy(CallInst ci) {
-    dag.setRoot(dag.getNode(ISD.VACOPY, new EVT(MVT.Other), getRoot(),
+    DebugLoc dl = ci.getDebugLoc();
+    dag.setRoot(dag.getNode(ISD.VACOPY, dl, new EVT(MVT.Other), getRoot(),
         getValue(ci.getArgOperand(0)), getValue(ci.getArgOperand(1)),
         dag.getSrcValue(ci.getArgOperand(0)),
         dag.getSrcValue(ci.getArgOperand(1))));
   }
 
   private void visitVAEnd(CallInst ci) {
-    dag.setRoot(dag.getNode(ISD.VAEND, new EVT(MVT.Other), getRoot(),
+    DebugLoc dl = ci.getDebugLoc();
+    dag.setRoot(dag.getNode(ISD.VAEND, dl, new EVT(MVT.Other), getRoot(),
         getValue(ci.getArgOperand(0)), dag.getSrcValue(ci.getArgOperand(0))));
   }
 
   private void visitVAStart(CallInst ci) {
-    dag.setRoot(dag.getNode(ISD.VASTART, new EVT(MVT.Other), getRoot(),
+    DebugLoc dl = ci.getDebugLoc();
+    dag.setRoot(dag.getNode(ISD.VASTART, dl, new EVT(MVT.Other), getRoot(),
         getValue(ci.getArgOperand(0)), dag.getSrcValue(ci.getArgOperand(0))));
   }
 
   private void visitTargetIntrinsic(CallInst ci, Intrinsic.ID iid) {
     boolean hasChain = !ci.doesNotAccessMemory();
     boolean onlyLoad = hasChain && ci.onlyReadsMemory();
-
+    DebugLoc dl = ci.getDebugLoc();
     ArrayList<SDValue> ops = new ArrayList<>();
     if (hasChain) {
       if (onlyLoad)
@@ -2996,14 +3034,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDNode.SDVTList vts = dag.getVTList(valueVTs);
     SDValue result;
     if (isTargetIntrinsic) {
-      result = dag.getMemIntrinsicNode(info.opc, vts, ops, info.memVT, info.ptrVal,
+      result = dag.getMemIntrinsicNode(info.opc, dl, vts, ops, info.memVT, info.ptrVal,
           info.offset, info.align, info.vol, info.readMem, info.writeMem);
     } else if (!hasChain)
-      result = dag.getNode(ISD.INTRINSIC_WO_CHAIN, vts, ops);
+      result = dag.getNode(ISD.INTRINSIC_WO_CHAIN, dl, vts, ops);
     else if (!ci.getType().isVoidType())
-      result = dag.getNode(ISD.INTRINSIC_W_CHAIN, vts, ops);
+      result = dag.getNode(ISD.INTRINSIC_W_CHAIN, dl, vts, ops);
     else
-      result = dag.getNode(ISD.INTRINSIC_VOID, vts, ops);
+      result = dag.getNode(ISD.INTRINSIC_VOID, dl, vts, ops);
 
     if (hasChain) {
       SDValue chain = result.getValue(result.getNode().getNumValues() - 1);
@@ -3029,8 +3067,9 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         if (field != 0) {
           // N = N + offset;
           long offset = td.getStructLayout(sty).getElementOffset(field);
-          node = dag.getNode(ISD.ADD, node.getValueType(), node,
-              dag.getIntPtrConstant(offset));
+          node = dag.getNode(ISD.ADD, getCurDebugLoc(),
+                  node.getValueType(), node,
+                  dag.getIntPtrConstant(offset));
         }
         ty = sty.getElementType((int) field);
       } else {
@@ -3045,12 +3084,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           EVT pty = new EVT(tli.getPointerTy());
           int ptrBits = pty.getSizeInBits();
           if (ptrBits < 64) {
-            offsVal = dag.getNode(ISD.TRUNCATE, pty, dag.getConstant(offset,
-                new EVT(MVT.i64), false));
+            offsVal = dag.getNode(ISD.TRUNCATE,
+                    getCurDebugLoc(),
+                    pty, dag.getConstant(offset,
+                    new EVT(MVT.i64), false));
           } else {
             offsVal = dag.getIntPtrConstant(offset);
           }
-          node = dag.getNode(ISD.ADD, node.getValueType(), node, offsVal);
+          node = dag.getNode(ISD.ADD, getCurDebugLoc(), node.getValueType(), node, offsVal);
           continue;
         }
 
@@ -3059,22 +3100,22 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         SDValue idxN = getValue(idx);
 
         if (idxN.getValueType().bitsLT(node.getValueType())) {
-          idxN = dag.getNode(ISD.SIGN_EXTEND, node.getValueType(), idxN);
+          idxN = dag.getNode(ISD.SIGN_EXTEND, getCurDebugLoc(), node.getValueType(), idxN);
         } else if (idxN.getValueType().bitsGT(node.getValueType())) {
-          idxN = dag.getNode(ISD.TRUNCATE, node.getValueType(), idxN);
+          idxN = dag.getNode(ISD.TRUNCATE, getCurDebugLoc(), node.getValueType(), idxN);
         }
 
         if (eltSize != 1) {
           if (Util.isPowerOf2(eltSize)) {
             int amt = Util.log2(eltSize);
-            idxN = dag.getNode(ISD.SHL, node.getValueType(),
+            idxN = dag.getNode(ISD.SHL, getCurDebugLoc(), node.getValueType(),
                 idxN, dag.getConstant(amt, new EVT(tli.getPointerTy()), false));
           } else {
             SDValue scale = dag.getIntPtrConstant(eltSize);
-            idxN = dag.getNode(ISD.MUL, node.getValueType(), idxN, scale);
+            idxN = dag.getNode(ISD.MUL, getCurDebugLoc(), node.getValueType(), idxN, scale);
           }
         }
-        node = dag.getNode(ISD.ADD, node.getValueType(), node, idxN);
+        node = dag.getNode(ISD.ADD, getCurDebugLoc(), node.getValueType(), node, idxN);
       }
     }
     setValue(inst, node);
@@ -3097,12 +3138,13 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
       SDValue falseVal = getValue(u.operand(2));
       for (int i = 0; i < valueVTs.size(); i++) {
         values[i] = dag.getNode(ISD.SELECT,
+            getCurDebugLoc(),
             trueVal.getValueType(), cond,
             new SDValue(trueVal.getNode(), trueVal.getResNo() + i),
             new SDValue(falseVal.getNode(), falseVal.getResNo() + i));
       }
-      setValue(u, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs),
-          values));
+      setValue(u, dag.getNode(ISD.MERGE_VALUES, getCurDebugLoc(),
+              dag.getVTList(valueVTs), values));
     }
     return null;
   }
@@ -3116,10 +3158,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   @Override
   public Void visitExtractElementInst(User inst) {
     SDValue inVec = getValue(inst.operand(0));
-    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
-        getValue(inst.operand(1)));
-    setValue(inst, dag.getNode(ISD.EXTRACT_VECTOR_ELT, tli.getValueType(inst.getType()),
-        inVec, inIdx));
+    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND,
+            getCurDebugLoc(),
+            new EVT(tli.getPointerTy()),
+            getValue(inst.operand(1)));
+    setValue(inst, dag.getNode(ISD.EXTRACT_VECTOR_ELT,
+            getCurDebugLoc(),
+            tli.getValueType(inst.getType()),
+            inVec, inIdx));
     return null;
   }
 
@@ -3127,10 +3173,14 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
   public Void visitInsertElementInst(User inst) {
     SDValue inVec = getValue(inst.operand(0));
     SDValue inVal = getValue(inst.operand(1));
-    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND, new EVT(tli.getPointerTy()),
+    SDValue inIdx = dag.getNode(ISD.ZERO_EXTEND,
+            getCurDebugLoc(),
+            new EVT(tli.getPointerTy()),
         getValue(inst.operand(2)));
-    setValue(inst, dag.getNode(ISD.INSERT_VECTOR_ELT, tli.getValueType(inst.getType()),
-        inVec, inVal, inIdx));
+    setValue(inst, dag.getNode(ISD.INSERT_VECTOR_ELT,
+            getCurDebugLoc(),
+            tli.getValueType(inst.getType()),
+            inVec, inVal, inIdx));
     return null;
   }
 
@@ -3147,7 +3197,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     int srcNumElts = srcVT.getVectorNumElements();
     int maskNumElts = mask.size();
     if (srcNumElts == maskNumElts) {
-      setValue(inst, dag.getVectorShuffle(vt, src1, src2, mask.toArray()));
+      setValue(inst, dag.getVectorShuffle(vt, getCurDebugLoc(), src1, src2, mask.toArray()));
       return null;
     }
     // TODO
@@ -3232,7 +3282,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           new SDValue(agg.getNode(), agg.getResNo() + i);
     }
 
-    setValue(inst, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valValueVTs), values));
+    setValue(inst, dag.getNode(ISD.MERGE_VALUES, getCurDebugLoc(), dag.getVTList(valValueVTs), values));
     return null;
   }
 
@@ -3280,7 +3330,8 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
           new SDValue(agg.getNode(), agg.getResNo() + i);
     }
 
-    setValue(inst, dag.getNode(ISD.MERGE_VALUES, dag.getVTList(aggValueVTs), values));
+    setValue(inst, dag.getNode(ISD.MERGE_VALUES, getCurDebugLoc(),
+            dag.getVTList(aggValueVTs), values));
     return null;
   }
 
@@ -3295,7 +3346,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     SDValue op2 = getValue(inst.getArgOperand(1));
 
     SDNode.SDVTList vts = dag.getVTList(op1.getValueType(), new EVT(MVT.i1));
-    setValue(inst, dag.getNode(opc, vts, op1, op2));
+    setValue(inst, dag.getNode(opc, getCurDebugLoc(), vts, op1, op2));
     return null;
   }
 
@@ -3313,7 +3364,10 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     copyToExportRegsIfNeeds(ii);
     invokeMBB.addSuccessor(returnBB);
     invokeMBB.addSuccessor(landingPadBB);
-    dag.setRoot(dag.getNode(ISD.BR, new EVT(MVT.Other), getControlRoot(), dag.getBasicBlock(returnBB)));
+    dag.setRoot(dag.getNode(ISD.BR, getCurDebugLoc(),
+            new EVT(MVT.Other),
+            getControlRoot(),
+            dag.getBasicBlock(returnBB)));
   }
 
   private void visitUnwind(User u) {}
@@ -3334,17 +3388,17 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
     Util.assertion(funcInfo.mbb.isLandingPad(), "call to eh.exception not in landing pad!");
     SDNode.SDVTList vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
 
-    SDValue op1 = dag.getNode(ISD.EXCEPTIONADDR, vts, dag.getRoot());
+    SDValue op1 = dag.getNode(ISD.EXCEPTIONADDR, getCurDebugLoc(), vts, dag.getRoot());
     SDValue chain = op1.getValue(1);
 
     vts = dag.getVTList(new EVT(tli.getPointerTy()), new EVT(MVT.Other));
     SDValue[] ops = new SDValue[]{op1, chain};
-    SDValue op2 = dag.getNode(ISD.EHSELECTION, vts, ops);
+    SDValue op2 = dag.getNode(ISD.EHSELECTION, getCurDebugLoc(), vts, ops);
     chain = op2.getValue(1);
-    op2 = dag.getSExtOrTrunc(op2, new EVT(MVT.i32));
+    op2 = dag.getSExtOrTrunc(op2, getCurDebugLoc(), new EVT(MVT.i32));
     ops[0] = op1;
     ops[1] = op2;
-    SDValue res = dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs), ops);
+    SDValue res = dag.getNode(ISD.MERGE_VALUES, getCurDebugLoc(), dag.getVTList(valueVTs), ops);
     setValue(lpi, res);
     dag.setRoot(chain);
   }
@@ -3428,7 +3482,7 @@ public class SelectionDAGLowering implements InstVisitor<Void> {
         Util.assertion(gv.hasInitializer(), "the EH catch all value must have an initializer");
         Value init = gv.getInitializer();
         if (!(init instanceof GlobalVariable))
-          v = (ConstantPointerNull)init;
+          v = init;
         else
           gv = (GlobalVariable) init;
       }

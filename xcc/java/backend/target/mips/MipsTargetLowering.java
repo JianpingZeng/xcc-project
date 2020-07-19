@@ -29,6 +29,7 @@ package backend.target.mips;
 
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
+import backend.debug.DebugLoc;
 import backend.mc.MCRegisterClass;
 import backend.support.CallingConv;
 import backend.target.TargetLowering;
@@ -298,7 +299,8 @@ public class MipsTargetLowering extends TargetLowering {
                            ArrayList<OutputArg> outs,
                            ArrayList<InputArg> ins,
                            SelectionDAG dag,
-                           ArrayList<SDValue> inVals) {
+                           ArrayList<SDValue> inVals,
+                           DebugLoc dl) {
     Util.shouldNotReachHere();
     return null;
   }
@@ -407,7 +409,8 @@ public class MipsTargetLowering extends TargetLowering {
                                       boolean varArg,
                                       ArrayList<InputArg> ins,
                                       SelectionDAG dag,
-                                      ArrayList<SDValue> inVals) {
+                                      ArrayList<SDValue> inVals,
+                                      DebugLoc dl) {
     MachineFunction mf = dag.getMachineFunction();
     MipsFunctionInfo mipsFI = (MipsFunctionInfo) mf.getFunctionInfo();
     MachineFrameInfo mfi = mf.getFrameInfo();
@@ -446,7 +449,7 @@ public class MipsTargetLowering extends TargetLowering {
           Util.shouldNotReachHere("regVT is not supported by formalArgument lowering!");
 
         int reg = mf.addLiveIn(argReg, rc);
-        SDValue argValue = dag.getCopyFromReg(chain, reg, regVT);
+        SDValue argValue = dag.getCopyFromReg(chain, dl, reg, regVT);
 
         // If this is an 8 or 16-bit value, it has been passed promoted
         // to 32 bits.  Insert an assert[sz]ext to capture this, then
@@ -458,24 +461,24 @@ public class MipsTargetLowering extends TargetLowering {
           else if (va.getLocInfo().equals(CCValAssign.LocInfo.ZExt))
             opcode = ISD.AssertZext;
           if (opcode != 0)
-            argValue = dag.getNode(opcode, regVT, argValue, dag.getValueType(va.getValVT()));
+            argValue = dag.getNode(opcode,dl, regVT, argValue, dag.getValueType(va.getValVT()));
 
-          argValue = dag.getNode(ISD.TRUNCATE, va.getValVT(), argValue);
+          argValue = dag.getNode(ISD.TRUNCATE, dl, va.getValVT(), argValue);
         }
 
         // Handle O32 ABI cases: i32->f32 and (i32,i32)->f64
         if (subtarget.isABI_O32()) {
           if (regVT.equals(new EVT(MVT.i32)) && va.getValVT().equals(new EVT(MVT.f32)))
-            argValue = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f32), argValue);
+            argValue = dag.getNode(ISD.BIT_CONVERT, dl, new EVT(MVT.f32), argValue);
           if (regVT.equals(new EVT(MVT.i32)) && va.getValVT().equals(new EVT(MVT.f64))) {
             int reg2 = mf.addLiveIn(getNextIntArgReg(argReg), rc);
-            SDValue argValue2 = dag.getCopyFromReg(chain, reg2, regVT);
+            SDValue argValue2 = dag.getCopyFromReg(chain, dl, reg2, regVT);
             if (!subtarget.isLittleEndian()) {
               SDValue temp = argValue;
               argValue = argValue2;
               argValue2 = temp;
             }
-            argValue = dag.getNode(MipsISD.BuildPairF64, new EVT(MVT.f64), argValue, argValue2);
+            argValue = dag.getNode(MipsISD.BuildPairF64, dl, new EVT(MVT.f64), argValue, argValue2);
           }
         }
 
@@ -494,13 +497,13 @@ public class MipsTargetLowering extends TargetLowering {
           lastFI = mfi.createFixedObject(numWords * 4, va.getLocMemOffset(), true);
           SDValue fin = dag.getFrameIndex(lastFI, new EVT(getPointerTy()), false);
           inVals.add(fin);
-          readByValArg(mf, chain, outChains, dag, numWords, fin, va, flags);
+          readByValArg(mf, chain, outChains, dag, numWords, fin, va, flags, dl);
           continue;
         }
 
         lastFI = mfi.createFixedObject(va.getValVT().getSizeInBits()/8, va.getLocMemOffset(), true);
         SDValue fin = dag.getFrameIndex(lastFI, new EVT(getPointerTy()), false);
-        inVals.add(dag.getLoad(va.getValVT(), chain, fin, getFixedStack(lastFI), 0, false,  0));
+        inVals.add(dag.getLoad(dl, va.getValVT(), chain, fin, getFixedStack(lastFI), 0, false,  0));
       }
     }
 
@@ -514,8 +517,8 @@ public class MipsTargetLowering extends TargetLowering {
         mipsFI.setSRetReturnReg(reg);
       }
 
-      SDValue copy = dag.getCopyToReg(dag.getEntryNode(), reg, inVals.get(0));
-      chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), copy, chain);
+      SDValue copy = dag.getCopyToReg(dag.getEntryNode(), dl, reg, inVals.get(0));
+      chain = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), copy, chain);
     }
 
     if (varArg && subtarget.isABI_O32()) {
@@ -530,10 +533,10 @@ public class MipsTargetLowering extends TargetLowering {
         MCRegisterClass rc = MipsGenRegisterInfo.CPURegsRegisterClass;
         int idx = nextStackOffset / 4;
         int reg = mf.addLiveIn(O32IntRegs[idx], rc);
-        SDValue argValue = dag.getCopyFromReg(chain, reg, new EVT(MVT.i32));
+        SDValue argValue = dag.getCopyFromReg(chain, dl, reg, new EVT(MVT.i32));
         lastFI = mfi.createFixedObject(4, nextStackOffset, true);
         SDValue ptrOff = dag.getFrameIndex(lastFI, new EVT(getPointerTy()), false);
-        outChains.add(dag.getStore(chain, argValue, ptrOff, null, 0, false, 0));
+        outChains.add(dag.getStore(chain, dl, argValue, ptrOff, null, 0, false, 0));
       }
     }
 
@@ -541,7 +544,7 @@ public class MipsTargetLowering extends TargetLowering {
 
     if (!outChains.isEmpty()) {
       outChains.add(chain);
-      chain = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), outChains);
+      chain = dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), outChains);
     }
     return chain;
   }
@@ -569,7 +572,8 @@ public class MipsTargetLowering extends TargetLowering {
                                    int numWords,
                                    SDValue fin,
                                    CCValAssign va,
-                                   ArgFlagsTy flags) {
+                                   ArgFlagsTy flags,
+                                   DebugLoc dl) {
     int locMem = va.getLocMemOffset();
     int firstWord = locMem / 4;
 
@@ -580,9 +584,11 @@ public class MipsTargetLowering extends TargetLowering {
 
       int srcReg = O32IntRegs[curWord];
       int reg = mf.addLiveIn(srcReg, MipsGenRegisterInfo.CPURegsRegisterClass);
-      SDValue storePtr = dag.getNode(ISD.ADD, new EVT(MVT.i32), fin, dag.getConstant(i*4, new EVT(MVT.i32), false));
-      SDValue store = dag.getStore(chain, dag.getRegister(reg, new EVT(MVT.i32)), storePtr,
-          null, 0, false, 0);
+      SDValue storePtr = dag.getNode(ISD.ADD, dl, new EVT(MVT.i32), fin,
+              dag.getConstant(i*4, new EVT(MVT.i32), false));
+      SDValue store = dag.getStore(chain, dl,
+              dag.getRegister(reg, new EVT(MVT.i32)),
+              storePtr, null, 0, false, 0);
       outChains.add(store);
     }
   }
@@ -592,7 +598,8 @@ public class MipsTargetLowering extends TargetLowering {
                              CallingConv cc,
                              boolean isVarArg,
                              ArrayList<OutputArg> outs,
-                             SelectionDAG dag) {
+                             SelectionDAG dag,
+                             DebugLoc dl) {
     MachineFunction mf = dag.getMachineFunction();
 
     ArrayList<CCValAssign> retLocs = new ArrayList<>();
@@ -609,7 +616,7 @@ public class MipsTargetLowering extends TargetLowering {
     int i = 0;
     for (CCValAssign loc : retLocs) {
       Util.assertion(loc.isRegLoc(), "return value must be passed by register!");
-      chain = dag.getCopyToReg(chain, loc.getLocReg(), outs.get(i++).val, inFlag);
+      chain = dag.getCopyToReg(chain, dl, loc.getLocReg(), outs.get(i++).val, inFlag);
       inFlag = chain.getValue(1);
     }
 
@@ -619,17 +626,19 @@ public class MipsTargetLowering extends TargetLowering {
       int sretReg = mipsFI.getSRetReturnReg();
       Util.assertion(sretReg != 0, "the sret register should be allocated in the front block!");
 
-      SDValue sretVal = dag.getCopyFromReg(chain, sretReg, new EVT(getPointerTy()));
+      SDValue sretVal = dag.getCopyFromReg(chain, dl, sretReg, new EVT(getPointerTy()));
       // Copy the value of sretReg to the V0.
-      chain = dag.getCopyToReg(chain, MipsGenRegisterNames.V0, sretVal);
+      chain = dag.getCopyToReg(chain, dl, MipsGenRegisterNames.V0, sretVal);
       inFlag = chain.getValue(1);
     }
 
     // ret $ra
     if (inFlag.getNode() != null)
-      return dag.getNode(MipsISD.Ret, new EVT(MVT.Other), chain, dag.getRegister(MipsGenRegisterNames.RA, new EVT(MVT.i32)), inFlag);
+      return dag.getNode(MipsISD.Ret, dl, new EVT(MVT.Other), chain,
+              dag.getRegister(MipsGenRegisterNames.RA, new EVT(MVT.i32)), inFlag);
     else
-      return dag.getNode(MipsISD.Ret, new EVT(MVT.Other), chain, dag.getRegister(MipsGenRegisterNames.RA, new EVT(MVT.i32)));
+      return dag.getNode(MipsISD.Ret, dl, new EVT(MVT.Other), chain,
+              dag.getRegister(MipsGenRegisterNames.RA, new EVT(MVT.i32)));
   }
 
   @Override

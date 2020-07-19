@@ -180,7 +180,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
           tid.getImplicitDefs() != null &&
           tid.getImplicitDefs().length > 0;
       // create a machine instruction.
-      MachineInstr mi = buildMI(tid).getMInstr();
+      MachineInstr mi = buildMI(tid, node.getDebugLoc()).getMInstr();
 
       if (numResults > 0) {
         createVirtualRegisters(node, mi, tid, isClone, isCloned, vrBaseMap);
@@ -340,7 +340,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
 
     if (opc == TargetOpcode.EXTRACT_SUBREG) {
       long subIdx = ((ConstantSDNode) node.getOperand(1).getNode()).getZExtValue();
-      MachineInstr mi = buildMI(tii.get(TargetOpcode.EXTRACT_SUBREG)).getMInstr();
+      MachineInstr mi = buildMI(tii.get(TargetOpcode.EXTRACT_SUBREG), node.getDebugLoc()).getMInstr();
 
       int vreg = getVR(node.getOperand(0), vrBaseMap);
       MCRegisterClass destRC = mri.getRegClass(vreg);
@@ -370,7 +370,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         vrBase = mri.createVirtualRegister(srcRC);
       }
 
-      MachineInstr mi = buildMI(tii.get(opc)).getMInstr();
+      MachineInstr mi = buildMI(tii.get(opc), node.getDebugLoc()).getMInstr();
       mi.addOperand(MachineOperand.createReg(vrBase, true, false));
 
       if (opc == TargetOpcode.SUBREG_TO_REG) {
@@ -393,13 +393,11 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
   private void emitCopyToRegClassNode(SDNode node,
                                       TObjectIntHashMap<SDValue> vrBaseMap) {
     int vreg = getVR(node.getOperand(0), vrBaseMap);
-    MCRegisterClass srcRC = mri.getRegClass(vreg);
-
     int destRCIdx = (int) ((ConstantSDNode) node.getOperand(1).getNode()).getZExtValue();
     MCRegisterClass destRC = tri.getRegClass(destRCIdx);
 
     int newVReg = mri.createVirtualRegister(destRC);
-    buildMI(mbb, insertPos++, new DebugLoc(), tii.get(TargetOpcode.COPY), newVReg).addReg(vreg);
+    buildMI(mbb, insertPos++, node.getDebugLoc(), tii.get(TargetOpcode.COPY), newVReg).addReg(vreg);
     SDValue op = new SDValue(node, 0);
     Util.assertion(!vrBaseMap.containsKey(op));
     vrBaseMap.put(op, newVReg);
@@ -624,7 +622,7 @@ public abstract class ScheduleDAGSDNodes extends ScheduleDAG {
         vrbase = srcReg;
       else {
         vrbase = mri.createVirtualRegister(destRC);
-        buildMI(mbb, insertPos++, new DebugLoc(), tii.get(TargetOpcode.COPY), vrbase).addReg(srcReg);
+        buildMI(mbb, insertPos++, node.getDebugLoc(), tii.get(TargetOpcode.COPY), vrbase).addReg(srcReg);
       }
 
       SDValue op = new SDValue(node, resNo);

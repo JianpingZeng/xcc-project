@@ -19,6 +19,7 @@ package backend.codegen.dagisel;
 
 import backend.codegen.EVT;
 import backend.codegen.MVT;
+import backend.debug.DebugLoc;
 import backend.target.TargetLowering;
 import tools.APInt;
 import tools.Util;
@@ -188,6 +189,7 @@ public class VectorLegalizer {
     Util.assertion(op.getNode().getNumValues() == 1, "Can't unroll a vector with multiple results!");
     int ne = vt.getVectorNumElements();
     EVT eltVT = vt.getVectorElementType();
+    DebugLoc dl = op.getDebugLoc();
 
     ArrayList<SDValue> scalars = new ArrayList<>();
     SDValue[] ops = new SDValue[op.getNumOperands()];
@@ -197,7 +199,7 @@ public class VectorLegalizer {
         EVT opVT = operand.getValueType();
         if (opVT.isVector()) {
           EVT operandEltVT = opVT.getVectorElementType();
-          ops[j] = dag.getNode(ISD.EXTRACT_VECTOR_ELT, operandEltVT, operand,
+          ops[j] = dag.getNode(ISD.EXTRACT_VECTOR_ELT, dl, operandEltVT, operand,
               dag.getConstant(i, new EVT(MVT.i32), false));
         } else
           ops[j] = operand;
@@ -209,18 +211,19 @@ public class VectorLegalizer {
         case ISD.SRL:
         case ISD.ROTL:
         case ISD.ROTR:
-          scalars.add(dag.getNode(op.getOpcode(), eltVT, ops[0],
+          scalars.add(dag.getNode(op.getOpcode(), dl, eltVT, ops[0],
               dag.getShiftAmountOperand(ops[1])));
           break;
         default:
-          scalars.add(dag.getNode(op.getOpcode(), eltVT, ops));
+          scalars.add(dag.getNode(op.getOpcode(), dl, eltVT, ops));
           break;
       }
     }
-    return dag.getNode(ISD.BUILD_VECTOR, vt, scalars);
+    return dag.getNode(ISD.BUILD_VECTOR, dl, vt, scalars);
   }
 
   private SDValue unrollVSETCC(SDValue op) {
+    DebugLoc dl = op.getDebugLoc();
     EVT vt = op.getValueType();
     int numElts = vt.getVectorNumElements();
     EVT eltVT = vt.getVectorElementType();
@@ -228,41 +231,42 @@ public class VectorLegalizer {
     EVT tempEltVT = lhs.getValueType().getVectorElementType();
     SDValue[] ops = new SDValue[numElts];
     for (int i = 0; i < numElts; i++) {
-      SDValue lhsElt = dag.getNode(ISD.EXTRACT_VECTOR_ELT, tempEltVT, lhs,
+      SDValue lhsElt = dag.getNode(ISD.EXTRACT_VECTOR_ELT, dl, tempEltVT, lhs,
           dag.getIntPtrConstant(i));
-      SDValue rhsElt = dag.getNode(ISD.EXTRACT_VECTOR_ELT, tempEltVT, rhs,
+      SDValue rhsElt = dag.getNode(ISD.EXTRACT_VECTOR_ELT, dl, tempEltVT, rhs,
           dag.getIntPtrConstant(i));
-      ops[i] = dag.getNode(ISD.SETCC, new EVT(tli.getSetCCResultType(tempEltVT)),
+      ops[i] = dag.getNode(ISD.SETCC, dl, new EVT(tli.getSetCCResultType(tempEltVT)),
           lhsElt, rhsElt, cc);
-      ops[i] = dag.getNode(ISD.SELECT, vt, ops[i],
+      ops[i] = dag.getNode(ISD.SELECT, dl, vt, ops[i],
           dag.getConstant(APInt.getAllOnesValue(eltVT.getSizeInBits()), eltVT, false),
           dag.getConstant(0, eltVT, false));
     }
-    return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+    return dag.getNode(ISD.BUILD_VECTOR, dl, vt, ops);
 
   }
 
   private SDValue expandFNEG(SDValue op) {
     if (tli.isOperationLegalOrCustom(ISD.FSUB, op.getValueType())) {
       SDValue zero = dag.getConstantFP(-0.0, op.getValueType(), false);
-      return dag.getNode(ISD.FSUB, op.getValueType(), zero, op.getOperand(0));
+      return dag.getNode(ISD.FSUB, op.getDebugLoc(), op.getValueType(), zero, op.getOperand(0));
     }
     return unrollVectorOp(op);
   }
 
   private SDValue promoteVectorOp(SDValue op) {
     EVT vt = op.getValueType();
+    DebugLoc dl = op.getDebugLoc();
     Util.assertion(op.getNode().getNumValues() == 1, "Can't promote a vector with multiple results!");
     EVT nvt = tli.getTypeToTransformTo(dag.getContext(), vt);
     SDValue[] ops = new SDValue[op.getNumOperands()];
     for (int j = 0, e = op.getNumOperands(); j < e; j++) {
       if (op.getOperand(j).getValueType().isVector())
-        ops[j] = dag.getNode(ISD.BIT_CONVERT, nvt, op.getOperand(j));
+        ops[j] = dag.getNode(ISD.BIT_CONVERT, dl, nvt, op.getOperand(j));
       else
         ops[j] = op.getOperand(j);
     }
-    op = dag.getNode(op.getOpcode(), nvt, ops);
-    return dag.getNode(ISD.BIT_CONVERT, vt, op);
+    op = dag.getNode(op.getOpcode(), dl, nvt, ops);
+    return dag.getNode(ISD.BIT_CONVERT, dl, vt, op);
   }
 
   public boolean run() {

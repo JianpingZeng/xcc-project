@@ -23,6 +23,7 @@ import backend.codegen.MVT;
 import backend.codegen.MachineFrameInfo;
 import backend.codegen.PseudoSourceValue;
 import backend.codegen.dagisel.SDNode.*;
+import backend.debug.DebugLoc;
 import backend.target.TargetData;
 import backend.target.TargetLowering;
 import backend.target.TargetLowering.TargetLoweringOpt;
@@ -346,6 +347,7 @@ public class DAGCombiner {
     int numInScalars = n.getNumOperands();
     // The type of first produced value
     EVT vt = n.getValueType(0);
+    DebugLoc dl = n.getDebugLoc();
 
     // Check to see if this is a BUILD_VECTOR of a bunch of EXTRACT_VECTOR_ELT
     // operations.  If so, and if the EXTRACT_VECTOR_ELT vector inputs come from
@@ -417,7 +419,7 @@ public class DAGCombiner {
 
       // return the new VECTOR_SHUFFLE node.
       SDValue op1 = vecIn2.getNode() != null ? vecIn2 : dag.getUNDEF(vt);
-      return dag.getVectorShuffle(vt, vecIn1, op1, mask.toArray());
+      return dag.getVectorShuffle(vt, dl, vecIn1, op1, mask.toArray());
     }
 
     return new SDValue();
@@ -436,6 +438,7 @@ public class DAGCombiner {
   }
 
   private SDValue visitEXTRACT_VECTOR_ELT(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     // (vextract (scalar_to_vector val, 0) -> val
     SDValue inVec = n.getOperand(0);
     if (inVec.getOpcode() == ISD.SCALAR_TO_VECTOR) {
@@ -446,7 +449,7 @@ public class DAGCombiner {
       EVT nvt = n.getValueType(0);
       if (!inOp.getValueType().equals(nvt)) {
         Util.assertion(inOp.getValueType().isInteger() && nvt.isInteger());
-        return dag.getSExtOrTrunc(inOp, nvt);
+        return dag.getSExtOrTrunc(inOp, dl, nvt);
       }
       return inOp;
     }
@@ -537,10 +540,12 @@ public class DAGCombiner {
         EVT ptrType = newPtr.getValueType();
         if (tli.isBigEndian())
           ptrOff = vt.getSizeInBits() / 8 - ptrOff;
-        newPtr = dag.getNode(ISD.ADD, ptrType, newPtr, dag.getConstant(ptrOff, ptrType, false));
+        newPtr = dag.getNode(ISD.ADD, dl, ptrType, newPtr,
+                dag.getConstant(ptrOff, ptrType, false));
       }
 
-      return dag.getLoad(lvt, ln0.getChain(), newPtr, ln0.getSrcValue(), ptrOff, ln0.isVolatile(), align);
+      return dag.getLoad(dl, lvt, ln0.getChain(), newPtr,
+              ln0.getSrcValue(), ptrOff, ln0.isVolatile(), align);
     }
     return new SDValue();
   }
@@ -549,6 +554,7 @@ public class DAGCombiner {
     SDValue inVec = n.getOperand(0);
     SDValue inVal = n.getOperand(1);
     SDValue eltNo = n.getOperand(2);
+    DebugLoc dl = n.getDebugLoc();
     // if the inserted value is an UNDEF, just use the input vector.
     if (inVal.getOpcode() == ISD.UNDEF)
       return inVec;
@@ -586,11 +592,11 @@ public class DAGCombiner {
       // we enforce that here.
       EVT opVT = ops.get(0).getValueType();
       if (!inVal.getValueType().equals(opVT))
-        inVal = dag.getAnyExtOrTrunc(inVal, opVT);
+        inVal = dag.getAnyExtOrTrunc(inVal, dl, opVT);
       ops.set(elt, inVal);
     }
     // build an new vector.
-    return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+    return dag.getNode(ISD.BUILD_VECTOR, dl, vt, ops);
   }
 
   /**
@@ -605,6 +611,7 @@ public class DAGCombiner {
    */
   private SDValue reduceLoadOpStoreWidth(SDNode n) {
     StoreSDNode st = (StoreSDNode) n;
+    DebugLoc dl = n.getDebugLoc();
     if (st.isVolatile())
       return new SDValue();
 
@@ -666,14 +673,14 @@ public class DAGCombiner {
             newVT.getTypeForEVT(dag.getContext())))
           return new SDValue();
 
-        SDValue newPtr = dag.getNode(ISD.ADD, ptr.getValueType(),
+        SDValue newPtr = dag.getNode(ISD.ADD, dl, ptr.getValueType(),
             ptr, dag.getConstant(ptrOff, ptr.getValueType(), false));
-        SDValue newLD = dag.getLoad(newVT, ld.getChain(),
+        SDValue newLD = dag.getLoad(dl, newVT, ld.getChain(),
             newPtr, ld.getSrcValue(), ld.getSrcValueOffset(),
             ld.isVolatile(), newAlign);
-        SDValue newVal = dag.getNode(opc, newVT, newLD,
+        SDValue newVal = dag.getNode(opc, dl, newVT, newLD,
             dag.getConstant(newImm, newVT, false));
-        SDValue newST = dag.getStore(newLD.getValue(1), newVal, newPtr,
+        SDValue newST = dag.getStore(newLD.getValue(1), dl, newVal, newPtr,
             st.getSrcValue(), st.getSrcValueOffset(),
             false, newAlign);
 
@@ -695,13 +702,14 @@ public class DAGCombiner {
     SDValue chain = st.getChain();
     SDValue value = st.getValue();
     SDValue ptr = st.getBasePtr();
+    DebugLoc dl = st.getDebugLoc();
 
     if (optLevel != CodeGenOpt.None && st.isUnindexed()) {
       int align = inferAlignment(ptr);
       if (align != 0) {
-        return dag.getTruncStore(chain, value, ptr,
-            st.getSrcValue(), st.getSrcValueOffset(),
-            st.getMemoryVT(), st.isVolatile(), align);
+        return dag.getTruncStore(chain, dl,
+                value, ptr, st.getSrcValue(), st.getSrcValueOffset(),
+                st.getMemoryVT(), st.isVolatile(), align);
       }
     }
 
@@ -715,7 +723,7 @@ public class DAGCombiner {
       int align = tli.getTargetData().getABITypeAlignment(vt.getTypeForEVT(dag.getContext()));
       if (align == originAlign && ((!legalOprations && !st.isVolatile()) ||
           tli.isOperationLegalOrCustom(ISD.STORE, vt))) {
-        return dag.getStore(chain, value.getOperand(0),
+        return dag.getStore(chain, dl, value.getOperand(0),
             ptr, st.getSrcValue(), st.getSrcValueOffset(),
             st.isVolatile(), originAlign);
       }
@@ -738,7 +746,7 @@ public class DAGCombiner {
             if (((tli.isTypeLegal(new EVT(MVT.i32)) || !legalTypes) &&
                 !st.isVolatile()) || tli.isOperationLegalOrCustom(ISD.STORE, new EVT(MVT.i32))) {
               temp = dag.getConstant(fp.getValueAPF().bitcastToAPInt().getZExtValue(), new EVT(MVT.i32), false);
-              return dag.getStore(chain, temp, ptr, st.getSrcValue(),
+              return dag.getStore(chain, dl, temp, ptr, st.getSrcValue(),
                   st.getSrcValueOffset(), st.isVolatile(),
                   st.getAlignment());
             }
@@ -747,7 +755,7 @@ public class DAGCombiner {
             if (((tli.isTypeLegal(new EVT(MVT.i64)) || !legalTypes) &&
                 !st.isVolatile()) || tli.isOperationLegalOrCustom(ISD.STORE, new EVT(MVT.i64))) {
               temp = dag.getConstant(fp.getValueAPF().bitcastToAPInt().getZExtValue(), new EVT(MVT.i64), false);
-              return dag.getStore(chain, temp, ptr, st.getSrcValue(),
+              return dag.getStore(chain, dl, temp, ptr, st.getSrcValue(),
                   st.getSrcValueOffset(), st.isVolatile(),
                   st.getAlignment());
             } else if (!st.isVolatile() && tli.isOperationLegalOrCustom(ISD.STORE, new EVT(MVT.i32))) {
@@ -766,15 +774,15 @@ public class DAGCombiner {
               int alignment = st.getAlignment();
               boolean isVolatile = st.isVolatile();
 
-              SDValue st0 = dag.getStore(chain, lo, ptr,
+              SDValue st0 = dag.getStore(chain, dl, lo, ptr,
                   st.getSrcValue(), svoffset, isVolatile, alignment);
-              ptr = dag.getNode(ISD.ADD, ptr.getValueType(),
+              ptr = dag.getNode(ISD.ADD, dl, ptr.getValueType(),
                   ptr, dag.getConstant(4, ptr.getValueType(), false));
               svoffset = 4;
               alignment = Util.minAlign(alignment, 4);
-              SDValue st1 = dag.getStore(chain, hi, ptr,
+              SDValue st1 = dag.getStore(chain, dl, hi, ptr,
                   st.getSrcValue(), svoffset, isVolatile, alignment);
-              return dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), st0, st1);
+              return dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), st0, st1);
             }
             break;
         }
@@ -792,7 +800,7 @@ public class DAGCombiner {
               st.getMemoryVT().getSizeInBits()));
       addToWorkList(shorter.getNode());
       if (shorter.getNode() != null) {
-        return dag.getTruncStore(chain, shorter, ptr,
+        return dag.getTruncStore(chain, dl, shorter, ptr,
             st.getSrcValue(), st.getSrcValueOffset(),
             st.getMemoryVT(), st.isVolatile(),
             st.getAlignment());
@@ -826,7 +834,7 @@ public class DAGCombiner {
         value.hasOneUse() && st.isUnindexed() &&
         tli.isTruncStoreLegal(value.getOperand(0).getValueType(),
             st.getMemoryVT())) {
-      return dag.getTruncStore(chain, value.getOperand(0),
+      return dag.getTruncStore(chain, dl, value.getOperand(0),
           ptr, st.getSrcValue(), st.getSrcValueOffset(),
           st.getMemoryVT(), st.isVolatile(), st.getAlignment());
     }
@@ -868,7 +876,7 @@ public class DAGCombiner {
     if (optLevel != CodeGenOpt.None && ld.isUnindexed()) {
       int align = inferAlignment(ptr);
       if (align != 0 && align > ld.getAlignment()) {
-        return dag.getExtLoad(ld.getExtensionType(), ld.getValueType(0),
+        return dag.getExtLoad(ld.getDebugLoc(), ld.getExtensionType(), ld.getValueType(0),
             chain, ptr, ld.getSrcValue(), ld.getSrcValueOffset(), ld.getMemoryVT(),
             ld.isVolatile(), align);
       }
@@ -1012,10 +1020,11 @@ public class DAGCombiner {
     if (!realUse) return false;
 
     SDValue result;
+    DebugLoc dl = n.getDebugLoc();
     if (isLoad)
-      result = dag.getIndexedLoad(new SDValue(n, 0), basePtr, offset, am);
+      result = dag.getIndexedLoad(dl, new SDValue(n, 0), basePtr, offset, am);
     else
-      result = dag.getIndexedStore(new SDValue(n, 0), basePtr, offset, am);
+      result = dag.getIndexedStore(dl, new SDValue(n, 0), basePtr, offset, am);
 
     WorklistRemover remover = new WorklistRemover(this);
     if (isLoad) {
@@ -1130,9 +1139,10 @@ public class DAGCombiner {
         if (tryNext) continue;
 
         if (!user.isPredecessorOf(n) && !n.isPredecessorOf(user)) {
+          DebugLoc dl = n.getDebugLoc();
           SDValue result = isLoad ?
-              dag.getIndexedLoad(new SDValue(n, 0), basePtr, offset, am) :
-              dag.getIndexedStore(new SDValue(n, 0), basePtr, offset, am);
+              dag.getIndexedLoad(dl, new SDValue(n, 0), basePtr, offset, am) :
+              dag.getIndexedStore(dl, new SDValue(n, 0), basePtr, offset, am);
 
           WorklistRemover remover = new WorklistRemover(this);
           if (isLoad) {
@@ -1157,16 +1167,17 @@ public class DAGCombiner {
   }
 
   private SDValue visitBR_CC(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     CondCodeSDNode ccn = (CondCodeSDNode) n.getOperand(1).getNode();
     SDValue lhs = n.getOperand(2), rhs = n.getOperand(3);
-    SDValue simplify = simplifySetCC(new EVT(tli.getSetCCResultType(lhs.getValueType())),
+    SDValue simplify = simplifySetCC(dl, new EVT(tli.getSetCCResultType(lhs.getValueType())),
         lhs, rhs, ccn.getCondition(), false);
     if (simplify.getNode() != null)
       addToWorkList(simplify.getNode());
 
     if (simplify.getNode() instanceof ConstantSDNode) {
       if (!((ConstantSDNode) simplify.getNode()).isNullValue())
-        return dag.getNode(ISD.BR, new EVT(MVT.Other), n.getOperand(0), n.getOperand(4));
+        return dag.getNode(ISD.BR, dl, new EVT(MVT.Other), n.getOperand(0), n.getOperand(4));
       else {
         // if we can make sure the condition is false, we don't need this BR_CC at all.
         return n.getOperand(0);
@@ -1174,7 +1185,7 @@ public class DAGCombiner {
     }
     if (simplify.getNode() != null && simplify.getOpcode() == ISD.SETCC) {
       // to setcc
-      return dag.getNode(ISD.BR_CC, new EVT(MVT.Other), n.getOperand(0),
+      return dag.getNode(ISD.BR_CC, dl, new EVT(MVT.Other), n.getOperand(0),
           simplify.getOperand(2), simplify.getOperand(0), simplify.getOperand(1),
           n.getOperand(4));
     }
@@ -1185,16 +1196,17 @@ public class DAGCombiner {
     SDValue chain = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
     SDValue n2 = n.getOperand(2);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode n1C = n1.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n1.getNode() : null;
     if (n1C != null && n1C.isNullValue())
       return chain;
 
     if (n1C != null && n1C.getAPIntValue().eq(1))
-      return dag.getNode(ISD.BR, new EVT(MVT.Other), chain, n2);
+      return dag.getNode(ISD.BR, dl, new EVT(MVT.Other), chain, n2);
     if (n1.getOpcode() == ISD.SETCC &&
         tli.isOperationLegalOrCustom(ISD.BR_CC, new EVT(MVT.Other))) {
-      return dag.getNode(ISD.BR_CC, new EVT(MVT.Other), chain, n1.getOperand(2),
+      return dag.getNode(ISD.BR_CC, dl, new EVT(MVT.Other), chain, n1.getOperand(2),
           n1.getOperand(0), n1.getOperand(1), n2);
     }
     if (n1.hasOneUse() && n1.getOpcode() == ISD.SRL) {
@@ -1227,13 +1239,13 @@ public class DAGCombiner {
           APInt andCst = ((ConstantSDNode) andOp1.getNode()).getAPIntValue();
           if (andCst.isPowerOf2() &&
               ((ConstantSDNode) op1.getNode()).getAPIntValue().eq(andCst.logBase2())) {
-            SDValue setcc = dag.getSetCC(new EVT(tli.getSetCCResultType(op0.getValueType())),
+            SDValue setcc = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(op0.getValueType())),
                 op0, dag.getConstant(0, op0.getValueType(), false), CondCode.SETNE);
 
             dag.replaceAllUsesOfValueWith(n1, setcc, null);
             removeFromWorkList(n1.getNode());
             dag.deleteNode(n1.getNode());
-            return dag.getNode(ISD.BRCOND, new EVT(MVT.Other), chain, setcc, n2);
+            return dag.getNode(ISD.BRCOND, dl, new EVT(MVT.Other), chain, setcc, n2);
           }
         }
       }
@@ -1243,27 +1255,28 @@ public class DAGCombiner {
   }
 
   private SDValue visitFABS(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
         (ConstantFPSDNode) n0.getNode() : null;
     EVT vt = n.getValueType(0);
     if (fp != null && !vt.equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.FABS, vt, n0);
+      return dag.getNode(ISD.FABS, dl, vt, n0);
 
     if (n0.getOpcode() == ISD.FABS)
       return n0.getOperand(0);
     if (n0.getOpcode() == ISD.FNEG || n0.getOpcode() == ISD.FCOPYSIGN)
-      return dag.getNode(ISD.FABS, n0.getOperand(0).getValueType(), n0.getOperand(0));
+      return dag.getNode(ISD.FABS, dl, n0.getOperand(0).getValueType(), n0.getOperand(0));
     if (n0.getOpcode() == ISD.BIT_CONVERT && n0.hasOneUse() &&
         n0.getOperand(0).getValueType().isInteger() &&
         !n0.getOperand(0).getValueType().isVector()) {
       SDValue integer = n0.getOperand(0);
       EVT intVT = integer.getValueType();
       if (intVT.isInteger() && !intVT.isVector()) {
-        integer = dag.getNode(ISD.AND, intVT, integer,
+        integer = dag.getNode(ISD.AND, dl, intVT, integer,
             dag.getConstant(APInt.getSignBit(intVT.getSizeInBits()).not(), intVT, false));
         addToWorkList(integer.getNode());
-        return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0), integer);
+        return dag.getNode(ISD.BIT_CONVERT, dl, n.getValueType(0), integer);
       }
     }
     return new SDValue();
@@ -1328,6 +1341,7 @@ public class DAGCombiner {
 
     Util.assertion(op.hasOneUse(), "Unknown reuse!");
     Util.assertion(depth <= 6, "getNegatedExpression doesn't match isNegatibleForFree");
+    DebugLoc dl = op.getDebugLoc();
     switch (op.getOpcode()) {
       default:
         Util.shouldNotReachHere("Unknown code!");
@@ -1340,11 +1354,11 @@ public class DAGCombiner {
       case ISD.FADD: {
         Util.assertion(EnableUnsafeFPMath.value);
         if (isNegatibleForFree(op.getOperand(0), legalOpration, depth + 1) != 0)
-          return dag.getNode(ISD.FSUB, op.getValueType(),
+          return dag.getNode(ISD.FSUB, dl, op.getValueType(),
               getNegatedExpression(op.getOperand(0), legalOpration, depth + 1),
               op.getOperand(1));
 
-        return dag.getNode(ISD.FSUB, op.getValueType(),
+        return dag.getNode(ISD.FSUB, dl, op.getValueType(),
             getNegatedExpression(op.getOperand(1), legalOpration, depth + 1),
             op.getOperand(0));
       }
@@ -1356,30 +1370,31 @@ public class DAGCombiner {
         if (fp != null && fp.getValueAPF().isZero())
           return op.getOperand(1);
 
-        return dag.getNode(ISD.FSUB, op.getValueType(), op.getOperand(1), op.getOperand(0));
+        return dag.getNode(ISD.FSUB, dl, op.getValueType(), op.getOperand(1), op.getOperand(0));
       }
       case ISD.FMUL:
       case ISD.FDIV: {
         if (isNegatibleForFree(op.getOperand(0), legalOpration, depth + 1) != 0) {
-          return dag.getNode(op.getOpcode(), op.getValueType(),
+          return dag.getNode(op.getOpcode(), dl, op.getValueType(),
               getNegatedExpression(op.getOperand(0), legalOpration, depth + 1),
               op.getOperand(1));
         }
-        return dag.getNode(op.getOpcode(), op.getValueType(), op.getOperand(0),
+        return dag.getNode(op.getOpcode(), dl, op.getValueType(), op.getOperand(0),
             getNegatedExpression(op.getOperand(1), legalOpration, depth + 1));
       }
       case ISD.FP_EXTEND:
       case ISD.FSIN:
-        return dag.getNode(op.getOpcode(), op.getValueType(),
+        return dag.getNode(op.getOpcode(), dl, op.getValueType(),
             getNegatedExpression(op.getOperand(0), legalOpration, depth + 1));
       case ISD.FP_ROUND:
-        return dag.getNode(ISD.FP_ROUND, op.getValueType(),
+        return dag.getNode(ISD.FP_ROUND, dl, op.getValueType(),
             getNegatedExpression(op.getOperand(0), legalOpration, depth + 1),
             op.getOperand(1));
     }
   }
 
   private SDValue visitFNEG(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     if (isNegatibleForFree(n0, legalOprations) != 0)
       return getNegatedExpression(n0, legalOprations);
@@ -1390,10 +1405,10 @@ public class DAGCombiner {
       SDValue integer = n0.getOperand(0);
       EVT intVT = integer.getValueType();
       if (intVT.isInteger() && !intVT.isVector()) {
-        integer = dag.getNode(ISD.XOR, intVT, integer,
+        integer = dag.getNode(ISD.XOR, dl, intVT, integer,
             dag.getConstant(APInt.getSignBit(intVT.getSizeInBits()), intVT, false));
         addToWorkList(integer.getNode());
-        return dag.getNode(ISD.BIT_CONVERT, n.getValueType(0), integer);
+        return dag.getNode(ISD.BIT_CONVERT, dl, n.getValueType(0), integer);
       }
     }
 
@@ -1401,6 +1416,7 @@ public class DAGCombiner {
   }
 
   private SDValue visitFP_EXTEND(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
         (ConstantFPSDNode) n0.getNode() : null;
@@ -1409,7 +1425,7 @@ public class DAGCombiner {
       return new SDValue();
 
     if (fp != null && !vt.equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.FP_EXTEND, vt, n0);
+      return dag.getNode(ISD.FP_EXTEND, dl, vt, n0);
 
     // Turn fp_extend(fp_round(X, 1)) -> x since the fp_round doesn't affect the
     // value of X.
@@ -1419,20 +1435,20 @@ public class DAGCombiner {
       if (in.getValueType().equals(vt)) return in;
 
       if (vt.bitsLT(in.getValueType()))
-        return dag.getNode(ISD.FP_ROUND, vt, in, n0.getOperand(1));
-      return dag.getNode(ISD.FP_EXTEND, vt, in);
+        return dag.getNode(ISD.FP_ROUND, dl, vt, in, n0.getOperand(1));
+      return dag.getNode(ISD.FP_EXTEND, dl, vt, in);
     }
 
     if (n0.getNode().isNONExtLoad() && n0.hasOneUse() &&
         ((!legalOprations && !((LoadSDNode) n0.getNode()).isVolatile()) ||
             tli.isLoadExtLegal(LoadExtType.EXTLOAD, n0.getValueType()))) {
       LoadSDNode ld = (LoadSDNode) n0.getNode();
-      SDValue extLoad = dag.getExtLoad(LoadExtType.EXTLOAD, vt, ld.getChain(),
+      SDValue extLoad = dag.getExtLoad(dl, LoadExtType.EXTLOAD, vt, ld.getChain(),
           ld.getBasePtr(), ld.getSrcValue(), ld.getSrcValueOffset(),
           n0.getValueType(), ld.isVolatile(), ld.getAlignment());
 
       combineTo(n, extLoad, true);
-      combineTo(n0.getNode(), dag.getNode(ISD.FP_ROUND, n0.getValueType(),
+      combineTo(n0.getNode(), dag.getNode(ISD.FP_ROUND, dl, n0.getValueType(),
           extLoad, dag.getIntPtrConstant(1)),
           extLoad.getValue(1), true);
       return new SDValue(n, 0);
@@ -1450,18 +1466,19 @@ public class DAGCombiner {
 
     if (fp != null && (tli.isTypeLegal(evt) || !legalTypes)) {
       SDValue round = dag.getConstantFP(fp.getValueAPF(), evt, false);
-      return dag.getNode(ISD.FP_EXTEND, vt, round);
+      return dag.getNode(ISD.FP_EXTEND, n.getDebugLoc(), vt, round);
     }
     return new SDValue();
   }
 
   private SDValue visitFP_ROUND(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
         (ConstantFPSDNode) n0.getNode() : null;
     EVT vt = n.getValueType(0);
     if (fp != null && !n0.getValueType().equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.FP_ROUND, vt, n0);
+      return dag.getNode(ISD.FP_ROUND, dl, vt, n0);
 
     if (n0.getOpcode() == ISD.FP_EXTEND && vt.equals(n0.getOperand(0).getValueType()))
       return n0.getOperand(0);
@@ -1469,26 +1486,27 @@ public class DAGCombiner {
     if (n0.getOpcode() == ISD.FP_ROUND) {
       boolean isTrunc = n.getConstantOperandVal(1) == 1 &&
           n0.getNode().getConstantOperandVal(1) == 1;
-      return dag.getNode(ISD.FP_ROUND, vt, n0.getOperand(0),
+      return dag.getNode(ISD.FP_ROUND, dl, vt, n0.getOperand(0),
           dag.getIntPtrConstant(isTrunc ? 1 : 0));
     }
 
     if (n0.getOpcode() == ISD.FCOPYSIGN && n0.hasOneUse()) {
-      SDValue temp = dag.getNode(ISD.FP_ROUND, vt, n0.getOperand(0));
+      SDValue temp = dag.getNode(ISD.FP_ROUND, dl, vt, n0.getOperand(0));
       addToWorkList(temp.getNode());
-      return dag.getNode(ISD.FCOPYSIGN, vt, temp, n0.getOperand(1));
+      return dag.getNode(ISD.FCOPYSIGN, dl, vt, temp, n0.getOperand(1));
     }
     return new SDValue();
   }
 
   private SDValue visitFP_TO_UINT(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     ConstantFPSDNode fp = n0.getNode() instanceof ConstantFPSDNode ?
         (ConstantFPSDNode) n0.getNode() : null;
     EVT vt = n.getValueType(0);
 
     if (fp != null && !vt.equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.FP_TO_UINT, vt, n0);
+      return dag.getNode(ISD.FP_TO_UINT, dl, vt, n0);
 
     return new SDValue();
   }
@@ -1500,7 +1518,7 @@ public class DAGCombiner {
     EVT vt = n.getValueType(0);
 
     if (fp != null)
-      return dag.getNode(ISD.FP_TO_SINT, vt, n0);
+      return dag.getNode(ISD.FP_TO_SINT, n.getDebugLoc(), vt, n0);
 
     return new SDValue();
   }
@@ -1513,12 +1531,12 @@ public class DAGCombiner {
     EVT opVT = n0.getValueType();
 
     if (c0 != null && !opVT.equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.UINT_TO_FP, vt, n0);
+      return dag.getNode(ISD.UINT_TO_FP, n.getDebugLoc(), vt, n0);
 
     if (!tli.isOperationLegalOrCustom(ISD.UINT_TO_FP, opVT) &&
         tli.isOperationLegalOrCustom(ISD.SINT_TO_FP, opVT)) {
       if (dag.signBitIsZero(n0, 0))
-        return dag.getNode(ISD.SINT_TO_FP, vt, n0);
+        return dag.getNode(ISD.SINT_TO_FP, n.getDebugLoc(), vt, n0);
     }
 
     return new SDValue();
@@ -1532,17 +1550,18 @@ public class DAGCombiner {
     EVT opVT = n0.getValueType();
 
     if (c0 != null && !opVT.equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.SINT_TO_FP, vt, n0);
+      return dag.getNode(ISD.SINT_TO_FP, n.getDebugLoc(), vt, n0);
 
     if (!tli.isOperationLegalOrCustom(ISD.SINT_TO_FP, opVT) &&
         tli.isOperationLegalOrCustom(ISD.UINT_TO_FP, opVT)) {
       if (dag.signBitIsZero(n0, 0))
-        return dag.getNode(ISD.UINT_TO_FP, vt, n0);
+        return dag.getNode(ISD.UINT_TO_FP, n.getDebugLoc(), vt, n0);
     }
     return new SDValue();
   }
 
   private SDValue visitFCOPYSIGN(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
     ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
@@ -1552,18 +1571,18 @@ public class DAGCombiner {
     EVT vt = n.getValueType(0);
 
     if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128))) {
-      return dag.getNode(ISD.FCOPYSIGN, vt, n0, n1);
+      return dag.getNode(ISD.FCOPYSIGN, dl, vt, n0, n1);
     }
 
     if (fp1 != null) {
       APFloat v = fp1.getValueAPF();
       if (!v.isNegative()) {
         if (!legalOprations || tli.isOperationLegal(ISD.FABS, vt))
-          return dag.getNode(ISD.FABS, vt, n0);
+          return dag.getNode(ISD.FABS, dl, vt, n0);
       } else {
         if (!legalOprations || tli.isOperationLegal(ISD.FNEG, vt))
-          return dag.getNode(ISD.FNEG, vt,
-              dag.getNode(ISD.FABS, vt, n0));
+          return dag.getNode(ISD.FNEG, dl, vt,
+              dag.getNode(ISD.FABS, dl, vt, n0));
       }
     }
 
@@ -1572,16 +1591,16 @@ public class DAGCombiner {
     // copysign(copysign(x,z), y) -> copysign(x, y)
     if (n0.getOpcode() == ISD.FABS || n0.getOpcode() == ISD.FNEG ||
         n0.getOpcode() == ISD.FCOPYSIGN) {
-      return dag.getNode(ISD.FCOPYSIGN, vt, n0.getOperand(0), n1);
+      return dag.getNode(ISD.FCOPYSIGN, dl, vt, n0.getOperand(0), n1);
     }
 
     if (n1.getOpcode() == ISD.FABS)
-      return dag.getNode(ISD.FABS, vt, n0);
+      return dag.getNode(ISD.FABS, dl, vt, n0);
     if (n1.getOpcode() == ISD.FCOPYSIGN)
-      return dag.getNode(ISD.FCOPYSIGN, vt, n0, n1.getOperand(1));
+      return dag.getNode(ISD.FCOPYSIGN, dl, vt, n0, n1.getOperand(1));
 
     if (n1.getOpcode() == ISD.FP_EXTEND) {
-      return dag.getNode(ISD.FCOPYSIGN, vt, n0, n1.getOperand(0));
+      return dag.getNode(ISD.FCOPYSIGN, dl, vt, n0, n1.getOperand(0));
     }
 
     return new SDValue();
@@ -1597,12 +1616,13 @@ public class DAGCombiner {
     EVT vt = n.getValueType(0);
 
     if (fp0 != null && fp1 != null & !vt.equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.FREM, vt, n0, n1);
+      return dag.getNode(ISD.FREM, n.getDebugLoc(), vt, n0, n1);
 
     return new SDValue();
   }
 
   private SDValue visitFDIV(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
     ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
@@ -1618,13 +1638,13 @@ public class DAGCombiner {
 
     // fold (fdiv c1, c2) -> c1/c2
     if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128))) {
-      return dag.getNode(ISD.FDIV, vt, n0, n1);
+      return dag.getNode(ISD.FDIV, dl, vt, n0, n1);
     }
     // (fdiv (fneg X), (fneg Y)) -> (fdiv X, Y)
     int lhsNeg = isNegatibleForFree(n0, legalOprations);
     int rhsNeg = isNegatibleForFree(n1, legalOprations);
     if (lhsNeg == 2 && rhsNeg == 2) {
-      return dag.getNode(ISD.FDIV, vt, getNegatedExpression(n0, legalOprations),
+      return dag.getNode(ISD.FDIV, dl, vt, getNegatedExpression(n0, legalOprations),
           getNegatedExpression(n1, legalOprations));
     }
 
@@ -1632,6 +1652,7 @@ public class DAGCombiner {
   }
 
   private SDValue visitFMUL(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
     ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
@@ -1647,11 +1668,11 @@ public class DAGCombiner {
 
     // fold (fmul c1, c2) -> c1*c2
     if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128)))
-      return dag.getNode(ISD.FMUL, vt, n0, n1);
+      return dag.getNode(ISD.FMUL, dl, vt, n0, n1);
 
     // canonicalize constant to RHS
     if (fp0 != null && fp1 == null)
-      return dag.getNode(ISD.FMUL, vt, n1, n0);
+      return dag.getNode(ISD.FMUL, dl, vt, n1, n0);
 
     // fold (fmul A, 0) -> 0
     if (EnableUnsafeFPMath.value && fp1 != null && fp1.getValueAPF().isZero())
@@ -1663,18 +1684,18 @@ public class DAGCombiner {
 
     // fold (fmul X, 2.0) -> (fadd X, X)
     if (fp1 != null && fp1.isExactlyValue(+2.0))
-      return dag.getNode(ISD.FADD, vt, n0, n0);
+      return dag.getNode(ISD.FADD, dl, vt, n0, n0);
 
     // fold (fmul X, -1.0) -> (fneg X)
     if (fp1 != null && fp1.isExactlyValue(-1.0) &&
         (!legalOprations || tli.isOperationLegal(ISD.FNEG, vt)))
-      return dag.getNode(ISD.FNEG, vt, n0);
+      return dag.getNode(ISD.FNEG, dl, vt, n0);
 
     // fold (fmul (fneg X), (fneg Y)) -> (fmul X, Y)
     int lhsNeg = isNegatibleForFree(n0, legalOprations);
     int rhsNeg = isNegatibleForFree(n1, legalOprations);
     if (lhsNeg == 2 && rhsNeg == 2) {
-      return dag.getNode(ISD.MUL, vt,
+      return dag.getNode(ISD.MUL, dl, vt,
           getNegatedExpression(n0, legalOprations),
           getNegatedExpression(n1, legalOprations));
     }
@@ -1683,13 +1704,14 @@ public class DAGCombiner {
         n0.getOpcode() == ISD.FMUL &&
         n0.getOperand(1).getNode() instanceof ConstantFPSDNode) {
       ConstantFPSDNode n01FP = (ConstantFPSDNode) n0.getOperand(1).getNode();
-      return dag.getNode(ISD.FMUL, vt, n0.getOperand(0),
-          dag.getNode(ISD.FMUL, vt, n0.getOperand(1), n1));
+      return dag.getNode(ISD.FMUL, dl, vt, n0.getOperand(0),
+          dag.getNode(ISD.FMUL, dl, vt, n0.getOperand(1), n1));
     }
     return new SDValue();
   }
 
   private SDValue visitFSUB(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
     ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
@@ -1705,7 +1727,7 @@ public class DAGCombiner {
 
     // fold (fsub c1, c2) -> c1-c2
     if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128))) {
-      return dag.getNode(ISD.FSUB, vt, n0, n1);
+      return dag.getNode(ISD.FSUB, dl, vt, n0, n1);
     }
     // fold (fsub A, 0) -> A
     if (EnableUnsafeFPMath.value && fp1 != null && fp1.getValueAPF().isZero())
@@ -1716,17 +1738,18 @@ public class DAGCombiner {
       if (isNegatibleForFree(n1, legalOprations) != 0)
         return getNegatedExpression(n1, legalOprations);
       if (!legalOprations || tli.isOperationLegal(ISD.FNEG, vt))
-        return dag.getNode(ISD.FNEG, vt, n1);
+        return dag.getNode(ISD.FNEG, dl, vt, n1);
     }
 
     // fold (fsub A, (fneg B)) -> (fadd A, B)
     if (isNegatibleForFree(n1, legalOprations) != 0) {
-      return dag.getNode(ISD.FADD, vt, n0, getNegatedExpression(n1, legalOprations));
+      return dag.getNode(ISD.FADD, dl, vt, n0, getNegatedExpression(n1, legalOprations));
     }
     return new SDValue();
   }
 
   private SDValue visitFADD(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
     ConstantFPSDNode fp0 = n0.getNode() instanceof ConstantFPSDNode ?
@@ -1741,22 +1764,22 @@ public class DAGCombiner {
     }
 
     if (fp0 != null && fp1 != null && !vt.equals(new EVT(MVT.ppcf128))) {
-      return dag.getNode(ISD.FADD, vt, n0, n1);
+      return dag.getNode(ISD.FADD, dl, vt, n0, n1);
     }
     if (fp0 != null && fp1 == null)
-      return dag.getNode(ISD.FADD, vt, n1, n0);
+      return dag.getNode(ISD.FADD, dl, vt, n1, n0);
     if (EnableUnsafeFPMath.value && fp1 != null && fp1.getValueAPF().isZero())
       return n0;
     if (isNegatibleForFree(n1, legalOprations) == 2)
-      return dag.getNode(ISD.FSUB, vt, n0, getNegatedExpression(n1, legalOprations));
+      return dag.getNode(ISD.FSUB, dl, vt, n0, getNegatedExpression(n1, legalOprations));
     if (isNegatibleForFree(n0, legalOprations) == 2)
-      return dag.getNode(ISD.FSUB, vt, n1, getNegatedExpression(n0, legalOprations));
+      return dag.getNode(ISD.FSUB, dl, vt, n1, getNegatedExpression(n0, legalOprations));
 
     if (EnableUnsafeFPMath.value && fp1 != null &&
         n0.getOpcode() == ISD.FADD &&
         n0.hasOneUse() && n0.getOperand(1).getNode() instanceof ConstantFPSDNode) {
-      return dag.getNode(ISD.FADD, vt, n0.getOperand(0),
-          dag.getNode(ISD.FADD, vt, n0.getOperand(1), n1));
+      return dag.getNode(ISD.FADD, dl, vt, n0.getOperand(0),
+          dag.getNode(ISD.FADD, dl, vt, n0.getOperand(1), n1));
     }
 
     return new SDValue();
@@ -1798,11 +1821,12 @@ public class DAGCombiner {
       if (newAlign <= align &&
           (!legalOprations ||
               tli.isOperationLegal(ISD.LOAD, vt))) {
-        return dag.getLoad(vt, ld1.getChain(),
-            ld1.getBasePtr(),
-            ld1.getSrcValue(),
-            ld1.getSrcValueOffset(),
-            false, align);
+        return dag.getLoad(n.getDebugLoc(),
+                vt, ld1.getChain(),
+                ld1.getBasePtr(),
+                ld1.getSrcValue(),
+                ld1.getSrcValueOffset(),
+                false, align);
       }
     }
     return new SDValue();
@@ -1832,14 +1856,16 @@ public class DAGCombiner {
           APInt newMask = mask.shl((int) amt);
           SDValue simplifyLHS = getDemandedBits(v.getOperand(0), newMask);
           if (simplifyLHS.getNode() != null)
-            return dag.getNode(ISD.SRL, v.getValueType(), simplifyLHS,
-                v.getOperand(1));
+            return dag.getNode(ISD.SRL, v.getDebugLoc(),
+                    v.getValueType(), simplifyLHS,
+                    v.getOperand(1));
         }
     }
     return new SDValue();
   }
 
   private SDValue visitTRUNCATE(SDNode n) {
+    DebugLoc dl = n.getDebugLoc();
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
 
@@ -1847,18 +1873,18 @@ public class DAGCombiner {
       return n0;
 
     if (n0.getNode() instanceof ConstantSDNode)
-      return dag.getNode(ISD.TRUNCATE, vt, n0);
+      return dag.getNode(ISD.TRUNCATE, dl, vt, n0);
 
     if (n0.getOpcode() == ISD.TRUNCATE)
-      return dag.getNode(ISD.TRUNCATE, vt, n0.getOperand(0));
+      return dag.getNode(ISD.TRUNCATE, dl, vt, n0.getOperand(0));
 
     int n0Opc = n0.getOpcode();
     if (n0Opc == ISD.ZERO_EXTEND || n0Opc == ISD.SIGN_EXTEND ||
         n0Opc == ISD.ANY_EXTEND) {
       if (n0.getOperand(0).getValueType().bitsLT(vt))
-        return dag.getNode(n0.getOpcode(), vt, n0.getOperand(0));
+        return dag.getNode(n0.getOpcode(), dl, vt, n0.getOperand(0));
       else if (n0.getOperand(0).getValueType().bitsGT(vt))
-        return dag.getNode(ISD.TRUNCATE, vt, n0.getOperand(0));
+        return dag.getNode(ISD.TRUNCATE, dl, vt, n0.getOperand(0));
       else
         return n0.getOperand(0);
     }
@@ -1866,7 +1892,7 @@ public class DAGCombiner {
     SDValue shorter = getDemandedBits(n0, APInt.getLowBitsSet(n0.getValueSizeInBits(),
         vt.getSizeInBits()));
     if (shorter.getNode() != null)
-      return dag.getNode(ISD.TRUNCATE, vt, shorter);
+      return dag.getNode(ISD.TRUNCATE, dl, vt, shorter);
 
     return reduceLoadWidth(n);
   }
@@ -1887,6 +1913,7 @@ public class DAGCombiner {
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
     EVT evt = vt;
+    DebugLoc dl = n.getDebugLoc();
 
     if (vt.isVector())
       return new SDValue();
@@ -1928,15 +1955,15 @@ public class DAGCombiner {
 
       int ptrOff = shAmt / 8;
       int newAlign = Util.minAlign(ld.getAlignment(), ptrOff);
-      SDValue newPtr = dag.getNode(ISD.ADD, ptrType, ld.getBasePtr(),
+      SDValue newPtr = dag.getNode(ISD.ADD, dl, ptrType, ld.getBasePtr(),
           dag.getConstant(ptrOff, ptrType, false));
 
       addToWorkList(newPtr.getNode());
       SDValue load = extType == LoadExtType.NON_EXTLOAD ?
-          dag.getLoad(vt, ld.getChain(), newPtr,
+          dag.getLoad(dl, vt, ld.getChain(), newPtr,
               ld.getSrcValue(), ld.getSrcValueOffset() + ptrOff,
               ld.isVolatile(), ld.getAlignment())
-          : dag.getExtLoad(extType, vt, ld.getChain(),
+          : dag.getExtLoad(dl, extType, vt, ld.getChain(),
           newPtr, ld.getSrcValue(), ld.getSrcValueOffset() + ptrOff,
           evt, ld.isVolatile(), ld.getAlignment());
 
@@ -1955,9 +1982,10 @@ public class DAGCombiner {
     EVT srcVT = ((VTSDNode) n1.getNode()).getVT();
     int destVTBits = destVT.getSizeInBits();
     int srcVTBits = srcVT.getSizeInBits();
+    DebugLoc dl = n.getDebugLoc();
 
     if (n0.getNode() instanceof ConstantSDNode || n0.getOpcode() == ISD.UNDEF)
-      return dag.getNode(ISD.SIGN_EXTEND_INREG, destVT, n0, n1);
+      return dag.getNode(ISD.SIGN_EXTEND_INREG, dl, destVT, n0, n1);
 
     if (dag.computeNumSignBits(n0) >= destVTBits - srcVTBits + 1)
       return n0;
@@ -1968,12 +1996,12 @@ public class DAGCombiner {
     if (n0.getOpcode() == ISD.SIGN_EXTEND || n0.getOpcode() == ISD.ANY_EXTEND) {
       SDValue n00 = n0.getOperand(0);
       if (n00.getValueType().getSizeInBits() < destVTBits)
-        return dag.getNode(ISD.SIGN_EXTEND, destVT, n00, n1);
+        return dag.getNode(ISD.SIGN_EXTEND, dl, destVT, n00, n1);
     }
 
     // fold (sext_in_reg x) -> (zext_in_reg x) if the sign bit is known zero.
     if (dag.maskedValueIsZero(n0, APInt.getBitsSet(destVTBits, srcVTBits - 1, srcVTBits)))
-      return dag.getZeroExtendInReg(n0, srcVT);
+      return dag.getZeroExtendInReg(n0, dl, srcVT);
 
     // fold operands of sext_in_reg based on knowledge that the top bits are not
     // demanded.
@@ -1995,7 +2023,7 @@ public class DAGCombiner {
         if (shAmt.getZExtValue() + srcVTBits <= destVTBits) {
           int inSignBits = dag.computeNumSignBits(n0.getOperand(0));
           if (destVTBits - shAmt.getZExtValue() - srcVTBits < inSignBits)
-            return dag.getNode(ISD.SRA, destVT, n0.getOperand(0),
+            return dag.getNode(ISD.SRA, dl, destVT, n0.getOperand(0),
                 n0.getOperand(1));
         }
       }
@@ -2008,7 +2036,7 @@ public class DAGCombiner {
         ((!legalOprations && !((LoadSDNode) n0.getNode()).isVolatile()) ||
         tli.isLoadExtLegal(LoadExtType.SEXTLOAD, srcVT))) {
       LoadSDNode ld = (LoadSDNode) n0.getNode();
-      SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, destVT,
+      SDValue extLoad = dag.getExtLoad(dl, LoadExtType.SEXTLOAD, destVT,
           ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
           ld.getSrcValueOffset(), srcVT, ld.isVolatile(),
           ld.getAlignment());
@@ -2023,7 +2051,7 @@ public class DAGCombiner {
         ((!legalOprations && !((LoadSDNode) n0.getNode()).isVolatile()) ||
             tli.isLoadExtLegal(LoadExtType.SEXTLOAD, srcVT))) {
       LoadSDNode ld = (LoadSDNode) n0.getNode();
-      SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, destVT,
+      SDValue extLoad = dag.getExtLoad(dl, LoadExtType.SEXTLOAD, destVT,
           ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
           ld.getSrcValueOffset(), srcVT, ld.isVolatile(),
           ld.getAlignment());
@@ -2037,10 +2065,11 @@ public class DAGCombiner {
   private SDValue visitANY_EXTEND(SDNode n) {
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
+    DebugLoc dl = n.getDebugLoc();
 
     // fold (aext c1) -> c1
     if (n0.getNode() instanceof ConstantSDNode)
-      return dag.getNode(ISD.ANY_EXTEND, vt, n0);
+      return dag.getNode(ISD.ANY_EXTEND, dl, vt, n0);
 
     // fold (aext (aext x)) -> (aext x)
     // fold (aext (zext x)) -> (zext x)
@@ -2048,7 +2077,7 @@ public class DAGCombiner {
     if (n0.getOpcode() == ISD.ZERO_EXTEND ||
         n0.getOpcode() == ISD.ANY_EXTEND ||
         n0.getOpcode() == ISD.SIGN_EXTEND)
-      return dag.getNode(n0.getOpcode(), vt, n0.getOperand(0));
+      return dag.getNode(n0.getOpcode(), dl, vt, n0.getOperand(0));
 
     // fold (aext (truncate (load x))) -> (aext (smaller load x))
     // fold (aext (truncate (srl (load x), c))) -> (aext (small load (x+c/n)))
@@ -2057,7 +2086,7 @@ public class DAGCombiner {
       if (narrowLoad.getNode() != null) {
         if (!narrowLoad.getNode().equals(n0.getNode()))
           combineTo(n0.getNode(), narrowLoad, true);
-        return dag.getNode(ISD.ANY_EXTEND, vt, narrowLoad);
+        return dag.getNode(ISD.ANY_EXTEND, dl, vt, narrowLoad);
       }
     }
 
@@ -2067,8 +2096,8 @@ public class DAGCombiner {
       if (op.getValueType().equals(vt))
         return op;
       if (op.getValueType().bitsGT(vt))
-        return dag.getNode(ISD.TRUNCATE, vt, op);
-      return dag.getNode(ISD.ANY_EXTEND, vt, op);
+        return dag.getNode(ISD.TRUNCATE, dl, vt, op);
+      return dag.getNode(ISD.ANY_EXTEND, dl, vt, op);
     }
 
     // Fold (aext (and (trunc x), cst)) -> (and x, cst)
@@ -2080,13 +2109,13 @@ public class DAGCombiner {
             n0.getValueType())) {
       SDValue x = n0.getOperand(0).getOperand(0);
       if (x.getValueType().bitsLT(vt))
-        x = dag.getNode(ISD.ANY_EXTEND, vt, x);
+        x = dag.getNode(ISD.ANY_EXTEND, dl, vt, x);
       else if (x.getValueType().bitsGT(vt))
-        x = dag.getNode(ISD.TRUNCATE, vt, x);
+        x = dag.getNode(ISD.TRUNCATE, dl, vt, x);
 
       APInt mask = ((ConstantSDNode) n0.getOperand(1).getNode()).getAPIntValue();
       mask = mask.zext(vt.getSizeInBits());
-      return dag.getNode(ISD.AND, vt, x, dag.getConstant(mask, vt, false));
+      return dag.getNode(ISD.AND, dl, vt, x, dag.getConstant(mask, vt, false));
     }
 
     // fold (aext (load x)) -> (aext (truncate (extload x)))
@@ -2099,13 +2128,13 @@ public class DAGCombiner {
         doXform = extendUsesToFormExtLoad(n, n0, ISD.ANY_EXTEND, setccs);
       if (doXform) {
         LoadSDNode ld = (LoadSDNode) n0.getNode();
-        SDValue extLoad = dag.getExtLoad(LoadExtType.EXTLOAD, vt,
+        SDValue extLoad = dag.getExtLoad(dl, LoadExtType.EXTLOAD, vt,
             ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
             ld.getSrcValueOffset(), n0.getValueType(),
             ld.isVolatile(), ld.getAlignment());
 
         combineTo(n, extLoad, true);
-        SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+        SDValue trunc = dag.getNode(ISD.TRUNCATE, dl, n0.getValueType(), extLoad);
         combineTo(n0.getNode(), trunc, extLoad.getValue(1));
         for (SDNode cc : setccs) {
           ArrayList<SDValue> ops = new ArrayList<>();
@@ -2114,10 +2143,10 @@ public class DAGCombiner {
             if (sop.equals(trunc))
               ops.add(extLoad);
             else
-              ops.add(dag.getNode(ISD.ANY_EXTEND, vt, sop));
+              ops.add(dag.getNode(ISD.ANY_EXTEND, dl, vt, sop));
           }
           ops.add(cc.getOperand(2));
-          combineTo(cc, dag.getNode(ISD.SETCC, cc.getValueType(0),
+          combineTo(cc, dag.getNode(ISD.SETCC, dl, cc.getValueType(0),
               ops), true);
         }
         return new SDValue(n, 0);
@@ -2132,20 +2161,20 @@ public class DAGCombiner {
       LoadSDNode ld = (LoadSDNode) n0.getNode();
       EVT evt = ld.getMemoryVT();
 
-      SDValue extLoad = dag.getExtLoad(LoadExtType.EXTLOAD, vt,
+      SDValue extLoad = dag.getExtLoad(dl, LoadExtType.EXTLOAD, vt,
           ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
           ld.getSrcValueOffset(), evt,
           ld.isVolatile(), ld.getAlignment());
 
       combineTo(n, extLoad, true);
-      SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+      SDValue trunc = dag.getNode(ISD.TRUNCATE, dl, n0.getValueType(), extLoad);
       combineTo(n0.getNode(), trunc, extLoad.getValue(1));
       return new SDValue(n, 0);
     }
 
     // aext(setcc x,y,cc) -> select_cc x, y, 1, 0, cc
     if (n0.getOpcode() == ISD.SETCC) {
-      SDValue scc = simplifySelectCC(n0.getOperand(0), n0.getOperand(1),
+      SDValue scc = simplifySelectCC(dl, n0.getOperand(0), n0.getOperand(1),
           dag.getConstant(1, vt, false),
           dag.getConstant(0, vt, false),
           ((CondCodeSDNode) n0.getOperand(2).getNode()).getCondition(), true);
@@ -2159,16 +2188,17 @@ public class DAGCombiner {
   private SDValue visitZERO_EXTEND(SDNode n) {
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
+    DebugLoc dl = n.getDebugLoc();
 
     // fold (zext c1) -> c1
     if (n0.getNode() instanceof ConstantSDNode)
-      return dag.getNode(ISD.ZERO_EXTEND, vt, n0);
+      return dag.getNode(ISD.ZERO_EXTEND, dl, vt, n0);
 
     // fold (zext (zext x)) -> (zext x)
     // fold (zext (aext x)) -> (zext x)
     if (n0.getOpcode() == ISD.ZERO_EXTEND ||
         n0.getOpcode() == ISD.ANY_EXTEND)
-      return dag.getNode(ISD.ZERO_EXTEND, vt, n0.getOperand(0));
+      return dag.getNode(ISD.ZERO_EXTEND, dl, vt, n0.getOperand(0));
 
     // fold (zext (truncate (load x))) -> (zext (smaller load x))
     // fold (zext (truncate (srl (load x), c))) -> (zext (small load (x+c/n)))
@@ -2177,7 +2207,7 @@ public class DAGCombiner {
       if (narrowLoad.getNode() != null) {
         if (!narrowLoad.getNode().equals(n0.getNode()))
           combineTo(n0.getNode(), narrowLoad, true);
-        return dag.getNode(ISD.ZERO_EXTEND, vt, narrowLoad);
+        return dag.getNode(ISD.ZERO_EXTEND, dl, vt, narrowLoad);
       }
     }
     // fold (zext (truncate x)) -> (and x, mask)
@@ -2185,10 +2215,10 @@ public class DAGCombiner {
         (!legalOprations || tli.isOperationLegal(ISD.AND, vt))) {
       SDValue op = n0.getOperand(0);
       if (vt.bitsGT(op.getValueType()))
-        op = dag.getNode(ISD.ANY_EXTEND, vt, op);
+        op = dag.getNode(ISD.ANY_EXTEND, dl, vt, op);
       else if (op.getValueType().bitsGT(vt))
-        op = dag.getNode(ISD.TRUNCATE, vt, op);
-      return dag.getZeroExtendInReg(op, n0.getValueType());
+        op = dag.getNode(ISD.TRUNCATE, dl, vt, op);
+      return dag.getZeroExtendInReg(op, dl, n0.getValueType());
     }
 
     // Fold (zext (and (trunc x), cst)) -> (and x, cst),
@@ -2201,12 +2231,12 @@ public class DAGCombiner {
             !tli.isZExtFree(n0.getValueType(), vt))) {
       SDValue x = n0.getOperand(0).getOperand(0);
       if (x.getValueType().bitsLT(vt))
-        x = dag.getNode(ISD.ANY_EXTEND, vt, x);
+        x = dag.getNode(ISD.ANY_EXTEND, dl, vt, x);
       else if (x.getValueType().bitsGT(vt))
-        x = dag.getNode(ISD.TRUNCATE, vt, x);
+        x = dag.getNode(ISD.TRUNCATE, dl, vt, x);
       APInt mask = ((ConstantSDNode) n0.getOperand(1).getNode()).getAPIntValue();
       mask = mask.zext(vt.getSizeInBits());
-      return dag.getNode(ISD.AND, vt, x, dag.getConstant(mask, vt, false));
+      return dag.getNode(ISD.AND, dl, vt, x, dag.getConstant(mask, vt, false));
     }
 
     // fold (zext (load x)) -> (zext (truncate (zextload x)))
@@ -2219,12 +2249,12 @@ public class DAGCombiner {
         doXform = extendUsesToFormExtLoad(n, n0, ISD.ZERO_EXTEND, setccs);
       if (doXform) {
         LoadSDNode ld = (LoadSDNode) n0.getNode();
-        SDValue extLoad = dag.getExtLoad(LoadExtType.ZEXTLOAD, vt,
+        SDValue extLoad = dag.getExtLoad(dl, LoadExtType.ZEXTLOAD, vt,
             ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
             ld.getSrcValueOffset(), n0.getValueType(),
             ld.isVolatile(), ld.getAlignment());
         combineTo(n, extLoad, true);
-        SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+        SDValue trunc = dag.getNode(ISD.TRUNCATE, dl, n0.getValueType(), extLoad);
         combineTo(n0.getNode(), trunc, extLoad.getValue(1));
         for (SDNode cc : setccs) {
           ArrayList<SDValue> ops = new ArrayList<>();
@@ -2233,10 +2263,10 @@ public class DAGCombiner {
             if (sop.equals(trunc))
               ops.add(extLoad);
             else
-              ops.add(dag.getNode(ISD.ZERO_EXTEND, vt, sop));
+              ops.add(dag.getNode(ISD.ZERO_EXTEND, dl, vt, sop));
           }
           ops.add(cc.getOperand(2));
-          combineTo(cc, dag.getNode(ISD.SETCC, cc.getValueType(0),
+          combineTo(cc, dag.getNode(ISD.SETCC, dl, cc.getValueType(0),
               ops), true);
         }
         return new SDValue(n, 0);
@@ -2251,12 +2281,12 @@ public class DAGCombiner {
       EVT evt = ld.getMemoryVT();
       if ((!legalOprations && !ld.isVolatile()) ||
           tli.isLoadExtLegal(LoadExtType.ZEXTLOAD, evt)) {
-        SDValue extLoad = dag.getExtLoad(LoadExtType.ZEXTLOAD, vt,
+        SDValue extLoad = dag.getExtLoad(dl, LoadExtType.ZEXTLOAD, vt,
             ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
             ld.getSrcValueOffset(), evt, ld.isVolatile(),
             ld.getAlignment());
         combineTo(n, extLoad, true);
-        combineTo(n0.getNode(), dag.getNode(ISD.TRUNCATE,
+        combineTo(n0.getNode(), dag.getNode(ISD.TRUNCATE, dl,
             n0.getValueType(), extLoad), extLoad.getValue(1));
         return new SDValue(n, 0);
       }
@@ -2264,7 +2294,7 @@ public class DAGCombiner {
 
     // zext(setcc x,y,cc) -> select_cc x, y, 1, 0, cc
     if (n0.getOpcode() == ISD.SETCC) {
-      SDValue scc = simplifySelectCC(n0.getOperand(0), n0.getOperand(1),
+      SDValue scc = simplifySelectCC(dl, n0.getOperand(0), n0.getOperand(1),
           dag.getConstant(1, vt, false),
           dag.getConstant(0, vt, false),
           ((CondCodeSDNode) n0.getOperand(2).getNode()).getCondition(), true);
@@ -2278,13 +2308,14 @@ public class DAGCombiner {
   private SDValue visitSIGN_EXTEND(SDNode n) {
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
+    DebugLoc dl = n.getDebugLoc();
 
     if (n0.getNode() instanceof ConstantSDNode)
-      return dag.getNode(ISD.SIGN_EXTEND, vt, n0);
+      return dag.getNode(ISD.SIGN_EXTEND, dl, vt, n0);
 
     if (n0.getOpcode() == ISD.SIGN_EXTEND ||
         n0.getOpcode() == ISD.ANY_EXTEND)
-      return dag.getNode(ISD.SIGN_EXTEND, vt, n0.getOperand(0));
+      return dag.getNode(ISD.SIGN_EXTEND, dl, vt, n0.getOperand(0));
 
     if (n0.getOpcode() == ISD.TRUNCATE) {
       // fold (sext (truncate (load x))) -> (sext (smaller load x))
@@ -2312,20 +2343,20 @@ public class DAGCombiner {
         // Op is i32, Mid is i8, and Dest is i64.  If Op has more than 24 sign
         // bits, just sext from i32.
         if (numSignBits > opBits - midBits)
-          return dag.getNode(ISD.SIGN_EXTEND, vt, op);
+          return dag.getNode(ISD.SIGN_EXTEND, dl, vt, op);
       } else {
         if (numSignBits > opBits - midBits)
-          return dag.getNode(ISD.TRUNCATE, vt, op);
+          return dag.getNode(ISD.TRUNCATE, dl, vt, op);
       }
 
       // fold (sext (truncate x)) -> (sextinreg x).
       if (!legalOprations || tli.isOperationLegal(ISD.SIGN_EXTEND_INREG,
           n0.getValueType())) {
         if (op.getValueType().bitsLT(vt))
-          op = dag.getNode(ISD.ANY_EXTEND, vt, op);
+          op = dag.getNode(ISD.ANY_EXTEND, dl, vt, op);
         else if (op.getValueType().bitsGT(vt))
-          op = dag.getNode(ISD.TRUNCATE, vt, op);
-        return dag.getNode(ISD.SIGN_EXTEND_INREG, vt, op,
+          op = dag.getNode(ISD.TRUNCATE, dl, vt, op);
+        return dag.getNode(ISD.SIGN_EXTEND_INREG, dl, vt, op,
             dag.getValueType(n0.getValueType()));
       }
     }
@@ -2340,12 +2371,12 @@ public class DAGCombiner {
         doXform = extendUsesToFormExtLoad(n, n0, ISD.SIGN_EXTEND, setccs);
       if (doXform) {
         LoadSDNode ld = (LoadSDNode) n0.getNode();
-        SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, vt,
+        SDValue extLoad = dag.getExtLoad(dl, LoadExtType.SEXTLOAD, vt,
             ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
             ld.getSrcValueOffset(), n0.getValueType(),
             ld.isVolatile(), ld.getAlignment());
         combineTo(n, extLoad, true);
-        SDValue trunc = dag.getNode(ISD.TRUNCATE, n0.getValueType(), extLoad);
+        SDValue trunc = dag.getNode(ISD.TRUNCATE, dl, n0.getValueType(), extLoad);
         combineTo(n0.getNode(), trunc, extLoad.getValue(1));
         for (SDNode cc : setccs) {
           ArrayList<SDValue> ops = new ArrayList<>();
@@ -2354,10 +2385,10 @@ public class DAGCombiner {
             if (sop.equals(trunc))
               ops.add(extLoad);
             else
-              ops.add(dag.getNode(ISD.SIGN_EXTEND, vt, sop));
+              ops.add(dag.getNode(ISD.SIGN_EXTEND, dl, vt, sop));
           }
           ops.add(cc.getOperand(2));
-          combineTo(cc, dag.getNode(ISD.SETCC, cc.getValueType(0),
+          combineTo(cc, dag.getNode(ISD.SETCC, dl, cc.getValueType(0),
               ops), true);
         }
         return new SDValue(n, 0);
@@ -2370,12 +2401,12 @@ public class DAGCombiner {
       EVT evt = ld.getMemoryVT();
       if ((!legalOprations && !ld.isVolatile()) ||
           tli.isLoadExtLegal(LoadExtType.SEXTLOAD, evt)) {
-        SDValue extLoad = dag.getExtLoad(LoadExtType.SEXTLOAD, vt,
+        SDValue extLoad = dag.getExtLoad(dl, LoadExtType.SEXTLOAD, vt,
             ld.getChain(), ld.getBasePtr(), ld.getSrcValue(),
             ld.getSrcValueOffset(), evt, ld.isVolatile(),
             ld.getAlignment());
         combineTo(n, extLoad, true);
-        combineTo(n0.getNode(), dag.getNode(ISD.TRUNCATE,
+        combineTo(n0.getNode(), dag.getNode(ISD.TRUNCATE, dl,
             n0.getValueType(), extLoad), extLoad.getValue(1));
         return new SDValue(n, 0);
       }
@@ -2385,12 +2416,12 @@ public class DAGCombiner {
       // sext(setcc) -> sext_in_reg(vsetcc) for vectors.
       if (vt.isVector() && vt.getSizeInBits() == n0.getOperand(0).getValueSizeInBits() &&
           !legalOprations) {
-        return dag.getVSetCC(vt, n0.getOperand(0), n0.getOperand(1),
+        return dag.getVSetCC(dl, vt, n0.getOperand(0), n0.getOperand(1),
             ((CondCodeSDNode) n0.getOperand(2).getNode()).getCondition());
       }
 
       SDValue negOne = dag.getConstant(APInt.getAllOnesValue(vt.getSizeInBits()), vt, false);
-      SDValue scc = simplifySelectCC(n0.getOperand(0), n0.getOperand(1),
+      SDValue scc = simplifySelectCC(dl, n0.getOperand(0), n0.getOperand(1),
           negOne, dag.getConstant(0, vt, false),
           ((CondCodeSDNode) n0.getOperand(2).getNode()).getCondition(), true);
       if (scc.getNode() != null)
@@ -2398,8 +2429,8 @@ public class DAGCombiner {
 
       EVT setCCTy = new EVT(tli.getSetCCResultType(vt));
       if (!legalOprations || tli.isOperationLegal(ISD.SETCC, setCCTy)) {
-        return dag.getNode(ISD.SELECT, vt,
-            dag.getSetCC(setCCTy, n0.getOperand(0),
+        return dag.getNode(ISD.SELECT, dl, vt,
+            dag.getSetCC(dl, setCCTy, n0.getOperand(0),
                 n0.getOperand(1), ((CondCodeSDNode)n0.getOperand(2).getNode()).getCondition()),
             negOne, dag.getConstant(0, vt, false));
       }
@@ -2408,7 +2439,7 @@ public class DAGCombiner {
     // fold (sext x) -> (zext x) if the sign bit is known zero.
     if ((!legalOprations || tli.isOperationLegal(ISD.ZERO_EXTEND, vt)) &&
         dag.signBitIsZero(n0))
-      return dag.getNode(ISD.ZERO_EXTEND, vt, n0);
+      return dag.getNode(ISD.ZERO_EXTEND, dl, vt, n0);
 
     return new SDValue();
   }
@@ -2462,24 +2493,29 @@ public class DAGCombiner {
     return true;
   }
 
-  private SDValue simplifySetCC(EVT vt, SDValue op0,
-                                SDValue op1, CondCode cond) {
-    return simplifySetCC(vt, op0, op1, cond, true);
+  private SDValue simplifySetCC(DebugLoc dl,
+                                EVT vt,
+                                SDValue op0,
+                                SDValue op1,
+                                CondCode cond) {
+    return simplifySetCC(dl, vt, op0, op1, cond, true);
   }
 
-  private SDValue simplifySetCC(EVT vt,
+  private SDValue simplifySetCC(DebugLoc dl,
+                                EVT vt,
                                 SDValue op0,
                                 SDValue op1,
                                 CondCode cond,
                                 boolean foldBooleans) {
     DAGCombinerInfo dci = new DAGCombinerInfo(dag, !legalTypes,
         !legalOprations, false, this);
-    return tli.simplifySetCC(vt, op0, op1, cond, foldBooleans, dci);
+    return tli.simplifySetCC(vt, op0, op1, cond, foldBooleans, dl, dci);
   }
 
   private SDValue visitSETCC(SDNode n) {
-    return simplifySetCC(n.getValueType(0), n.getOperand(0), n.getOperand(1),
-        ((CondCodeSDNode) n.getOperand(2).getNode()).getCondition());
+    return simplifySetCC(n.getDebugLoc(), n.getValueType(0),
+            n.getOperand(0), n.getOperand(1),
+            ((CondCodeSDNode) n.getOperand(2).getNode()).getCondition());
   }
 
   private SDValue visitSELECT_CC(SDNode n) {
@@ -2489,11 +2525,12 @@ public class DAGCombiner {
     SDValue n3 = n.getOperand(3);
     SDValue n4 = n.getOperand(4);
     CondCode cc = ((CondCodeSDNode) n4.getNode()).getCondition();
+    DebugLoc dl = n.getDebugLoc();
 
     if (n2.equals(n3)) return n2;
-    SDValue scc = simplifySetCC(
-        new EVT(tli.getSetCCResultType(n0.getValueType())),
-        n0, n1, cc, false);
+    SDValue scc = simplifySetCC(dl,
+            new EVT(tli.getSetCCResultType(n0.getValueType())),
+            n0, n1, cc, false);
     if (scc.getNode() != null)
       addToWorkList(scc.getNode());
 
@@ -2505,19 +2542,20 @@ public class DAGCombiner {
     }
 
     if (scc.getNode() != null && scc.getOpcode() == ISD.SETCC) {
-      return dag.getNode(ISD.SELECT_CC, n2.getValueType(),
+      return dag.getNode(ISD.SELECT_CC, dl, n2.getValueType(),
           scc.getOperand(0), scc.getOperand(1), n2, n3,
           scc.getOperand(2));
     }
     if (simplifySelectOps(n, n2, n3))
       return new SDValue(n, 0);
-    return simplifySelectCC(n0, n1, n2, n3, cc);
+    return simplifySelectCC(dl, n0, n1, n2, n3, cc);
   }
 
   private SDValue visitSELECT(SDNode n) {
     SDValue n0 = n.getOperand(0); // condition
     SDValue n1 = n.getOperand(1); // lhs
     SDValue n2 = n.getOperand(2); // rhs
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
@@ -2545,7 +2583,7 @@ public class DAGCombiner {
     if (n0.getNode() instanceof ConstantSDNode &&
         n1.getNode() instanceof ConstantSDNode &&
         ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(1)) {
-      return dag.getNode(ISD.OR, vt, n0, n2);
+      return dag.getNode(ISD.OR, dl, vt, n0, n2);
     }
     // fold (select C, 0, 1) -> (xor C, 1)
     if (n0.getNode() instanceof ConstantSDNode &&
@@ -2553,27 +2591,27 @@ public class DAGCombiner {
         ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(0) &&
         n2.getNode() instanceof ConstantSDNode &&
         ((ConstantSDNode) n2.getNode()).getAPIntValue().eq(1)) {
-      return dag.getNode(ISD.XOR, vt, n0, n2);
+      return dag.getNode(ISD.XOR, dl, vt, n0, n2);
     }
     // fold (select C, 0, X) -> (and (not C), X)
     if (n0.getNode() instanceof ConstantSDNode &&
         n1.getNode() instanceof ConstantSDNode &&
         ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(0)) {
       APInt cc = ((ConstantSDNode) n0.getNode()).getAPIntValue();
-      return dag.getNode(ISD.AND, vt, dag.getConstant(cc.not(), vt0, false), n2);
+      return dag.getNode(ISD.AND, dl, vt, dag.getConstant(cc.not(), vt0, false), n2);
     }
     // fold (select C, X, 1) -> (or (not C), X)
     if (n0.getNode() instanceof ConstantSDNode &&
         n2.getNode() instanceof ConstantSDNode &&
         ((ConstantSDNode) n2.getNode()).getAPIntValue().eq(1)) {
       APInt cc = ((ConstantSDNode) n0.getNode()).getAPIntValue();
-      return dag.getNode(ISD.OR, vt, dag.getConstant(cc.not(), vt0, false), n1);
+      return dag.getNode(ISD.OR, dl, vt, dag.getConstant(cc.not(), vt0, false), n1);
     }
     // fold (select C, X, 0) -> (and C, X)
     if (n0.getNode() instanceof ConstantSDNode &&
         n2.getNode() instanceof ConstantSDNode &&
         ((ConstantSDNode) n2.getNode()).getAPIntValue().eq(0)) {
-      return dag.getNode(ISD.AND, vt, n0, n1);
+      return dag.getNode(ISD.AND, dl, vt, n0, n1);
     }
 
     // fold (select X, X, Y) -> (or X, Y)
@@ -2581,7 +2619,7 @@ public class DAGCombiner {
     if (vt.equals(new EVT(MVT.i1)) && (n0.equals(n1) ||
         (n1.getNode() instanceof ConstantSDNode &&
         ((ConstantSDNode) n1.getNode()).getAPIntValue().eq(1)))) {
-      return dag.getNode(ISD.OR, vt, n0, n2);
+      return dag.getNode(ISD.OR, dl, vt, n0, n2);
     }
 
     // fold (select X, Y, X) -> (and X, Y)
@@ -2589,7 +2627,7 @@ public class DAGCombiner {
     if (vt.equals(new EVT(MVT.i1)) && (n0.equals(n2) ||
         (n2.getNode() instanceof ConstantSDNode &&
             ((ConstantSDNode) n2.getNode()).isNullValue()))) {
-      return dag.getNode(ISD.AND, vt, n0, n1);
+      return dag.getNode(ISD.AND, dl, vt, n0, n1);
     }
 
     // If we can fold this based on the true/false value, do so.
@@ -2600,17 +2638,18 @@ public class DAGCombiner {
     if (n0.getOpcode() == ISD.SETCC) {
       if (tli.isOperationLegalOrCustom(ISD.SELECT_CC, new EVT(MVT.Other)) &&
           tli.isOperationLegalOrCustom(ISD.SELECT, vt)) {
-        return dag.getNode(ISD.SELECT_CC, vt,
-            n0.getOperand(0),
-            n0.getOperand(1),
-            n1, n2, n0.getOperand(2));
+        return dag.getNode(ISD.SELECT_CC, dl,
+                vt, n0.getOperand(0),
+                n0.getOperand(1),
+                n1, n2, n0.getOperand(2));
       }
-      return simplifySelect(n0, n1, n2);
+      return simplifySelect(n0, n1, n2, dl);
     }
     return new SDValue();
   }
 
   private boolean simplifySelectOps(SDNode sel, SDValue lhs, SDValue rhs) {
+    DebugLoc dl = sel.getDebugLoc();
     if (lhs.getOpcode() == rhs.getOpcode() &&
         lhs.hasOneUse() && rhs.hasOneUse()) {
       if (lhs.getOpcode() == ISD.LOAD &&
@@ -2625,6 +2664,7 @@ public class DAGCombiner {
             if (!ld1.isPredecessorOf(sel.getOperand(0).getNode()) &&
                 !ld2.isPredecessorOf(sel.getOperand(0).getNode())) {
               addr = dag.getNode(ISD.SELECT,
+                  dl,
                   ld1.getBasePtr().getValueType(),
                   sel.getOperand(0),
                   ld1.getBasePtr(),
@@ -2636,6 +2676,7 @@ public class DAGCombiner {
                 !ld1.isPredecessorOf(sel.getOperand(1).getNode()) &&
                 !ld2.isPredecessorOf(sel.getOperand(1).getNode())) {
               addr = dag.getNode(ISD.SELECT_CC,
+                  dl,
                   ld1.getBasePtr().getValueType(),
                   sel.getOperand(0), sel.getOperand(1),
                   ld1.getBasePtr(), ld2.getBasePtr(),
@@ -2646,12 +2687,12 @@ public class DAGCombiner {
           if (addr.getNode() != null) {
             SDValue load = new SDValue();
             if (ld1.getExtensionType() == LoadExtType.NON_EXTLOAD) {
-              load = dag.getLoad(sel.getValueType(0),
+              load = dag.getLoad(dl, sel.getValueType(0),
                   ld1.getChain(), addr, ld1.getSrcValue(),
                   ld1.getSrcValueOffset(), ld1.isVolatile(),
                   ld1.getAlignment());
             } else {
-              load = dag.getExtLoad(ld1.getExtensionType(),
+              load = dag.getExtLoad(dl, ld1.getExtensionType(),
                   sel.getValueType(0),
                   ld1.getChain(),
                   addr,
@@ -2671,19 +2712,21 @@ public class DAGCombiner {
     return false;
   }
 
-  private SDValue simplifySelect(SDValue n0, SDValue n1, SDValue n2) {
+  private SDValue simplifySelect(SDValue n0, SDValue n1, SDValue n2, DebugLoc dl) {
     Util.assertion(n0.getOpcode() == ISD.SETCC, "First argument must be a SetCC node!");
 
-    SDValue scc = simplifySelectCC(n0.getOperand(0),
+    SDValue scc = simplifySelectCC(dl, n0.getOperand(0),
         n0.getOperand(1), n1, n2,
         ((CondCodeSDNode) n0.getOperand(2).getNode()).getCondition());
     if (scc.getNode() != null) {
       if (scc.getOpcode() == ISD.SELECT_CC) {
-        SDValue setcc = dag.getNode(ISD.SETCC, n0.getValueType(),
-            scc.getOperand(0), scc.getOperand(1),
-            scc.getOperand(4));
+        SDValue setcc = dag.getNode(ISD.SETCC, dl,
+                n0.getValueType(),
+                scc.getOperand(0),
+                scc.getOperand(1),
+                scc.getOperand(4));
         addToWorkList(setcc.getNode());
-        return dag.getNode(ISD.SELECT, scc.getValueType(),
+        return dag.getNode(ISD.SELECT, dl, scc.getValueType(),
             scc.getOperand(2), scc.getOperand(3), setcc);
       }
       return new SDValue();
@@ -2691,13 +2734,22 @@ public class DAGCombiner {
     return new SDValue();
   }
 
-  private SDValue simplifySelectCC(SDValue n0, SDValue n1, SDValue n2, SDValue n3,
+  private SDValue simplifySelectCC(DebugLoc dl,
+                                   SDValue n0,
+                                   SDValue n1,
+                                   SDValue n2,
+                                   SDValue n3,
                                    CondCode cc) {
-    return simplifySelectCC(n0, n1, n2, n3, cc, false);
+    return simplifySelectCC(dl, n0, n1, n2, n3, cc, false);
   }
 
-  private SDValue simplifySelectCC(SDValue n0, SDValue n1, SDValue n2, SDValue n3,
-                                   CondCode cc, boolean notExtCompare) {
+  private SDValue simplifySelectCC(DebugLoc dl,
+                                   SDValue n0,
+                                   SDValue n1,
+                                   SDValue n2,
+                                   SDValue n3,
+                                   CondCode cc,
+                                   boolean notExtCompare) {
     if (n2.equals(n3)) return n2;
     EVT vt = n2.getValueType();
     ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
@@ -2706,9 +2758,9 @@ public class DAGCombiner {
         (ConstantSDNode) n2.getNode() : null;
     ConstantSDNode c3 = n3.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n3.getNode() : null;
-    SDValue scc = simplifySetCC(
-        new EVT(tli.getSetCCResultType(n0.getValueType())),
-        n0, n1, cc, false);
+    SDValue scc = simplifySetCC(dl,
+            new EVT(tli.getSetCCResultType(n0.getValueType())),
+            n0, n1, cc, false);
     if (scc.getNode() != null)
       addToWorkList(scc.getNode());
     ConstantSDNode sccc = scc.getNode() instanceof ConstantSDNode ?
@@ -2726,13 +2778,13 @@ public class DAGCombiner {
         if ((cc == CondCode.SETGE || cc == CondCode.SETGT) &&
             n0.equals(n2) && n3.getOpcode() == ISD.FNEG &&
             n2.equals(n3.getOperand(0))) {
-          return dag.getNode(ISD.FABS, vt, n0);
+          return dag.getNode(ISD.FABS, dl, vt, n0);
         }
 
         if ((cc == CondCode.SETLT || cc == CondCode.SETLE) &&
             n0.equals(n3) && n2.getOpcode() == ISD.FNEG &&
             n2.getOperand(0).equals(n3)) {
-          return dag.getNode(ISD.FABS, vt, n3);
+          return dag.getNode(ISD.FABS, dl, vt, n3);
         }
       }
     }
@@ -2760,13 +2812,13 @@ public class DAGCombiner {
           SDValue zero = dag.getIntPtrConstant(0);
           long eltSize = td.getTypeAllocSize(elts[0].getType());
           SDValue one = dag.getIntPtrConstant(1);
-          SDValue cond = dag.getSetCC(new EVT(tli.getSetCCResultType(n0.getValueType())),
+          SDValue cond = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(n0.getValueType())),
               n0, n1, cc);
 
-          SDValue cstOffset = dag.getNode(ISD.SELECT, zero.getValueType(),
+          SDValue cstOffset = dag.getNode(ISD.SELECT, dl, zero.getValueType(),
               cond, one, zero);
-          cpIdx = dag.getNode(ISD.ADD, new EVT(tli.getPointerTy()), cpIdx, cstOffset);
-          return dag.getLoad(tv.getValueType(0),
+          cpIdx = dag.getNode(ISD.ADD, dl, new EVT(tli.getPointerTy()), cpIdx, cstOffset);
+          return dag.getLoad(dl, tv.getValueType(0),
               dag.getEntryNode(), cpIdx,
               PseudoSourceValue.getConstantPool(), 0,
               false, alignment);
@@ -2786,26 +2838,26 @@ public class DAGCombiner {
         if (c2 != null && c2.getAPIntValue().and(c2.getAPIntValue().sub(1)).eq(0)) {
           long shCtv = c2.getAPIntValue().logBase2();
           SDValue shCt = dag.getConstant(shCtv, getShiftAmountTy(), false);
-          SDValue shift = dag.getNode(ISD.SRL,
+          SDValue shift = dag.getNode(ISD.SRL, dl,
               xTy, n0, shCt);
           addToWorkList(shift.getNode());
 
           if (xTy.bitsGT(aTy)) {
-            shift = dag.getNode(ISD.TRUNCATE, aTy, shift);
+            shift = dag.getNode(ISD.TRUNCATE, dl, aTy, shift);
             addToWorkList(shift.getNode());
           }
-          return dag.getNode(ISD.AND, aTy, shift, n2);
+          return dag.getNode(ISD.AND, dl, aTy, shift, n2);
         }
 
-        SDValue shift = dag.getNode(ISD.SRA, xTy, n0,
+        SDValue shift = dag.getNode(ISD.SRA, dl, xTy, n0,
             dag.getConstant(xTy.getSizeInBits() - 1,
                 getShiftAmountTy(), false));
         addToWorkList(shift.getNode());
         if (xTy.bitsGT(aTy)) {
-          shift = dag.getNode(ISD.TRUNCATE, aTy, shift);
+          shift = dag.getNode(ISD.TRUNCATE, dl, aTy, shift);
           addToWorkList(shift.getNode());
         }
-        return dag.getNode(ISD.AND, aTy, shift, n2);
+        return dag.getNode(ISD.AND, dl, aTy, shift, n2);
       }
     }
 
@@ -2817,15 +2869,15 @@ public class DAGCombiner {
 
       SDValue temp, sc;
       if (legalTypes) {
-        sc = dag.getSetCC(new EVT(tli.getSetCCResultType(
+        sc = dag.getSetCC(dl, new EVT(tli.getSetCCResultType(
             n0.getValueType())), n0, n1, cc);
         if (n2.getValueType().bitsGT(sc.getValueType()))
-          temp = dag.getZeroExtendInReg(sc, n2.getValueType());
+          temp = dag.getZeroExtendInReg(sc, dl, n2.getValueType());
         else
-          temp = dag.getNode(ISD.ZERO_EXTEND, n2.getValueType(), sc);
+          temp = dag.getNode(ISD.ZERO_EXTEND, dl, n2.getValueType(), sc);
       } else {
-        sc = dag.getSetCC(new EVT(MVT.i1), n0, n1, cc);
-        temp = dag.getNode(ISD.ZERO_EXTEND, n2.getValueType(), sc);
+        sc = dag.getSetCC(dl, new EVT(MVT.i1), n0, n1, cc);
+        temp = dag.getNode(ISD.ZERO_EXTEND, dl, n2.getValueType(), sc);
       }
 
       addToWorkList(sc.getNode());
@@ -2834,7 +2886,7 @@ public class DAGCombiner {
       if (c2.getAPIntValue().eq(1))
         return temp;
 
-      return dag.getNode(ISD.SHL, n2.getValueType(), temp,
+      return dag.getNode(ISD.SHL, dl, n2.getValueType(), temp,
           dag.getConstant(c2.getAPIntValue().logBase2(),
               getShiftAmountTy(), false));
     }
@@ -2844,14 +2896,13 @@ public class DAGCombiner {
         n2.getOpcode() == ISD.SUB && n0.equals(n2.getOperand(1)) &&
         n2.getOperand(0).equals(n1) && n0.getValueType().isInteger()) {
       EVT xType = n0.getValueType();
-      SDValue shift = dag.getNode(ISD.SRA, xType, n0,
+      SDValue shift = dag.getNode(ISD.SRA, dl, xType, n0,
           dag.getConstant(xType.getSizeInBits() - 1,
               getShiftAmountTy(), false));
-      SDValue add = dag.getNode(ISD.ADD, xType, n0, shift);
+      SDValue add = dag.getNode(ISD.ADD, dl, xType, n0, shift);
       addToWorkList(shift.getNode());
-      ;
       addToWorkList(add.getNode());
-      return dag.getNode(ISD.XOR, xType, add, shift);
+      return dag.getNode(ISD.XOR, dl, xType, add, shift);
     }
 
     if (c1 != null && c1.isAllOnesValue() && cc == CondCode.SETGT &&
@@ -2861,13 +2912,13 @@ public class DAGCombiner {
         ConstantSDNode csd = (ConstantSDNode) n3.getOperand(0).getNode();
         EVT xType = n0.getValueType();
         if (csd.isNullValue() && xType.isInteger()) {
-          SDValue shift = dag.getNode(ISD.SRA, xType, n0,
+          SDValue shift = dag.getNode(ISD.SRA, dl, xType, n0,
               dag.getConstant(xType.getSizeInBits() - 1,
                   getShiftAmountTy(), false));
-          SDValue add = dag.getNode(ISD.ADD, xType, n0, shift);
+          SDValue add = dag.getNode(ISD.ADD, dl, xType, n0, shift);
           addToWorkList(shift.getNode());
           addToWorkList(add.getNode());
-          return dag.getNode(ISD.XOR, xType, add, shift);
+          return dag.getNode(ISD.XOR, dl, xType, add, shift);
         }
       }
     }
@@ -2878,7 +2929,7 @@ public class DAGCombiner {
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
     if (n0.getNode() instanceof ConstantSDNode)
-      return dag.getNode(ISD.CTPOP, vt, n0);
+      return dag.getNode(ISD.CTPOP, n.getDebugLoc(), vt, n0);
 
     return new SDValue();
   }
@@ -2887,7 +2938,7 @@ public class DAGCombiner {
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
     if (n0.getNode() instanceof ConstantSDNode)
-      return dag.getNode(ISD.CTTZ, vt, n0);
+      return dag.getNode(ISD.CTTZ, n.getDebugLoc(), vt, n0);
 
     return new SDValue();
   }
@@ -2896,7 +2947,7 @@ public class DAGCombiner {
     SDValue n0 = n.getOperand(0);
     EVT vt = n.getValueType(0);
     if (n0.getNode() instanceof ConstantSDNode)
-      return dag.getNode(ISD.CTLZ, vt, n0);
+      return dag.getNode(ISD.CTLZ, n.getDebugLoc(), vt, n0);
 
     return new SDValue();
   }
@@ -2904,6 +2955,7 @@ public class DAGCombiner {
   private SDValue visitSRL(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
@@ -2930,7 +2982,7 @@ public class DAGCombiner {
       long t2 = c1.getZExtValue();
       if ((t1 + t2) > opSizeInBits)
         return dag.getConstant(0, vt, false);
-      return dag.getNode(ISD.SRL, vt, n0.getOperand(0),
+      return dag.getNode(ISD.SRL, dl, vt, n0.getOperand(0),
           dag.getConstant(t1 + t2, n1.getValueType(), false));
     }
 
@@ -2939,14 +2991,14 @@ public class DAGCombiner {
       if (c1.getZExtValue() >= smallVT.getSizeInBits())
         return dag.getUNDEF(vt);
 
-      SDValue smallShift = dag.getNode(ISD.SRL, smallVT, n0.getOperand(0), n1);
+      SDValue smallShift = dag.getNode(ISD.SRL, dl, smallVT, n0.getOperand(0), n1);
       addToWorkList(smallShift.getNode());
-      return dag.getNode(ISD.ANY_EXTEND, vt, smallShift);
+      return dag.getNode(ISD.ANY_EXTEND, dl, vt, smallShift);
     }
 
     if (c1 != null && c1.getZExtValue() + 1 == vt.getSizeInBits() &&
         n0.getOpcode() == ISD.SRA) {
-      return dag.getNode(ISD.SRL, vt, n0.getOperand(0), n1);
+      return dag.getNode(ISD.SRL, dl, vt, n0.getOperand(0), n1);
     }
 
     if (c1 != null && n0.getOpcode() == ISD.CTLZ &&
@@ -2965,11 +3017,11 @@ public class DAGCombiner {
         int shAmt = unknownBits.countTrailingZeros();
         SDValue op = n0.getOperand(0);
         if (shAmt != 0) {
-          op = dag.getNode(ISD.SRL, vt, op,
+          op = dag.getNode(ISD.SRL, dl, vt, op,
               dag.getConstant(shAmt, getShiftAmountTy(), false));
           addToWorkList(op.getNode());
         }
-        return dag.getNode(ISD.XOR, vt, op, dag.getConstant(1, vt, false));
+        return dag.getNode(ISD.XOR, dl, vt, op, dag.getConstant(1, vt, false));
       }
     }
 
@@ -2983,8 +3035,8 @@ public class DAGCombiner {
         SDValue n100 = n1.getOperand(0).getOperand(0);
         APInt truncVal = cst.getAPIntValue();
         truncVal = truncVal.trunc(truncVT.getSizeInBits());
-        return dag.getNode(ISD.SRL, vt, n0, dag.getNode(ISD.AND, truncVT,
-            dag.getNode(ISD.TRUNCATE, truncVT, n100),
+        return dag.getNode(ISD.SRL, dl, vt, n0, dag.getNode(ISD.AND, dl, truncVT,
+            dag.getNode(ISD.TRUNCATE, dl, truncVT, n100),
             dag.getConstant(truncVal, truncVT, false)));
       }
     }
@@ -3002,6 +3054,7 @@ public class DAGCombiner {
   private SDValue visitSHL(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c0 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c1 = n1.getNode() instanceof ConstantSDNode ?
@@ -3031,8 +3084,8 @@ public class DAGCombiner {
         SDValue n100 = n1.getOperand(0).getOperand(0);
         APInt trunc = n101C.getAPIntValue();
         trunc = trunc.trunc(truncVT.getSizeInBits());
-        return dag.getNode(ISD.SHL, vt, n0,
-            dag.getNode(ISD.AND, truncVT, dag.getNode(ISD.TRUNCATE, truncVT, n100),
+        return dag.getNode(ISD.SHL, dl, vt, n0,
+            dag.getNode(ISD.AND, dl, truncVT, dag.getNode(ISD.TRUNCATE, dl, truncVT, n100),
                 dag.getConstant(trunc, truncVT, false)));
       }
     }
@@ -3043,7 +3096,7 @@ public class DAGCombiner {
       long t2 = c1.getZExtValue();
       if ((t1 + t2) > opSizeInBits)
         return dag.getConstant(0, vt, false);
-      return dag.getNode(ISD.SHL, vt, n0.getOperand(0),
+      return dag.getNode(ISD.SHL, dl, vt, n0.getOperand(0),
           dag.getConstant(t1 + t2, n1.getValueType(), false));
     }
 
@@ -3054,18 +3107,18 @@ public class DAGCombiner {
         long t2 = c1.getZExtValue();
         SDValue hiBitsMask = dag.getConstant(APInt.getHighBitsSet(vt.getSizeInBits(),
             (int) (vt.getSizeInBits() - t1)), vt, false);
-        SDValue mask = dag.getNode(ISD.AND, vt, n0.getOperand(0), hiBitsMask);
+        SDValue mask = dag.getNode(ISD.AND, dl, vt, n0.getOperand(0), hiBitsMask);
         if (t2 > t1)
-          return dag.getNode(ISD.SHL, vt, mask, dag.getConstant(t2 - t1, n1.getValueType(), false));
+          return dag.getNode(ISD.SHL, dl, vt, mask, dag.getConstant(t2 - t1, n1.getValueType(), false));
         else
-          return dag.getNode(ISD.SRL, vt, mask, dag.getConstant(t1 - t2, n1.getValueType(), false));
+          return dag.getNode(ISD.SRL, dl, vt, mask, dag.getConstant(t1 - t2, n1.getValueType(), false));
       }
     }
 
     if (c1 != null && n0.getOpcode() == ISD.SRA && n1.equals(n0.getOperand(1))) {
       SDValue hiBitsMask = dag.getConstant(APInt.getHighBitsSet(vt.getSizeInBits(),
           (int) (vt.getSizeInBits() - c1.getZExtValue())), vt, false);
-      return dag.getNode(ISD.AND, vt, n0.getOperand(0), hiBitsMask);
+      return dag.getNode(ISD.AND, dl, vt, n0.getOperand(0), hiBitsMask);
     }
 
     return c1 != null ? visitShiftByConstant(n, c1.getZExtValue()) : new SDValue();
@@ -3110,14 +3163,16 @@ public class DAGCombiner {
         return new SDValue();
     }
 
-    SDValue newRhs = dag.getNode(n.getOpcode(), n.getValueType(0), lhs.getOperand(1), n.getOperand(1));
-    SDValue newShift = dag.getNode(n.getOpcode(), vt, lhs.getOperand(0), n.getOperand(1));
-    return dag.getNode(lhs.getOpcode(), vt, newShift, newRhs);
+    DebugLoc dl = n.getDebugLoc();
+    SDValue newRhs = dag.getNode(n.getOpcode(), dl, n.getValueType(0), lhs.getOperand(1), n.getOperand(1));
+    SDValue newShift = dag.getNode(n.getOpcode(), dl, vt, lhs.getOperand(0), n.getOperand(1));
+    return dag.getNode(lhs.getOpcode(), dl, vt, newShift, newRhs);
   }
 
   private SDValue visitXOR(SDNode n) {
     SDValue op0 = n.getOperand(0);
     SDValue op1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode op0C = op0.getNode() instanceof ConstantSDNode
         ? (ConstantSDNode) op0.getNode() : null;
     ConstantSDNode op1C = op1.getNode() instanceof ConstantSDNode
@@ -3139,10 +3194,10 @@ public class DAGCombiner {
     if (op0C != null && op1C != null)
       return dag.foldConstantArithmetic(ISD.XOR, vt, op0C, op1C);
     if (op0C != null && op1C == null)
-      return dag.getNode(ISD.XOR, vt, op1, op0);
+      return dag.getNode(ISD.XOR, dl, vt, op1, op0);
     if (op1C != null && op1C.isNullValue())
       return op0;
-    SDValue rxor = reassociateOps(ISD.XOR, op0, op1);
+    SDValue rxor = reassociateOps(ISD.XOR, op0, op1, dl);
     if (rxor.getNode() != null)
       return rxor;
 
@@ -3158,9 +3213,9 @@ public class DAGCombiner {
             Util.shouldNotReachHere("Unhandled SetCC Equivalent");
             break;
           case ISD.SETCC:
-            return dag.getSetCC(vt, res[0], res[1], notCC);
+            return dag.getSetCC(dl, vt, res[0], res[1], notCC);
           case ISD.SELECT_CC:
-            return dag.getSelectCC(res[0], res[1], op0.getOperand(2),
+            return dag.getSelectCC(dl, res[0], res[1], op0.getOperand(2),
                 op0.getOperand(3), notCC);
         }
       }
@@ -3171,10 +3226,10 @@ public class DAGCombiner {
         op0.getOpcode() == ISD.ZERO_EXTEND &&
         op0.hasOneUse() && isSetCCEquivalent(op0.getOperand(0), res)) {
       SDValue v = op0.getOperand(0);
-      v = dag.getNode(ISD.XOR, v.getValueType(), v,
+      v = dag.getNode(ISD.XOR, dl, v.getValueType(), v,
           dag.getConstant(1, v.getValueType(), false));
       addToWorkList(v.getNode());
-      return dag.getNode(ISD.ZERO_EXTEND, vt, v);
+      return dag.getNode(ISD.ZERO_EXTEND, dl, vt, v);
     }
 
     // fold (not (or x, y)) -> (and (not x), (not y)) iff x or y are setcc
@@ -3183,11 +3238,11 @@ public class DAGCombiner {
       SDValue lhs = op0.getOperand(0), rhs = op0.getOperand(1);
       if (isOneUseSetCC(rhs) || isOneUseSetCC(rhs)) {
         int newOpc = op0.getOpcode() == ISD.AND ? ISD.OR : ISD.AND;
-        lhs = dag.getNode(ISD.XOR, vt, lhs, op1);
-        rhs = dag.getNode(ISD.XOR, vt, rhs, op1);
+        lhs = dag.getNode(ISD.XOR, dl, vt, lhs, op1);
+        rhs = dag.getNode(ISD.XOR, dl, vt, rhs, op1);
         addToWorkList(lhs.getNode());
         addToWorkList(rhs.getNode());
-        return dag.getNode(newOpc, vt, lhs, rhs);
+        return dag.getNode(newOpc, dl, vt, lhs, rhs);
       }
     }
 
@@ -3198,11 +3253,11 @@ public class DAGCombiner {
       if (rhs.getNode() instanceof ConstantSDNode ||
           lhs.getNode() instanceof ConstantSDNode) {
         int newOpc = op0.getOpcode() == ISD.AND ? ISD.OR : ISD.AND;
-        lhs = dag.getNode(ISD.XOR, vt, lhs, op1);
-        rhs = dag.getNode(ISD.XOR, vt, rhs, op1);
+        lhs = dag.getNode(ISD.XOR, dl, vt, lhs, op1);
+        rhs = dag.getNode(ISD.XOR, dl, vt, rhs, op1);
         addToWorkList(lhs.getNode());
         addToWorkList(rhs.getNode());
-        return dag.getNode(newOpc, vt, lhs, rhs);
+        return dag.getNode(newOpc, dl, vt, lhs, rhs);
       }
     }
     // fold (xor (xor x, c1), c2) -> (xor x, (xor c1, c2))
@@ -3212,12 +3267,12 @@ public class DAGCombiner {
       ConstantSDNode op01C = op0.getOperand(1).getNode() instanceof ConstantSDNode
           ? (ConstantSDNode) op0.getOperand(1).getNode() : null;
       if (op00C != null) {
-        dag.getNode(ISD.XOR, vt, op0.getOperand(1),
+        dag.getNode(ISD.XOR, dl, vt, op0.getOperand(1),
             dag.getConstant(op1C.getAPIntValue().xor(op00C.getAPIntValue()),
                 vt, false));
       }
       if (op01C != null) {
-        dag.getNode(ISD.XOR, vt, op0.getOperand(0),
+        dag.getNode(ISD.XOR, dl, vt, op0.getOperand(0),
             dag.getConstant(op1C.getAPIntValue().xor(op01C.getAPIntValue()),
                 vt, false));
       }
@@ -3230,7 +3285,7 @@ public class DAGCombiner {
         SDValue el = dag.getConstant(0, vt.getVectorElementType(), false);
         SDValue[] ops = new SDValue[vt.getVectorNumElements()];
         Arrays.fill(ops, el);
-        return dag.getNode(ISD.BUILD_VECTOR, vt, ops);
+        return dag.getNode(ISD.BUILD_VECTOR, dl, vt, ops);
       }
     }
 
@@ -3265,6 +3320,7 @@ public class DAGCombiner {
   private SDValue simplifyBinOpWithSamOpcodeHands(SDNode n) {
     SDValue n0 = n.getOperand(0), n1 = n.getOperand(1);
     EVT vt = n0.getValueType();
+    DebugLoc dl = n.getDebugLoc();
     Util.assertion(n0.getOpcode() == n1.getOpcode(), "Bad input!");
 
     // For each of OP in AND/OR/XOR:
@@ -3280,10 +3336,10 @@ public class DAGCombiner {
         n0.getOperand(0).getValueType().equals(n1.getOperand(0).getValueType()) &&
         (!legalOprations || tli.isOperationLegal(n.getOpcode(),
             n0.getOperand(0).getValueType()))) {
-      SDValue orNode = dag.getNode(n.getOpcode(), n0.getOperand(0).getValueType(),
+      SDValue orNode = dag.getNode(n.getOpcode(), dl, n0.getOperand(0).getValueType(),
           n0.getOperand(0), n1.getOperand(0));
       addToWorkList(orNode.getNode());
-      return dag.getNode(n0.getOpcode(), vt, orNode);
+      return dag.getNode(n0.getOpcode(), dl, vt, orNode);
     }
 
     // For each of OP in SHL/SRL/SRA/AND...
@@ -3293,10 +3349,10 @@ public class DAGCombiner {
     if ((n0.getOpcode() == ISD.SHL || n0.getOpcode() == ISD.SRL ||
         n0.getOpcode() == ISD.SRA || n0.getOpcode() == ISD.AND) &&
         n0.getOperand(1).equals(n1.getOperand(1))) {
-      SDValue orNode = dag.getNode(n.getOpcode(), n0.getOperand(0).getValueType(),
+      SDValue orNode = dag.getNode(n.getOpcode(), dl, n0.getOperand(0).getValueType(),
           n0.getOperand(0), n1.getOperand(0));
       addToWorkList(orNode.getNode());
-      return dag.getNode(n0.getOpcode(), vt, orNode, n0.getOperand(1));
+      return dag.getNode(n0.getOpcode(), dl, vt, orNode, n0.getOperand(1));
     }
     return new SDValue();
   }
@@ -3306,7 +3362,7 @@ public class DAGCombiner {
     return isSetCCEquivalent(n, res) && n.hasOneUse();
   }
 
-  private SDValue reassociateOps(int opc, SDValue n0, SDValue n1) {
+  private SDValue reassociateOps(int opc, SDValue n0, SDValue n1, DebugLoc dl) {
     EVT vt = n0.getValueType();
     if (n0.getOpcode() == opc && n0.getOperand(1).getNode() instanceof ConstantSDNode) {
       if (n1.getNode() instanceof ConstantSDNode) {
@@ -3314,12 +3370,12 @@ public class DAGCombiner {
         SDValue opNode = dag.foldArithmetic(opc, vt,
             (ConstantSDNode) n0.getOperand(1).getNode(),
             (ConstantSDNode) n1.getNode());
-        return dag.getNode(opc, vt, n0.getOperand(0), opNode);
+        return dag.getNode(opc, dl, vt, n0.getOperand(0), opNode);
       } else if (n0.hasOneUse()) {
         // reassoc. (op (op x, c1), y) -> (op (op x, y), c1) iff x+c1 has one use
-        SDValue opNode = dag.getNode(opc, vt, n0.getOperand(0), n1);
+        SDValue opNode = dag.getNode(opc, dl, vt, n0.getOperand(0), n1);
         addToWorkList(opNode.getNode());
-        return dag.getNode(opc, vt, opNode, n0.getOperand(1));
+        return dag.getNode(opc, dl, vt, opNode, n0.getOperand(1));
       }
     }
 
@@ -3329,12 +3385,12 @@ public class DAGCombiner {
         SDValue opNode = dag.foldConstantArithmetic(opc, vt,
             (ConstantSDNode) n1.getOperand(1).getNode(),
             (ConstantSDNode) n0.getNode());
-        return dag.getNode(opc, vt, n1.getOperand(0), opNode);
+        return dag.getNode(opc, dl, vt, n1.getOperand(0), opNode);
       } else if (n1.hasOneUse()) {
         // reassoc. (op y, (op x, c1)) -> (op (op x, y), c1) iff x+c1 has one use
-        SDValue opNode = dag.getNode(opc, vt, n1.getOperand(0), n0);
+        SDValue opNode = dag.getNode(opc, dl, vt, n1.getOperand(0), n0);
         addToWorkList(opNode.getNode());
-        return dag.getNode(opc, vt, opNode, n1.getOperand(1));
+        return dag.getNode(opc, dl, vt, opNode, n1.getOperand(1));
       }
     }
     return new SDValue();
@@ -3362,6 +3418,7 @@ public class DAGCombiner {
   private SDValue visitOR(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -3391,7 +3448,7 @@ public class DAGCombiner {
     if (c2 != null && dag.maskedValueIsZero(n0, c2.getAPIntValue().not()))
       return n1;
     // reassociate or
-    SDValue res = reassociateOps(ISD.OR, n0, n1);
+    SDValue res = reassociateOps(ISD.OR, n0, n1, dl);
     if (res.getNode() != null)
       return res;
 
@@ -3399,8 +3456,8 @@ public class DAGCombiner {
     if (c2 != null && n0.getOpcode() == ISD.AND &&
         n0.getOperand(1).getNode() instanceof ConstantSDNode) {
       ConstantSDNode c = (ConstantSDNode) n0.getOperand(1).getNode();
-      SDValue or = dag.getNode(ISD.OR, vt, n0.getOperand(0), n1);
-      return dag.getNode(ISD.AND, vt, or,
+      SDValue or = dag.getNode(ISD.OR, dl, vt, n0.getOperand(0), n1);
+      return dag.getNode(ISD.AND, dl, vt, or,
           dag.foldConstantArithmetic(ISD.OR, vt, c, c2));
     }
 
@@ -3421,17 +3478,17 @@ public class DAGCombiner {
         // fold (or (setlt X, 0), (setlt Y, 0)) -> (setne (or X, Y), 0)
         if (((ConstantSDNode) lr.getNode()).isNullValue() &&
             (cc2 == CondCode.SETNE || cc2 == CondCode.SETLT)) {
-          SDValue or = dag.getNode(ISD.OR, lr.getValueType(), ll, rl);
+          SDValue or = dag.getNode(ISD.OR, dl, lr.getValueType(), ll, rl);
           addToWorkList(or.getNode());
-          return dag.foldSetCC(vt, or, lr, cc2);
+          return dag.foldSetCC(dl, vt, or, lr, cc2);
         }
         // fold (or (setne X, -1), (setne Y, -1)) -> (setne (and X, Y), -1)
         // fold (or (setgt X, -1), (setgt Y  -1)) -> (setgt (and X, Y), -1)
         if (((ConstantSDNode) lr.getNode()).isAllOnesValue() &&
             (cc2 == CondCode.SETNE || cc2 == CondCode.SETGT)) {
-          SDValue and = dag.getNode(ISD.AND, lr.getValueType(), ll, rl);
+          SDValue and = dag.getNode(ISD.AND, dl, lr.getValueType(), ll, rl);
           addToWorkList(and.getNode());
-          return dag.getSetCC(vt, and, lr, cc2);
+          return dag.getSetCC(dl, vt, and, lr, cc2);
         }
       }
       if (ll.equals(rr) && lr.equals(rl)) {
@@ -3445,7 +3502,7 @@ public class DAGCombiner {
         CondCode result = ISD.getSetCCOrOperation(cc1, cc2, isInteger);
         if (result != CondCode.SETCC_INVALID &&
             (!legalOprations || tli.isCondCodeLegal(result, ll.getValueType()))) {
-          return dag.getSetCC(n0.getValueType(), ll, lr, result);
+          return dag.getSetCC(dl, n0.getValueType(), ll, lr, result);
         }
       }
     }
@@ -3463,18 +3520,18 @@ public class DAGCombiner {
       APInt rhsMask = ((ConstantSDNode) n1.getOperand(1).getNode()).getAPIntValue();
       if (dag.maskedValueIsZero(n0.getOperand(0), rhsMask.and(lhsMask.not())) &&
           dag.maskedValueIsZero(n1.getOperand(0), lhsMask.and(rhsMask.not()))) {
-        SDValue x = dag.getNode(ISD.OR, vt, n0.getOperand(0), n1.getOperand(0));
-        return dag.getNode(ISD.AND, vt, x, dag.getConstant(lhsMask.or(rhsMask), vt, false));
+        SDValue x = dag.getNode(ISD.OR, dl, vt, n0.getOperand(0), n1.getOperand(0));
+        return dag.getNode(ISD.AND, dl, vt, x, dag.getConstant(lhsMask.or(rhsMask), vt, false));
       }
     }
     // See if this is some rotate idiom.
-    SDNode t = matchRotate(n0, n1);
+    SDNode t = matchRotate(n0, n1, dl);
     if (t != null)
       return new SDValue(t, 0);
     return new SDValue();
   }
 
-  private SDNode matchRotate(SDValue lhs, SDValue rhs) {
+  private SDNode matchRotate(SDValue lhs, SDValue rhs, DebugLoc dl) {
     EVT vt = lhs.getValueType();
     if (!tli.isTypeLegal(vt)) return null;
 
@@ -3525,9 +3582,9 @@ public class DAGCombiner {
 
       SDValue rot;
       if (hasROTL)
-        rot = dag.getNode(ISD.ROTL, vt, lhsShiftArg, lhsShiftAmt);
+        rot = dag.getNode(ISD.ROTL, dl, vt, lhsShiftArg, lhsShiftAmt);
       else
-        rot = dag.getNode(ISD.ROTR, vt, lhsShiftArg, rhsShiftAmt);
+        rot = dag.getNode(ISD.ROTR, dl, vt, lhsShiftArg, rhsShiftAmt);
 
       if (lhsRes[1].getNode() != null || rhsRes[1].getNode() != null) {
         APInt mask = APInt.getAllOnesValue(opSizeInBits);
@@ -3539,7 +3596,7 @@ public class DAGCombiner {
           APInt lhsBits = APInt.getHighBitsSet(opSizeInBits, (int) rshVal);
           mask.andAssign(((ConstantSDNode) rhsRes[1].getNode()).getAPIntValue().or(lhsBits));
         }
-        rot = dag.getNode(ISD.AND, vt, rot, dag.getConstant(mask, vt, false));
+        rot = dag.getNode(ISD.AND, dl, vt, rot, dag.getConstant(mask, vt, false));
       }
       return rot.getNode();
     }
@@ -3557,9 +3614,9 @@ public class DAGCombiner {
         ConstantSDNode c = (ConstantSDNode) rhsShiftAmt.getOperand(0).getNode();
         if (c.getAPIntValue().eq(opSizeInBits)) {
           if (hasROTL)
-            return dag.getNode(ISD.ROTL, vt, lhsShiftArg, lhsShiftAmt).getNode();
+            return dag.getNode(ISD.ROTL, dl, vt, lhsShiftArg, lhsShiftAmt).getNode();
           else
-            return dag.getNode(ISD.ROTR, vt, lhsShiftArg, rhsShiftAmt).getNode();
+            return dag.getNode(ISD.ROTR, dl, vt, lhsShiftArg, rhsShiftAmt).getNode();
         }
       }
     }
@@ -3572,9 +3629,9 @@ public class DAGCombiner {
         ConstantSDNode c = (ConstantSDNode) lhsShiftAmt.getOperand(0).getNode();
         if (c.getAPIntValue().eq(opSizeInBits)) {
           if (hasROTR)
-            return dag.getNode(ISD.ROTR, vt, lhsShiftArg, rhsShiftAmt).getNode();
+            return dag.getNode(ISD.ROTR, dl, vt, lhsShiftArg, rhsShiftAmt).getNode();
           else
-            return dag.getNode(ISD.ROTR, vt, lhsShiftArg, lhsShiftAmt).getNode();
+            return dag.getNode(ISD.ROTR, dl, vt, lhsShiftArg, lhsShiftAmt).getNode();
         }
       }
     }
@@ -3599,7 +3656,7 @@ public class DAGCombiner {
         if (rextOp0.getOperand(0).getNode() instanceof ConstantSDNode) {
           ConstantSDNode c = (ConstantSDNode) rextOp0.getOperand(0).getNode();
           if (c.getAPIntValue().eq(opSizeInBits)) {
-            return dag.getNode(hasROTL ? ISD.ROTL : ISD.ROTR, vt, lhsShiftArg,
+            return dag.getNode(hasROTL ? ISD.ROTL : ISD.ROTR, dl, vt, lhsShiftArg,
                 hasROTL ? lhsShiftAmt : rhsShiftAmt).getNode();
           }
         }
@@ -3612,7 +3669,7 @@ public class DAGCombiner {
         if (lextOp0.getOperand(0).getNode() instanceof ConstantSDNode) {
           ConstantSDNode c = (ConstantSDNode) lextOp0.getOperand(0).getNode();
           if (c.getAPIntValue().eq(opSizeInBits)) {
-            return dag.getNode(hasROTR ? ISD.ROTR : ISD.ROTL, vt, lhsShiftArg,
+            return dag.getNode(hasROTR ? ISD.ROTR : ISD.ROTL, dl, vt, lhsShiftArg,
                 hasROTR ? rhsShiftAmt : lhsShiftAmt).getNode();
           }
         }
@@ -3648,6 +3705,7 @@ public class DAGCombiner {
   private SDValue visitAND(SDNode n) {
     SDValue op0 = n.getOperand(0);
     SDValue op1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c0 = op0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) op0.getNode() : null;
     ConstantSDNode c1 = op1.getNode() instanceof ConstantSDNode ?
@@ -3666,13 +3724,13 @@ public class DAGCombiner {
     if (c0 != null && c1 != null)
       return dag.foldConstantArithmetic(ISD.AND, vt, c0, c1);
     if (c0 != null && c1 == null)
-      return dag.getNode(ISD.AND, vt, op1, op0);
+      return dag.getNode(ISD.AND, dl, vt, op1, op0);
     if (c1 != null && c1.isAllOnesValue())
       return op0;
     if (c1 != null && dag.maskedValueIsZero(new SDValue(n, 0),
         APInt.getAllOnesValue(bitwidth)))
       return dag.getConstant(0, vt, false);
-    SDValue rand = reassociateOps(ISD.AND, op0, op1);
+    SDValue rand = reassociateOps(ISD.AND, op0, op1, dl);
     if (rand.getNode() != null)
       return rand;
     // fold (and (or x, 0xFFFF), 0xFF) -> 0xFF
@@ -3690,8 +3748,7 @@ public class DAGCombiner {
       APInt mask = c1.getAPIntValue().not();
       mask = mask.trunc(op00.getValueSizeInBits());
       if (dag.maskedValueIsZero(op00, mask)) {
-        SDValue zext = dag.getNode(ISD.ZERO_EXTEND, op0.getValueType(),
-            op00);
+        SDValue zext = dag.getNode(ISD.ZERO_EXTEND, dl, op0.getValueType(), op00);
         combineTo(n, zext, true);
         combineTo(op0.getNode(), zext, true);
         return new SDValue(n, 0);
@@ -3708,26 +3765,26 @@ public class DAGCombiner {
         // fold (and (seteq X, 0), (seteq Y, 0)) -> (seteq (or X, Y), 0)
         if (((ConstantSDNode) setccRes[1].getNode()).isNullValue() &&
             cc2 == CondCode.SETEQ) {
-          SDValue orNode = dag.getNode(ISD.OR, setccRes[1].getValueType(),
+          SDValue orNode = dag.getNode(ISD.OR, dl, setccRes[1].getValueType(),
               setccRes[0], setccRes2[0]);
           addToWorkList(orNode.getNode());
-          return dag.getSetCC(vt, orNode, setccRes[1], cc2);
+          return dag.getSetCC(dl, vt, orNode, setccRes[1], cc2);
         }
         // fold (and (seteq X, -1), (seteq Y, -1)) -> (seteq (and X, Y), -1)
         if (((ConstantSDNode) setccRes[1].getNode()).isAllOnesValue() &&
             cc2 == CondCode.SETEQ) {
-          SDValue andNode = dag.getNode(ISD.AND, setccRes[1].getValueType(),
+          SDValue andNode = dag.getNode(ISD.AND, dl, setccRes[1].getValueType(),
               setccRes[0], setccRes2[0]);
           addToWorkList(andNode.getNode());
-          return dag.getSetCC(vt, andNode, setccRes[1], cc2);
+          return dag.getSetCC(dl, vt, andNode, setccRes[1], cc2);
         }
         // fold (and (setgt X,  -1), (setgt Y,  -1)) -> (setgt (or X, Y), -1)
         if (((ConstantSDNode) setccRes[1].getNode()).isAllOnesValue() &&
             cc2 == CondCode.SETGT) {
-          SDValue orNode = dag.getNode(ISD.OR, setccRes[1].getValueType(),
+          SDValue orNode = dag.getNode(ISD.OR, dl, setccRes[1].getValueType(),
               setccRes[0], setccRes2[0]);
           addToWorkList(orNode.getNode());
-          return dag.getSetCC(vt, orNode, setccRes[1], cc2);
+          return dag.getSetCC(dl, vt, orNode, setccRes[1], cc2);
         }
       }
 
@@ -3743,7 +3800,7 @@ public class DAGCombiner {
         CondCode result = ISD.getSetCCAndOperation(cc1, cc2, isInteger);
         if (result != CondCode.SETCC_INVALID &&
             (!legalOprations || tli.isCondCodeLegal(result, setccRes[0].getValueType())))
-          return dag.getSetCC(op0.getValueType(), setccRes[0], setccRes[1], result);
+          return dag.getSetCC(dl, op0.getValueType(), setccRes[0], setccRes[1], result);
       }
     }
 
@@ -3766,7 +3823,7 @@ public class DAGCombiner {
           bitwidth - evt.getSizeInBits())) &&
           ((!legalOprations && !ld.isVolatile()) ||
               tli.isLoadExtLegal(LoadExtType.ZEXTLOAD, evt))) {
-        SDValue extLd = dag.getExtLoad(LoadExtType.ZEXTLOAD,
+        SDValue extLd = dag.getExtLoad(dl, LoadExtType.ZEXTLOAD,
             vt, ld.getChain(), ld.getBasePtr(),
             ld.getSrcValue(), ld.getSrcValueOffset(),
             evt, ld.isVolatile(), ld.getAlignment());
@@ -3799,12 +3856,12 @@ public class DAGCombiner {
           int alignment = ld.getAlignment();
           SDValue newPtr = ld.getBasePtr();
           if (tli.isBigEndian()) {
-            newPtr = dag.getNode(ISD.ADD, ptrTy, newPtr,
+            newPtr = dag.getNode(ISD.ADD, dl, ptrTy, newPtr,
                 dag.getConstant(ptrOff, ptrTy, false));
             alignment = Util.minAlign(alignment, ptrOff);
           }
           addToWorkList(newPtr.getNode());
-          SDValue load = dag.getExtLoad(LoadExtType.ZEXTLOAD,
+          SDValue load = dag.getExtLoad(dl, LoadExtType.ZEXTLOAD,
               vt, ld.getChain(), newPtr, ld.getSrcValue(),
               ld.getSrcValueOffset(), extVT, ld.isVolatile(),
               alignment);
@@ -3836,15 +3893,16 @@ public class DAGCombiner {
   }
 
   private SDValue simplifyNodeWithTwoResults(SDNode n, int loOp, int hiOp) {
+    DebugLoc dl = n.getDebugLoc();
     boolean hiExists = n.hasAnyUseOfValue(1);
     if (!hiExists && (!legalOprations || tli.isOperationLegal(loOp, n.getValueType(0)))) {
-      SDValue res = dag.getNode(loOp, n.getValueType(0), n.getOperandList());
+      SDValue res = dag.getNode(loOp, dl, n.getValueType(0), n.getOperandList());
       return combineTo(n, res, res, true);
     }
 
     boolean loExists = n.hasAnyUseOfValue(0);
     if (!loExists && (!legalOprations || tli.isOperationLegal(hiOp, n.getValueType(1)))) {
-      SDValue res = dag.getNode(hiOp, n.getValueType(1), n.getOperandList());
+      SDValue res = dag.getNode(hiOp, dl, n.getValueType(1), n.getOperandList());
       return combineTo(n, res, res, true);
     }
 
@@ -3852,7 +3910,7 @@ public class DAGCombiner {
       return new SDValue();
 
     if (loExists) {
-      SDValue lo = dag.getNode(loOp, n.getValueType(0), n.getOperandList());
+      SDValue lo = dag.getNode(loOp, dl, n.getValueType(0), n.getOperandList());
       addToWorkList(lo.getNode());
       SDValue loOpt = combine(lo.getNode());
       if (loOpt.getNode() != null && !loOpt.getNode().equals(lo.getNode()) &&
@@ -3861,7 +3919,7 @@ public class DAGCombiner {
     }
 
     if (hiExists) {
-      SDValue hi = dag.getNode(hiOp, n.getValueType(1), n.getOperandList());
+      SDValue hi = dag.getNode(hiOp, dl, n.getValueType(1), n.getOperandList());
       addToWorkList(hi.getNode());
       SDValue hiOpt = combine(hi.getNode());
       if (hiOpt.getNode() != null && !hiOpt.equals(hi) &&
@@ -3880,6 +3938,7 @@ public class DAGCombiner {
   private SDValue visitMULHS(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -3889,7 +3948,7 @@ public class DAGCombiner {
     if (c2 != null && c2.isNullValue())
       return n1;
     if (c2 != null && c2.getAPIntValue().eq(1))
-      return dag.getNode(ISD.SRA, n0.getValueType(), n0,
+      return dag.getNode(ISD.SRA, dl, n0.getValueType(), n0,
           dag.getConstant(n0.getValueType().getSizeInBits() - 1,
               getShiftAmountTy(), false));
 
@@ -3922,6 +3981,7 @@ public class DAGCombiner {
   private SDValue visitUREM(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -3932,26 +3992,26 @@ public class DAGCombiner {
       return dag.foldConstantArithmetic(ISD.UREM, vt, c1, c2);
     }
     if (c2 != null && !c2.isNullValue() && !c2.getAPIntValue().isPowerOf2())
-      return dag.getNode(ISD.AND, vt, n0, dag.getConstant(c2.getAPIntValue().sub(1), vt, false));
+      return dag.getNode(ISD.AND, dl, vt, n0, dag.getConstant(c2.getAPIntValue().sub(1), vt, false));
 
     if (n1.getOpcode() == ISD.SHL && n1.getOperand(0).getNode() instanceof ConstantSDNode) {
       ConstantSDNode shc = (ConstantSDNode) n1.getOperand(0).getNode();
       if (shc.getAPIntValue().isPowerOf2()) {
-        SDValue add = dag.getNode(ISD.ADD, vt, n1,
+        SDValue add = dag.getNode(ISD.ADD, dl, vt, n1,
             dag.getConstant(APInt.getAllOnesValue(vt.getSizeInBits()), vt, false));
         addToWorkList(add.getNode());
-        return dag.getNode(ISD.AND, vt, n0, add);
+        return dag.getNode(ISD.AND, dl, vt, n0, add);
       }
     }
 
     if (c2 != null && !c2.isNullValue()) {
-      SDValue div = dag.getNode(ISD.UDIV, vt, n0, n1);
+      SDValue div = dag.getNode(ISD.UDIV, dl, vt, n0, n1);
       addToWorkList(div.getNode());
       SDValue optimizedDiv = combine(div.getNode());
       if (optimizedDiv.getNode() != null &&
           !optimizedDiv.getNode().equals(div.getNode())) {
-        SDValue mul = dag.getNode(ISD.MUL, vt, optimizedDiv, n1);
-        SDValue sub = dag.getNode(ISD.SUB, vt, n0, mul);
+        SDValue mul = dag.getNode(ISD.MUL, dl, vt, optimizedDiv, n1);
+        SDValue sub = dag.getNode(ISD.SUB, dl, vt, n0, mul);
         addToWorkList(mul.getNode());
         return sub;
       }
@@ -3967,6 +4027,7 @@ public class DAGCombiner {
   private SDValue visitSREM(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -3976,17 +4037,17 @@ public class DAGCombiner {
       return dag.foldConstantArithmetic(ISD.SREM, vt, c1, c2);
     }
     if (!vt.isVector() && dag.signBitIsZero(n1, 0) && dag.signBitIsZero(n0, 0)) {
-      return dag.getNode(ISD.UREM, vt, n0, n1);
+      return dag.getNode(ISD.UREM, dl, vt, n0, n1);
     }
 
     if (c2 != null && !c2.isNullValue()) {
-      SDValue div = dag.getNode(ISD.SDIV, vt, n0, n1);
+      SDValue div = dag.getNode(ISD.SDIV, dl, vt, n0, n1);
       addToWorkList(div.getNode());
       SDValue optimizedDiv = combine(div.getNode());
       if (optimizedDiv.getNode() != null &&
           !optimizedDiv.getNode().equals(div.getNode())) {
-        SDValue mul = dag.getNode(ISD.MUL, vt, optimizedDiv, n1);
-        SDValue sub = dag.getNode(ISD.SUB, vt, n0, mul);
+        SDValue mul = dag.getNode(ISD.MUL, dl, vt, optimizedDiv, n1);
+        SDValue sub = dag.getNode(ISD.SUB, dl, vt, n0, mul);
         addToWorkList(mul.getNode());
         return sub;
       }
@@ -4002,6 +4063,7 @@ public class DAGCombiner {
   private SDValue visitUDIV(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -4019,7 +4081,7 @@ public class DAGCombiner {
     }
     // fold (udiv x, (1 << c)) -> x >>u c
     if (c2 != null && c2.getAPIntValue().isPowerOf2()) {
-      return dag.getNode(ISD.SRL, vt, n0,
+      return dag.getNode(ISD.SRL, dl, vt, n0,
           dag.getConstant(c2.getAPIntValue().logBase2(),
               getShiftAmountTy(), false));
     }
@@ -4029,10 +4091,10 @@ public class DAGCombiner {
       ConstantSDNode c = (ConstantSDNode) n1.getOperand(0).getNode();
       if (c.getAPIntValue().isPowerOf2()) {
         EVT addVT = n1.getOperand(1).getValueType();
-        SDValue add = dag.getNode(ISD.ADD, addVT, n1.getOperand(1),
+        SDValue add = dag.getNode(ISD.ADD, dl, addVT, n1.getOperand(1),
             dag.getConstant(c.getAPIntValue().logBase2(),
                 addVT, false));
-        return dag.getNode(ISD.SRL, vt, n0, add);
+        return dag.getNode(ISD.SRL, dl, vt, n0, add);
       }
     }
 
@@ -4060,6 +4122,7 @@ public class DAGCombiner {
   private SDValue visitSDIV(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -4080,13 +4143,13 @@ public class DAGCombiner {
       return n0;
     // fold (sdiv X, -1) -> 0-X
     if (c2 != null && c2.isAllOnesValue())
-      return dag.getNode(ISD.SUB, vt, dag.getConstant(0, vt, false),
+      return dag.getNode(ISD.SUB, dl, vt, dag.getConstant(0, vt, false),
           n0);
     // If we know the sign bits of both operands are zero, strength reduce to a
     // udiv instead.  Handles (X&15) /s 4 -> X&15 >> 2
     if (!vt.isVector()) {
       if (dag.signBitIsZero(n1, 0) && dag.signBitIsZero(n0, 0))
-        return dag.getNode(ISD.UDIV, n1.getValueType(), n0, n1);
+        return dag.getNode(ISD.UDIV, dl, n1.getValueType(), n0, n1);
     }
     // fold (sdiv X, pow2) -> simple ops after legalize
     if (c2 != null && !c2.isNullValue() && !tli.isIntDivCheap() &&
@@ -4097,23 +4160,23 @@ public class DAGCombiner {
       long pow2 = c2.getSExtValue();
       long abs2 = pow2 > 0 ? pow2 : -pow2;
       int lg2 = Util.log2(abs2);
-      SDValue sgn = dag.getNode(ISD.SRA, vt, n0, dag.getConstant(vt.getSizeInBits() - 1,
+      SDValue sgn = dag.getNode(ISD.SRA, dl, vt, n0, dag.getConstant(vt.getSizeInBits() - 1,
           getShiftAmountTy(), false));
       addToWorkList(sgn.getNode());
 
       // add (n0 < 0) ? abs2 - 1 : 0
-      SDValue srl = dag.getNode(ISD.SRL, vt, sgn,
+      SDValue srl = dag.getNode(ISD.SRL, dl, vt, sgn,
           dag.getConstant(vt.getSizeInBits() - lg2,
               getShiftAmountTy(), false));
-      SDValue add = dag.getNode(ISD.ADD, vt, n0, srl);
+      SDValue add = dag.getNode(ISD.ADD, dl, vt, n0, srl);
       addToWorkList(srl.getNode());
       addToWorkList(add.getNode());
-      SDValue sra = dag.getNode(ISD.SRA, vt, add,
+      SDValue sra = dag.getNode(ISD.SRA, dl, vt, add,
           dag.getConstant(lg2, getShiftAmountTy(), false));
       if (pow2 > 0)
         return sra;
       addToWorkList(sra.getNode());
-      return dag.getNode(ISD.SUB, vt, dag.getConstant(0, vt, false), sra);
+      return dag.getNode(ISD.SUB, dl, vt, dag.getConstant(0, vt, false), sra);
     }
 
     if (c2 != null && (c2.getSExtValue() < -1 || c2.getSExtValue() > 1) &&
@@ -4142,6 +4205,7 @@ public class DAGCombiner {
   private SDValue visitMUL(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -4162,31 +4226,31 @@ public class DAGCombiner {
       return dag.foldConstantArithmetic(ISD.MUL, vt, c1, c2);
     // reassociate the two operand and move the constant to the right.
     if (c1 != null && c2 == null)
-      return dag.getNode(ISD.MUL, vt, n1, n0);
+      return dag.getNode(ISD.MUL, dl, vt, n1, n0);
     // fold (mul x, 0) --> 0
     if (c2 != null && c2.isNullValue())
       return n1;
     // fold (mul x, -1) -> 0-x
     if (c2 != null && c2.isAllOnesValue())
-      return dag.getNode(ISD.SUB, vt, dag.getConstant(0, vt, false), n0);
+      return dag.getNode(ISD.SUB, dl, vt, dag.getConstant(0, vt, false), n0);
     if (c2 != null && c2.getAPIntValue().isPowerOf2()) {
       // fold (mul x, (1 << c)) -> x << c
-      return dag.getNode(ISD.SHL, vt, n0, dag.getConstant(c2.getAPIntValue().logBase2(),
+      return dag.getNode(ISD.SHL, dl, vt, n0, dag.getConstant(c2.getAPIntValue().logBase2(),
           getShiftAmountTy(), false));
     }
     if (c2 != null && c2.getAPIntValue().negative().isPowerOf2()) {
       // fold (mul x, -(1 << c)) -> -(x << c) or (-x) << c
       long log2Val = c2.getAPIntValue().negative().logBase2();
-      return dag.getNode(ISD.SUB, vt,
+      return dag.getNode(ISD.SUB, dl, vt,
           dag.getConstant(0, vt, false),
-          dag.getNode(ISD.SHL, vt, n0,
+          dag.getNode(ISD.SHL, dl, vt, n0,
               dag.getConstant(log2Val, vt, false)));
     }
     // (mul (shl X, c1), c2) -> (mul X, c2 << c1)
     if (c2 != null && n0.getOpcode() == ISD.SHL &&
         n0.getOperand(1).getNode() instanceof ConstantSDNode) {
       ConstantSDNode n01C = (ConstantSDNode) n0.getOperand(1).getNode();
-      return dag.getNode(ISD.MUL, vt, n0.getOperand(0),
+      return dag.getNode(ISD.MUL, dl, vt, n0.getOperand(0),
           dag.getConstant(c2.getAPIntValue().shl(n01C.getAPIntValue()), vt, false));
     }
     // Change (mul (shl X, C), Y) -> (shl (mul X, Y), C) when the shift has one
@@ -4202,17 +4266,17 @@ public class DAGCombiner {
       y = n0;
     }
     if (x.getNode() != null) {
-      return dag.getNode(ISD.SHL, vt, dag.getNode(ISD.MUL, vt, x.getOperand(0), y),
+      return dag.getNode(ISD.SHL, dl, vt, dag.getNode(ISD.MUL, dl, vt, x.getOperand(0), y),
           x.getOperand(1));
     }
     // fold (mul (add x, c1), c2) -> (add (mul x, c2), c1*c2)
     if (c2 != null && n0.getOpcode() == ISD.ADD && n0.hasOneUse() &&
         n0.getOperand(1).getNode() instanceof ConstantSDNode) {
-      return dag.getNode(ISD.ADD, vt,
-          dag.getNode(ISD.MUL, vt, n0.getOperand(0), n1),
-          dag.getNode(ISD.MUL, vt, n0.getOperand(1), n1));
+      return dag.getNode(ISD.ADD, dl, vt,
+          dag.getNode(ISD.MUL, dl, vt, n0.getOperand(0), n1),
+          dag.getNode(ISD.MUL, dl, vt, n0.getOperand(1), n1));
     }
-    SDValue rmul = reassociateOps(ISD.MUL, n0, n1);
+    SDValue rmul = reassociateOps(ISD.MUL, n0, n1, dl);
     return rmul.getNode() != null ? rmul : new SDValue();
   }
 
@@ -4223,6 +4287,7 @@ public class DAGCombiner {
   private SDValue visitADDE(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -4231,28 +4296,29 @@ public class DAGCombiner {
     SDValue carryIn = n.getOperand(2);
 
     if (c1 != null && c2 == null) {
-      return dag.getNode(ISD.ADDE, n.getValueList(), n1, n0, carryIn);
+      return dag.getNode(ISD.ADDE, dl, n.getValueList(), n1, n0, carryIn);
     }
     // fold (adde X, Y, false) --> (addc  X, Y).
     if (carryIn.getOpcode() == ISD.CARRY_FALSE)
-      return dag.getNode(ISD.ADDC, n.getValueList(), n0, n1);
+      return dag.getNode(ISD.ADDC, dl, n.getValueList(), n0, n1);
     return new SDValue();
   }
 
   private SDValue visitADDC(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n1.getNode() : null;
     EVT vt = n0.getValueType();
     if (n.hasNumUsesOfValue(0, 1)) {
-      return combineTo(n, dag.getNode(ISD.ADD, vt, n1, n0),
-          dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Glue)), true);
+      return combineTo(n, dag.getNode(ISD.ADD, dl, vt, n1, n0),
+          dag.getNode(ISD.CARRY_FALSE, dl, new EVT(MVT.Glue)), true);
     }
     if (c1 != null && c2 == null) {
-      return dag.getNode(ISD.ADDC, n.getValueList(), n1, n0);
+      return dag.getNode(ISD.ADDC, dl, n.getValueList(), n1, n0);
     }
     APInt[] lhs = new APInt[2];
     APInt[] rhs = new APInt[2];
@@ -4262,8 +4328,8 @@ public class DAGCombiner {
       dag.computeMaskedBits(n1, mask, rhs, 0);
       if (rhs[0].and(lhs[0].not().and(mask)).eq(lhs[0].not().and(mask)) ||
           lhs[0].and(rhs[0].not().and(mask)).eq(rhs[0].not().and(mask))) {
-        return combineTo(n, dag.getNode(ISD.OR, vt, n0, n1),
-            dag.getNode(ISD.CARRY_FALSE, new EVT(MVT.Glue)), true);
+        return combineTo(n, dag.getNode(ISD.OR, dl, vt, n0, n1),
+            dag.getNode(ISD.CARRY_FALSE, dl, new EVT(MVT.Glue)), true);
       }
     }
 
@@ -4273,6 +4339,7 @@ public class DAGCombiner {
   private SDValue visitSUB(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -4291,7 +4358,7 @@ public class DAGCombiner {
     if (c1 != null && c2 != null)
       return dag.foldConstantArithmetic(ISD.SUB, vt, c1, c2);
     if (c2 != null)
-      return dag.getNode(ISD.ADD, vt, n0,
+      return dag.getNode(ISD.ADD, dl, vt, n0,
           dag.getConstant(c2.getAPIntValue().negative(), vt, false));
     // fold (A+B)-A -> B
     if (n0.getOpcode() == ISD.ADD && n0.getOperand(0).equals(n1))
@@ -4305,21 +4372,21 @@ public class DAGCombiner {
       int opc = n0.getOperand(1).getOpcode();
       if ((opc == ISD.ADD || opc == ISD.SUB) &&
           n1.equals(n0.getOperand(1).getOperand(0)))
-        return dag.getNode(opc, vt, n0.getOperand(0),
+        return dag.getNode(opc, dl, vt, n0.getOperand(0),
             n0.getOperand(1).getOperand(1));
     }
     // fold ((A+(C+B))-B) -> A+C
     if (n0.getOpcode() == ISD.ADD &&
         n0.getOperand(1).getOpcode() == ISD.ADD &&
         n1.equals(n0.getOperand(1).getOperand(1))) {
-      return dag.getNode(ISD.ADD, vt, n0.getOperand(0),
+      return dag.getNode(ISD.ADD, dl, vt, n0.getOperand(0),
           n0.getOperand(1).getOperand(0));
     }
     // fold ((A-(B-C))-C) -> A-B
     if (n0.getOpcode() == ISD.SUB &&
         n0.getOperand(1).getOpcode() == ISD.SUB &&
         n0.getOperand(1).getOperand(1).equals(n1)) {
-      return dag.getNode(ISD.SUB, vt, n0.getOperand(0),
+      return dag.getNode(ISD.SUB, dl, vt, n0.getOperand(0),
           n0.getOperand(1).getOperand(0));
     }
     // If either operand of a sub is undef, the result is undef
@@ -4332,7 +4399,7 @@ public class DAGCombiner {
       GlobalAddressSDNode ga = (GlobalAddressSDNode) n0.getNode();
       if (!legalOprations && tli.isOffsetFoldingLegal(ga)) {
         if (c2 != null && ga.getOpcode() == ISD.GlobalAddress)
-          return dag.getGlobalAddress(ga.getGlobalValue(),
+          return dag.getGlobalAddress(ga.getGlobalValue(), dl,
               vt, ga.getOffset() - c2.getSExtValue(), false, 0);
 
         if (n1.getNode() instanceof GlobalAddressSDNode) {
@@ -4349,6 +4416,7 @@ public class DAGCombiner {
   private SDValue visitADD(SDNode n) {
     SDValue n0 = n.getOperand(0);
     SDValue n1 = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     ConstantSDNode c1 = n0.getNode() instanceof ConstantSDNode ?
         (ConstantSDNode) n0.getNode() : null;
     ConstantSDNode c2 = n1.getNode() instanceof ConstantSDNode ?
@@ -4371,7 +4439,7 @@ public class DAGCombiner {
       return dag.foldConstantArithmetic(ISD.ADD, vt, c1, c2);
     }
     if (c1 != null && c2 == null) {
-      return dag.getNode(ISD.ADD, vt, n1, n0);
+      return dag.getNode(ISD.ADD, dl, vt, n1, n0);
     }
     if (c2 != null && c2.isNullValue())
       return n0;
@@ -4380,7 +4448,7 @@ public class DAGCombiner {
       GlobalAddressSDNode ga = (GlobalAddressSDNode) n0.getNode();
       if (!legalOprations && tli.isOffsetFoldingLegal(ga) &&
           c2 != null && ga.getOpcode() == ISD.GlobalAddress) {
-        return dag.getGlobalAddress(ga.getGlobalValue(),
+        return dag.getGlobalAddress(ga.getGlobalValue(), dl,
             vt, ga.getOffset() + c2.getSExtValue(), false, 0);
       }
     }
@@ -4388,12 +4456,12 @@ public class DAGCombiner {
     if (c2 != null && n0.getOpcode() == ISD.SUB) {
       if (n0.getOperand(0).getNode() instanceof ConstantSDNode) {
         ConstantSDNode lhsOp0C = (ConstantSDNode) n0.getOperand(0).getNode();
-        return dag.getNode(ISD.SUB, vt, dag.getConstant(c2.getAPIntValue().
+        return dag.getNode(ISD.SUB, dl, vt, dag.getConstant(c2.getAPIntValue().
             add(lhsOp0C.getAPIntValue()), vt, false), n0.getOperand(1));
       }
     }
     // reassociate add
-    SDValue radd = reassociateOps(ISD.ADD, n0, n1);
+    SDValue radd = reassociateOps(ISD.ADD, n0, n1, dl);
     if (radd.getNode() != null)
       return radd;
     // fold ((0-A) + B) -> B-A
@@ -4401,14 +4469,14 @@ public class DAGCombiner {
         n0.getOperand(0).getNode() instanceof ConstantSDNode) {
       ConstantSDNode csd = (ConstantSDNode) n0.getOperand(0).getNode();
       if (csd.isNullValue())
-        return dag.getNode(ISD.SUB, vt, n1, n0.getOperand(1));
+        return dag.getNode(ISD.SUB, dl, vt, n1, n0.getOperand(1));
     }
     // fold (A + (0-B)) -> A-B
     if (n1.getOpcode() == ISD.SUB &&
         n1.getOperand(0).getNode() instanceof ConstantSDNode) {
       ConstantSDNode csd = (ConstantSDNode) n1.getOperand(0).getNode();
       if (csd.isNullValue())
-        return dag.getNode(ISD.SUB, vt, n0, n1.getOperand(1));
+        return dag.getNode(ISD.SUB, dl, vt, n0, n1.getOperand(1));
     }
     // fold (A+(B-A)) -> B
     if (n1.getOpcode() == ISD.SUB &&
@@ -4422,14 +4490,14 @@ public class DAGCombiner {
     if (n1.getOpcode() == ISD.SUB &&
         n1.getOperand(1).getOpcode() == ISD.ADD &&
         n1.getOperand(1).getOperand(0).equals(n0)) {
-      return dag.getNode(ISD.SUB, vt, n1.getOperand(0),
+      return dag.getNode(ISD.SUB, dl, vt, n1.getOperand(0),
           n1.getOperand(1).getOperand(1));
     }
     // fold (A+(B-(C+A))) to (B-C)
     if (n1.getOpcode() == ISD.SUB &&
         n1.getOperand(1).getOpcode() == ISD.ADD &&
         n1.getOperand(1).getOperand(1).equals(n0)) {
-      return dag.getNode(ISD.SUB, vt, n1.getOperand(0),
+      return dag.getNode(ISD.SUB, dl, vt, n1.getOperand(0),
           n1.getOperand(1).getOperand(0));
     }
     // fold (A+((B-A)+or-C)) to (B+or-C)
@@ -4437,7 +4505,7 @@ public class DAGCombiner {
     if ((opc == ISD.ADD || opc == ISD.SUB) &&
         n1.getOperand(0).getOpcode() == ISD.SUB) {
       if (n1.getOperand(0).getOperand(1).equals(n0))
-        return dag.getNode(opc, vt, n1.getOperand(0).getOperand(0),
+        return dag.getNode(opc, dl, vt, n1.getOperand(0).getOperand(0),
             n1.getOperand(1));
     }
     // fold (A-B)+(C-D) to (A+C)-(B+D) when A or C is constant
@@ -4448,9 +4516,9 @@ public class DAGCombiner {
         SDValue t1 = n0.getOperand(1);
         SDValue t2 = n1.getOperand(0);
         SDValue t3 = n1.getOperand(1);
-        return dag.getNode(ISD.SUB, vt,
-            dag.getNode(ISD.ADD, vt, t0, t2),
-            dag.getNode(ISD.ADD, vt, t1, t3));
+        return dag.getNode(ISD.SUB, dl, vt,
+            dag.getNode(ISD.ADD, dl, vt, t0, t2),
+            dag.getNode(ISD.ADD, dl, vt, t1, t3));
       }
     }
     // TODO 9/18/2019, this is a bug so comment it!!!
@@ -4467,24 +4535,24 @@ public class DAGCombiner {
         dag.computeMaskedBits(n1, mask, rhs, 0);
         if (rhs[0].and(lhs[0].not().and(mask)).eq(lhs[0].not().and(mask)) ||
             lhs[0].and(rhs[0].not().and(mask)).eq(rhs[0].not().and(mask))) {
-          return dag.getNode(ISD.OR, vt, n0, n1);
+          return dag.getNode(ISD.OR, dl, vt, n0, n1);
         }
       }
     }
 
     // fold (add (shl (add x, c1), c2), ) -> (add (add (shl x, c2), c1<<c2), )
     if (n0.getOpcode() == ISD.SHL && n0.getNode().hasOneUse()) {
-      SDValue result = combineShlAndConstant(n0, n1);
+      SDValue result = combineShlAndConstant(n0, n1, dl);
       if (result.getNode() != null) return result;
     }
     if (n1.getOpcode() == ISD.SHL && n1.getNode().hasOneUse()) {
-      SDValue result = combineShlAndConstant(n1, n0);
+      SDValue result = combineShlAndConstant(n1, n0, dl);
       if (result.getNode() != null) return result;
     }
     return new SDValue();
   }
 
-  private SDValue combineShlAndConstant(SDValue n0, SDValue n1) {
+  private SDValue combineShlAndConstant(SDValue n0, SDValue n1, DebugLoc dl) {
     EVT vt = n0.getValueType();
     SDValue n00 = n0.getOperand(0);
     SDValue n01 = n0.getOperand(1);
@@ -4493,10 +4561,10 @@ public class DAGCombiner {
     if (n01C != null && n00.getOpcode() == ISD.ADD &&
         n00.getNode().hasOneUse() &&
         n00.getOperand(1).getNode() instanceof ConstantSDNode) {
-      n0 = dag.getNode(ISD.ADD, vt,
-          dag.getNode(ISD.SHL, vt, n00.getOperand(0), n01),
-          dag.getNode(ISD.SHL, vt, n00.getOperand(1), n01));
-      return dag.getNode(ISD.ADD, vt, n0, n1);
+      n0 = dag.getNode(ISD.ADD, dl, vt,
+          dag.getNode(ISD.SHL, dl, vt, n00.getOperand(0), n01),
+          dag.getNode(ISD.SHL, dl, vt, n00.getOperand(1), n01));
+      return dag.getNode(ISD.ADD, dl, vt, n0, n1);
     }
     return new SDValue();
   }
@@ -4568,8 +4636,7 @@ public class DAGCombiner {
       if (ops.isEmpty())
         result = dag.getEntryNode();
       else
-        result = dag.getNode(ISD.TokenFactor, new EVT(MVT.Other),
-            ops);
+        result = dag.getNode(ISD.TokenFactor, n.getDebugLoc(), new EVT(MVT.Other), ops);
       return combineTo(n, result, false);
     }
     return result;
@@ -4589,6 +4656,7 @@ public class DAGCombiner {
     EVT vt = n.getValueType(0);
     SDValue lhs = n.getOperand(0);
     SDValue rhs = n.getOperand(1);
+    DebugLoc dl = n.getDebugLoc();
     if (n.getOpcode() == ISD.AND) {
       if (rhs.getOpcode() == ISD.BIT_CONVERT)
         rhs = rhs.getOperand(0);
@@ -4616,10 +4684,10 @@ public class DAGCombiner {
         SDValue[] zeroOps = new SDValue[rvt.getVectorNumElements()];
         for (int i = 0; i < zeroOps.length; i++)
           zeroOps[i] = dag.getConstant(0, evt, false);
-        SDValue zero = dag.getNode(ISD.BUILD_VECTOR, rvt, zeroOps);
-        lhs = dag.getNode(ISD.BIT_CONVERT, rvt, lhs);
-        SDValue shuf = dag.getVectorShuffle(rvt, lhs, zero, indices.toArray());
-        return dag.getNode(ISD.BIT_CONVERT, vt, shuf);
+        SDValue zero = dag.getNode(ISD.BUILD_VECTOR, dl, rvt, zeroOps);
+        lhs = dag.getNode(ISD.BIT_CONVERT, dl, rvt, lhs);
+        SDValue shuf = dag.getVectorShuffle(rvt, dl, lhs, zero, indices.toArray());
+        return dag.getNode(ISD.BIT_CONVERT, dl, vt, shuf);
       }
     }
     return new SDValue();
@@ -4628,6 +4696,7 @@ public class DAGCombiner {
   private SDValue simplifyVBinOp(SDNode n) {
     if (legalOprations) return new SDValue();
 
+    DebugLoc dl = n.getDebugLoc();
     EVT vt = n.getValueType(0);
     Util.assertion(vt.isVector(), "simplifyVBinOp only works for vector type!");
 
@@ -4660,7 +4729,7 @@ public class DAGCombiner {
             break;
           }
         }
-        SDValue res = dag.getNode(n.getOpcode(), eltVT, lhsOp, rhsOp);
+        SDValue res = dag.getNode(n.getOpcode(), dl, eltVT, lhsOp, rhsOp);
         Util.assertion(res.getOpcode() == ISD.UNDEF || res.getOpcode() == ISD.Constant ||
             res.getOpcode() == ISD.ConstantFP, "Scalar binop didn't be folded!");
 
@@ -4669,7 +4738,7 @@ public class DAGCombiner {
       }
       if (ops.size() == lhs.getNumOperands()) {
         EVT evt = lhs.getValueType();
-        return dag.getNode(ISD.BUILD_VECTOR, evt, ops);
+        return dag.getNode(ISD.BUILD_VECTOR, dl, evt, ops);
       }
     }
 

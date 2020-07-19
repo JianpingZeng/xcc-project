@@ -30,7 +30,6 @@ import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeModel;
 import backend.target.TargetOpcode;
 import backend.value.Function;
-import backend.value.GlobalValue;
 import tools.OutRef;
 import tools.Util;
 
@@ -254,7 +253,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     EVT nvt = node.getValueType(0);
     int opc, mopc;
     int opcode = node.getOpcode();
-
+    DebugLoc dl = node.getDebugLoc();
     if (Util.DEBUG) {
       System.err.print("Selecting: ");
       node.dump(curDAG);
@@ -332,22 +331,22 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         }
 
         SDValue inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(),
-            loReg, n0, new SDValue()).getValue(1);
+            dl, loReg, n0, new SDValue()).getValue(1);
         if (foldedLoad) {
           SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
               inFlag};
-          SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
+          SDNode chainedNode = curDAG.getMachineNode(mopc, dl, new EVT(MVT.Other),
               new EVT(MVT.Glue), ops);
           inFlag = new SDValue(chainedNode, 1);
           replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
         } else {
-          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Glue),
+          inFlag = new SDValue(curDAG.getMachineNode(opc, dl, new EVT(MVT.Glue),
               n1, inFlag), 0);
         }
 
         // Copy the low half of the result, if it is needed.
         if (!new SDValue(node, 0).isUseEmpty()) {
-          SDValue result = curDAG.getCopyFromReg(curDAG.getEntryNode(), loReg, nvt,
+          SDValue result = curDAG.getCopyFromReg(curDAG.getEntryNode(), dl, loReg, nvt,
               inFlag);
           inFlag = result.getValue(2);
           replaceUses(new SDValue(node, 0), result);
@@ -365,16 +364,18 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             // Prevent use of AH in a REX instruction by referencing AX instead.
             // Shift it down 8 bits.
             result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
-                X86GenRegisterNames.AX, new EVT(MVT.i16), inFlag);
+                    dl, X86GenRegisterNames.AX, new EVT(MVT.i16), inFlag);
             inFlag = result.getValue(2);
             result = new SDValue(curDAG.getMachineNode(X86GenInstrNames.SHR16r1,
-                new EVT(MVT.i16), result, curDAG.getTargetConstant(8,
+                    dl,
+                    new EVT(MVT.i16), result, curDAG.getTargetConstant(8,
                     new EVT(MVT.i8))), 0);
             // Then truncate it down to i8.
             result = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
-                new EVT(MVT.i8), result);
+                    dl,
+                    new EVT(MVT.i8), result);
           } else {
-            result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
+            result = curDAG.getCopyFromReg(curDAG.getEntryNode(), dl, hiReg, nvt, inFlag);
             inFlag = result.getValue(2);
           }
           replaceUses(new SDValue(node, 1), result);
@@ -457,26 +458,30 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           if (tryFoldLoad(node, n0, temp)) {
             SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], n0.getOperand(0)};
             move = new SDValue(curDAG.getMachineNode(X86GenInstrNames.MOVZX16rm8,
-                new EVT(MVT.i16),
-                new EVT(MVT.Other),
-                ops), 0);
+                    dl,
+                    new EVT(MVT.i16),
+                    new EVT(MVT.Other),
+                    ops), 0);
             chain = move.getValue(1);
             replaceUses(n0.getValue(1), chain);
           } else {
             move = new SDValue(curDAG.getMachineNode(X86GenInstrNames.MOVZX16rr8,
-                new EVT(MVT.i16), n0), 0);
+                    dl,
+                    new EVT(MVT.i16), n0), 0);
             chain = curDAG.getEntryNode();
           }
-          chain = curDAG.getCopyToReg(chain, X86GenRegisterNames.AX,
+          chain = curDAG.getCopyToReg(chain,
+                  dl,
+                  X86GenRegisterNames.AX,
               move, new SDValue());
           inFlag = chain.getValue(1);
         } else {
-          inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), loReg, n0, new SDValue()).getValue(1);
+          inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), dl, loReg, n0, new SDValue()).getValue(1);
           if (isSigned && !signBitIsZero) {
-            inFlag = new SDValue(curDAG.getMachineNode(sextOpcode, new EVT(MVT.Glue), inFlag), 0);
+            inFlag = new SDValue(curDAG.getMachineNode(sextOpcode, dl, new EVT(MVT.Glue), inFlag), 0);
           } else {
-            SDValue clrNode = new SDValue(curDAG.getMachineNode(clrOpcode, nvt), 0);
-            inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), clrReg, clrNode,
+            SDValue clrNode = new SDValue(curDAG.getMachineNode(clrOpcode, dl, nvt), 0);
+            inFlag = curDAG.getCopyToReg(curDAG.getEntryNode(), dl, clrReg, clrNode,
                 inFlag).getValue(1);
           }
         }
@@ -484,19 +489,19 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         if (foldedLoad) {
           SDValue[] ops = {tmps[0], tmps[1], tmps[2], tmps[3], tmps[4], n1.getOperand(0),
               inFlag};
-          SDNode chainedNode = curDAG.getMachineNode(mopc, new EVT(MVT.Other),
+          SDNode chainedNode = curDAG.getMachineNode(mopc, dl, new EVT(MVT.Other),
               new EVT(MVT.Glue), ops);
           inFlag = new SDValue(chainedNode, 1);
           replaceUses(n1.getValue(1), new SDValue(chainedNode, 0));
         } else {
-          inFlag = new SDValue(curDAG.getMachineNode(opc, new EVT(MVT.Glue),
+          inFlag = new SDValue(curDAG.getMachineNode(opc, dl, new EVT(MVT.Glue),
               n1, inFlag), 0);
         }
 
         // Copy the division (low) result, if it is needed.
         if (!new SDValue(node, 0).isUseEmpty()) {
           SDValue result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
-              loReg, nvt, inFlag);
+                  dl, loReg, nvt, inFlag);
           inFlag = result.getValue(2);
           replaceUses(new SDValue(node, 0), result);
           if (Util.DEBUG) {
@@ -512,15 +517,18 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             // Prevent use of AH in a REX instruction by referencing AX instead.
             // Shift it down 8 bits.
             result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
-                X86GenRegisterNames.AX, new EVT(MVT.i16), inFlag);
+                    dl,
+                    X86GenRegisterNames.AX, new EVT(MVT.i16), inFlag);
             inFlag = result.getValue(2);
             result = new SDValue(curDAG.getMachineNode(X86GenInstrNames.SHR16ri,
-                new EVT(MVT.i16), result, curDAG.getTargetConstant(8, new EVT(MVT.i8))), 0);
+                    dl,
+                    new EVT(MVT.i16), result, curDAG.getTargetConstant(8, new EVT(MVT.i8))), 0);
             // then truncate it down to i8
             result = curDAG.getTargetExtractSubreg(SUBREG_8BIT,
-                new EVT(MVT.i8), result);
+                    dl,
+                    new EVT(MVT.i8), result);
           } else {
-            result = curDAG.getCopyFromReg(curDAG.getEntryNode(), hiReg, nvt, inFlag);
+            result = curDAG.getCopyFromReg(curDAG.getEntryNode(), dl, hiReg, nvt, inFlag);
             inFlag = result.getValue(2);
           }
           replaceUses(new SDValue(node, 1), result);
@@ -565,13 +573,14 @@ public abstract class X86DAGISel extends SelectionDAGISel {
               }
               SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
               reg = new SDValue(curDAG.getMachineNode(TargetOpcode.COPY_TO_REGCLASS,
-                  reg.getValueType(), reg, rc), 0);
+                      dl,
+                      reg.getValueType(), reg, rc), 0);
             }
 
             // Extract the l-register
-            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT, new EVT(MVT.i8), reg);
+            SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT, dl, new EVT(MVT.i8), reg);
             // emit a testb
-            return curDAG.getMachineNode(X86GenInstrNames.TEST8ri, new EVT(MVT.i32), subreg, imm);
+            return curDAG.getMachineNode(X86GenInstrNames.TEST8ri, dl, new EVT(MVT.i32), subreg, imm);
           }
 
           // For example, "testl %eax, $2048" to "testb %ah, $8".
@@ -598,16 +607,16 @@ public abstract class X86DAGISel extends SelectionDAGISel {
             }
             SDValue rc = curDAG.getTargetConstant(trc.getID(), new EVT(MVT.i32));
             reg = new SDValue(curDAG.getMachineNode(TargetOpcode.COPY_TO_REGCLASS,
-                reg.getValueType(), reg, rc), 0);
+                    dl, reg.getValueType(), reg, rc), 0);
 
             // Extract the h-register.
             SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_8BIT_HI,
-                new EVT(MVT.i8), reg);
+                    dl, new EVT(MVT.i8), reg);
 
             // Emit a testb. No special NOREX tricks are needed since there's
             // only one GPR operand!
             return curDAG.getMachineNode(X86GenInstrNames.TEST8ri,
-                new EVT(MVT.i32), subreg, shiftedImm);
+                    dl, new EVT(MVT.i32), subreg, shiftedImm);
           }
 
           // For example, "testl %eax, $32776" to "testw %ax, $32776".
@@ -619,10 +628,10 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
             // Extract the 16-bit subregister.
             SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_16BIT,
-                new EVT(MVT.i16), reg);
+                    dl, new EVT(MVT.i16), reg);
 
             // Emit a testw.
-            return curDAG.getMachineNode(X86GenInstrNames.TEST16ri, new EVT(MVT.i32), subreg, imm);
+            return curDAG.getMachineNode(X86GenInstrNames.TEST16ri, dl, new EVT(MVT.i32), subreg, imm);
           }
 
           // For example, "testq %rax, $268468232" to "testl %eax, $268468232".
@@ -635,10 +644,10 @@ public abstract class X86DAGISel extends SelectionDAGISel {
 
             // Extract the 32-bit subregister.
             SDValue subreg = curDAG.getTargetExtractSubreg(SUBREG_32BIT,
-                new EVT(MVT.i32), reg);
+                    dl, new EVT(MVT.i32), reg);
 
             // Emit a testl
-            return curDAG.getMachineNode(X86GenInstrNames.TEST32ri, new EVT(MVT.i32), subreg, imm);
+            return curDAG.getMachineNode(X86GenInstrNames.TEST32ri, dl, new EVT(MVT.i32), subreg, imm);
           }
         }
         break;
@@ -674,13 +683,14 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     ops[7] = lsi;
     ops[8] = chain;
     EVT[] vts = {new EVT(MVT.i32), new EVT(MVT.i32), new EVT(MVT.Other)};
-    return curDAG.getTargetNode(opc, vts, ops);
+    return curDAG.getMachineNode(opc, node.getDebugLoc(), vts, ops);
   }
 
   private SDNode selectAtomicLoadAdd(SDNode node, EVT vt) {
     if (node.hasAnyUseOfValue(0))
       return null;
 
+    DebugLoc dl = node.getDebugLoc();
     SDValue chain = node.getOperand(0);
     SDValue ptr = node.getOperand(1);
     SDValue val = node.getOperand(2);
@@ -799,18 +809,18 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           }
         }
     }
-    SDValue undef = new SDValue(curDAG.getTargetNode(TargetOpcode.IMPLICIT_DEF, vt), 0);
+    SDValue undef = new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, dl, vt), 0);
     SDValue memOp = curDAG.getMemOperand(((MemSDNode) node).getMemOperand());
     if (isInc || isDec) {
       SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], memOp, chain};
-      SDValue ret = new SDValue(curDAG.getTargetNode(opc, new EVT(MVT.Other), ops), 0);
+      SDValue ret = new SDValue(curDAG.getMachineNode(opc, dl, new EVT(MVT.Other), ops), 0);
       SDValue[] retVals = {undef, ret};
-      return curDAG.getMergeValues(retVals).getNode();
+      return curDAG.getMergeValues(dl, retVals).getNode();
     } else {
       SDValue[] ops = {temp[0], temp[1], temp[2], temp[3], temp[4], val, memOp, chain};
-      SDValue ret = new SDValue(curDAG.getTargetNode(opc, new EVT(MVT.Other), ops), 0);
+      SDValue ret = new SDValue(curDAG.getMachineNode(opc, dl, new EVT(MVT.Other), ops), 0);
       SDValue[] retVals = {undef, ret};
-      return curDAG.getMergeValues(retVals).getNode();
+      return curDAG.getMergeValues(dl, retVals).getNode();
     }
   }
 
@@ -970,6 +980,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
                                           OutRef<X86ISelAddressMode> am,
                                           int depth) {
     boolean is64Bit = subtarget.is64Bit();
+    DebugLoc dl = n.getDebugLoc();
     if (depth > 5)
       return matchAddressBase(n, am.get());
 
@@ -1128,12 +1139,13 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         }
 
         SDValue zero = curDAG.getConstant(0, n.getValueType(), false);
-        SDValue neg = curDAG.getNode(ISD.SUB, n.getValueType(), zero, rhs);
+        SDValue neg = curDAG.getNode(ISD.SUB, n.getDebugLoc(), n.getValueType(), zero, rhs);
         am.get().indexReg = neg;
         am.get().scale = 1;
 
         // FIXME, we have to comment the following code for two reasons
-        // 1. We can't reposition any node of a DAG because it will invalidate the iterating index on selecting instruction.
+        // 1. We can't reposition any node of a DAG because it will invalidate the iterating
+        // index on selecting instruction.
         // 2. it is unnecessary to keep the topological order.
         // 8/22/2019.
         /*
@@ -1211,13 +1223,14 @@ public abstract class X86DAGISel extends SelectionDAGISel {
               (0xffL << scaleLog)) {
             SDValue eight = curDAG.getConstant(8, new EVT(MVT.i8), false);
             SDValue mask = curDAG.getConstant(0xff, n.getValueType(), false);
-            SDValue srl = curDAG.getNode(ISD.SRL, n.getValueType(), x, eight);
-            SDValue and = curDAG.getNode(ISD.AND, n.getValueType(), srl, mask);
+            SDValue srl = curDAG.getNode(ISD.SRL, dl, n.getValueType(), x, eight);
+            SDValue and = curDAG.getNode(ISD.AND, dl, n.getValueType(), srl, mask);
             SDValue shlCount = curDAG.getConstant(scaleLog, new EVT(MVT.i8), false);
-            SDValue shl = curDAG.getNode(ISD.SHL, n.getValueType(), and, shlCount);
+            SDValue shl = curDAG.getNode(ISD.SHL, dl, n.getValueType(), and, shlCount);
 
             // FIXME, we have to comment the following code for two reasons
-            // 1. We can't reposition any node of a DAG because it will invalidate the iterating index on selecting instruction.
+            // 1. We can't reposition any node of a DAG because it will invalidate the iterating
+            // index on selecting instruction.
             // 2. it is unnecessary to keep the topological order.
             // 8/22/2019.
             /*if (eight.getNode().getNodeID() == -1 ||
@@ -1265,15 +1278,16 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         if (shiftCst != 1 && shiftCst != 2 && shiftCst != 3)
           break;
 
-        SDValue newAndMask = curDAG.getNode(ISD.SRL, n.getValueType(),
+        SDValue newAndMask = curDAG.getNode(ISD.SRL, dl, n.getValueType(),
             new SDValue(c2, 0), new SDValue(c1, 0));
-        SDValue newAnd = curDAG.getNode(ISD.AND, n.getValueType(), x,
+        SDValue newAnd = curDAG.getNode(ISD.AND, dl, n.getValueType(), x,
             newAndMask);
-        SDValue newShift = curDAG.getNode(ISD.SHL, n.getValueType(),
+        SDValue newShift = curDAG.getNode(ISD.SHL, dl, n.getValueType(),
             newAnd, new SDValue(c1, 0));
 
         // FIXME, we have to comment the following code for two reasons
-        // 1. We can't reposition any node of a DAG because it will invalidate the iterating index on selecting instruction.
+        // 1. We can't reposition any node of a DAG because it will invalidate the
+        // iterating index on selecting instruction.
         // 2. it is unnecessary to keep the topological order.
         // 8/22/2019.
         /*if (c1.getNodeID() > x.getNode().getNodeID()) {
@@ -1653,8 +1667,8 @@ public abstract class X86DAGISel extends SelectionDAGISel {
           ops.add(chain.getOperand(i));
       }
 
-      SDValue newChain = curDAG.getNode(ISD.TokenFactor, new EVT(MVT.Other),
-          ops);
+      SDValue newChain = curDAG.getNode(ISD.TokenFactor, call.getDebugLoc(),
+              new EVT(MVT.Other), ops);
       ops.clear();
       ops.add(newChain);
     }
@@ -1702,10 +1716,13 @@ public abstract class X86DAGISel extends SelectionDAGISel {
         memVT = srcIsSSE ? srcVT : dstVT;
 
       SDValue memTmp = curDAG.createStackTemporary(memVT);
-      SDValue store = curDAG.getTruncStore(curDAG.getEntryNode(), node.getOperand(0),
-          memTmp, null, 0, memVT);
-      SDValue result = curDAG.getExtLoad(EXTLOAD, dstVT, store, memTmp,
-          null, 0, memVT);
+      DebugLoc dl = node.getDebugLoc();
+      SDValue store = curDAG.getTruncStore(curDAG.getEntryNode(),
+              dl,
+              node.getOperand(0),
+              memTmp, null, 0, memVT);
+      SDValue result = curDAG.getExtLoad(dl, EXTLOAD, dstVT, store, memTmp,
+              null, 0, memVT);
 
       curDAG.replaceAllUsesOfValueWith(new SDValue(node, 0), result);
       curDAG.deleteNode(node);
@@ -1737,7 +1754,7 @@ public abstract class X86DAGISel extends SelectionDAGISel {
     comp[2] = am.indexReg;
 
     if (am.gv != null)
-      comp[3] = curDAG.getTargetGlobalAddress(am.gv, new EVT(MVT.i32), am.disp,
+      comp[3] = curDAG.getTargetGlobalAddress(am.gv, new DebugLoc(), new EVT(MVT.i32), am.disp,
           am.symbolFlags);
     else if (am.cp != null)
       comp[3] = curDAG.getTargetConstantPool(am.cp, new EVT(MVT.i32),

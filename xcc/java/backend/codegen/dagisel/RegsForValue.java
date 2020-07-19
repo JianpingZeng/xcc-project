@@ -19,6 +19,7 @@ package backend.codegen.dagisel;
 
 import backend.codegen.EVT;
 import backend.codegen.MVT;
+import backend.debug.DebugLoc;
 import backend.target.TargetLowering;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
@@ -81,6 +82,7 @@ public class RegsForValue {
   }
 
   public SDValue getCopyFromRegs(SelectionDAG dag,
+                                 DebugLoc dl,
                                  OutRef<SDValue> chain,
                                  OutRef<SDValue> flag) {
     SDValue[] values = new SDValue[valueVTs.size()];
@@ -94,9 +96,9 @@ public class RegsForValue {
       for (int i = 0; i < numRegs; i++) {
         SDValue p;
         if (flag == null)
-          p = dag.getCopyFromReg(chain.get(), regs.get(part + i), registerVT);
+          p = dag.getCopyFromReg(chain.get(), dl, regs.get(part + i), registerVT);
         else {
-          p = dag.getCopyFromReg(chain.get(), regs.get(part + i), registerVT, flag.get());
+          p = dag.getCopyFromReg(chain.get(), dl, regs.get(part + i), registerVT, flag.get());
           flag.set(p.getValue(2));
         }
         chain.set(p.getValue(1));
@@ -149,17 +151,18 @@ public class RegsForValue {
 
         Util.assertion(!fromVT.equals(new EVT(MVT.Other)));
         parts[i] = dag.getNode(isSExt ? ISD.AssertSext : ISD.AssertZext,
-            registerVT, p, dag.getValueType(fromVT));
+            dl, registerVT, p, dag.getValueType(fromVT));
       }
 
-      values[value] = getCopyFromParts(dag, parts, registerVT, valueVT);
+      values[value] = getCopyFromParts(dag, dl, parts, registerVT, valueVT);
       part += numRegs;
     }
 
-    return dag.getNode(ISD.MERGE_VALUES, dag.getVTList(valueVTs), values);
+    return dag.getNode(ISD.MERGE_VALUES, dl, dag.getVTList(valueVTs), values);
   }
 
-  public void getCopyToRegs(SDValue val,
+  public void getCopyToRegs(DebugLoc dl,
+                            SDValue val,
                             SelectionDAG dag,
                             OutRef<SDValue> chain,
                             OutRef<SDValue> flag) {
@@ -176,7 +179,7 @@ public class RegsForValue {
       for (int i = part; i < part + numParts; i++)
         temp[i - part] = parts[part];
 
-      getCopyToParts(dag, val.getValue(val.getResNo() + value), temp, registerVT);
+      getCopyToParts(dag, dl, val.getValue(val.getResNo() + value), temp, registerVT);
       for (int i = part; i < part + numParts; i++)
         parts[i] = temp[i - part];
 
@@ -188,9 +191,9 @@ public class RegsForValue {
     for (int i = 0; i < numRegs; i++) {
       SDValue part;
       if (flag == null)
-        part = dag.getCopyToReg(chain.get(), regs.get(i), parts[i]);
+        part = dag.getCopyToReg(chain.get(), dl, regs.get(i), parts[i]);
       else {
-        part = dag.getCopyToReg(chain.get(), regs.get(i), parts[i], flag.get());
+        part = dag.getCopyToReg(chain.get(), dl, regs.get(i), parts[i], flag.get());
         flag.set(part.getValue(1));
       }
       chains.set(i, part.getValue(0));
@@ -201,16 +204,16 @@ public class RegsForValue {
     else {
       SDValue[] temp = new SDValue[numRegs];
       chains.toArray(temp);
-      chain.set(dag.getNode(ISD.TokenFactor, new EVT(MVT.Other), temp));
+      chain.set(dag.getNode(ISD.TokenFactor, dl, new EVT(MVT.Other), temp));
     }
   }
 
-  public static SDValue getCopyFromParts(SelectionDAG dag, SDValue[] parts,
-                                         EVT partVT, EVT valueVT) {
-    return getCopyFromParts(dag, parts, partVT, valueVT, ISD.DELETED_NODE);
+  public static SDValue getCopyFromParts(SelectionDAG dag, DebugLoc dl,
+                                         SDValue[] parts, EVT partVT, EVT valueVT) {
+    return getCopyFromParts(dag, dl, parts, partVT, valueVT, ISD.DELETED_NODE);
   }
 
-  public static SDValue getCopyFromParts(SelectionDAG dag, SDValue[] parts,
+  public static SDValue getCopyFromParts(SelectionDAG dag, DebugLoc dl, SDValue[] parts,
                                          EVT partVT, EVT valueVT, int assertOp) {
     int numParts = parts.length;
     Util.assertion(numParts > 0, "No parts to assemble!");
@@ -231,25 +234,25 @@ public class RegsForValue {
         if (roundParts > 2) {
           SDValue[] temps = new SDValue[roundParts / 2];
           System.arraycopy(parts, 0, temps, 0, roundParts / 2);
-          lo = getCopyFromParts(dag, temps, partVT, halfVT);
+          lo = getCopyFromParts(dag, dl, temps, partVT, halfVT);
           System.arraycopy(parts, roundParts / 2, temps, 0, roundParts / 2);
-          hi = getCopyFromParts(dag, temps, partVT, halfVT);
+          hi = getCopyFromParts(dag, dl, temps, partVT, halfVT);
         } else {
-          lo = dag.getNode(ISD.BIT_CONVERT, halfVT, parts[0]);
-          hi = dag.getNode(ISD.BIT_CONVERT, halfVT, parts[1]);
+          lo = dag.getNode(ISD.BIT_CONVERT, dl, halfVT, parts[0]);
+          hi = dag.getNode(ISD.BIT_CONVERT, dl, halfVT, parts[1]);
         }
         if (tli.isBigEndian()) {
           SDValue temp = lo;
           lo = hi;
           hi = temp;
         }
-        val = dag.getNode(ISD.BUILD_PAIR, roundVT, lo, hi);
+        val = dag.getNode(ISD.BUILD_PAIR, dl, roundVT, lo, hi);
         if (roundParts < numParts) {
           int oddParts = numParts - roundParts;
           EVT oddVT = EVT.getIntegerVT(dag.getContext(), oddParts * partBits);
           SDValue[] temps = new SDValue[oddParts];
           System.arraycopy(parts, roundParts, temps, 0, oddParts);
-          hi = getCopyFromParts(dag, temps, partVT, oddVT);
+          hi = getCopyFromParts(dag, dl, temps, partVT, oddVT);
 
           lo = val;
           if (tli.isBigEndian()) {
@@ -258,12 +261,12 @@ public class RegsForValue {
             hi = temp;
           }
           EVT totalVT = EVT.getIntegerVT(dag.getContext(), numParts * partBits);
-          hi = dag.getNode(ISD.ANY_EXTEND, totalVT, hi);
-          hi = dag.getNode(ISD.SHL, totalVT, hi,
+          hi = dag.getNode(ISD.ANY_EXTEND, dl, totalVT, hi);
+          hi = dag.getNode(ISD.SHL, dl, totalVT, hi,
               dag.getConstant(lo.getValueType().getSizeInBits(),
                   new EVT(tli.getPointerTy()), false));
-          lo = dag.getNode(ISD.ZERO_EXTEND, totalVT, lo);
-          val = dag.getNode(ISD.OR, totalVT, lo, hi);
+          lo = dag.getNode(ISD.ZERO_EXTEND, dl, totalVT, lo);
+          val = dag.getNode(ISD.OR, dl, totalVT, lo, hi);
         }
       } else if (valueVT.isVector()) {
         OutRef<EVT> intermediateVT = new OutRef<>(),
@@ -282,7 +285,7 @@ public class RegsForValue {
           for (int i = 0; i < numParts; i++) {
             SDValue[] temp = new SDValue[1];
             temp[0] = parts[i];
-            ops.add(getCopyFromParts(dag, temp, partVT, intermediateVT.get()));
+            ops.add(getCopyFromParts(dag, dl, temp, partVT, intermediateVT.get()));
           }
         } else if (numParts > 0) {
           Util.assertion(numParts % numIntermidates.get() == 0);
@@ -290,30 +293,30 @@ public class RegsForValue {
           for (int i = 0; i < numIntermidates.get(); i++) {
             SDValue[] temp = new SDValue[factor];
             System.arraycopy(parts, i * factor, temp, 0, factor);
-            ops.add(getCopyFromParts(dag, temp, partVT, intermediateVT.get()));
+            ops.add(getCopyFromParts(dag, dl, temp, partVT, intermediateVT.get()));
           }
         }
         SDValue[] temp = new SDValue[numIntermidates.get()];
         System.arraycopy(ops.toArray(), 0, temp, 0, temp.length);
         val = dag.getNode(intermediateVT.get().isVector() ?
-            ISD.CONCAT_VECTORS : ISD.BUILD_VECTOR, valueVT, temp);
+            ISD.CONCAT_VECTORS : ISD.BUILD_VECTOR, dl, valueVT, temp);
       } else if (partVT.isFloatingPoint()) {
         Util.assertion(valueVT.equals(new EVT(MVT.ppcf128)) || partVT.equals(new EVT(MVT.f64)));
         SDValue lo, hi;
-        lo = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f64), parts[0]);
-        hi = dag.getNode(ISD.BIT_CONVERT, new EVT(MVT.f64), parts[1]);
+        lo = dag.getNode(ISD.BIT_CONVERT, dl, new EVT(MVT.f64), parts[0]);
+        hi = dag.getNode(ISD.BIT_CONVERT, dl, new EVT(MVT.f64), parts[1]);
         if (tli.isBigEndian()) {
           SDValue temp = lo;
           lo = hi;
           hi = temp;
         }
-        val = dag.getNode(ISD.BUILD_VECTOR, valueVT, lo, hi);
+        val = dag.getNode(ISD.BUILD_VECTOR, dl, valueVT, lo, hi);
       } else {
         Util.assertion(valueVT.isFloatingPoint() && partVT.isInteger() && !partVT.isVector());
         EVT intVT = EVT.getIntegerVT(dag.getContext(), valueVT.getSizeInBits());
         SDValue[] temp = new SDValue[numParts];
         System.arraycopy(parts, 0, temp, 0, numParts);
-        val = getCopyFromParts(dag, temp, partVT, intVT);
+        val = getCopyFromParts(dag, dl, temp, partVT, intVT);
       }
     }
 
@@ -323,44 +326,50 @@ public class RegsForValue {
 
     if (partVT.isVector()) {
       Util.assertion(valueVT.isVector());
-      return dag.getNode(ISD.BIT_CONVERT, valueVT, val);
+      return dag.getNode(ISD.BIT_CONVERT, dl, valueVT, val);
     }
 
     if (valueVT.isVector()) {
       Util.assertion(valueVT.getVectorElementType().equals(partVT) && valueVT.getVectorNumElements() == 1);
 
-      return dag.getNode(ISD.BUILD_VECTOR, valueVT, val);
+      return dag.getNode(ISD.BUILD_VECTOR, dl, valueVT, val);
     }
 
     if (partVT.isInteger() && valueVT.isInteger()) {
       if (valueVT.bitsLT(partVT)) {
         if (assertOp != ISD.DELETED_NODE)
-          val = dag.getNode(assertOp, partVT, val, dag.getValueType(valueVT));
-        return dag.getNode(ISD.TRUNCATE, valueVT, val);
+          val = dag.getNode(assertOp, dl, partVT, val, dag.getValueType(valueVT));
+        return dag.getNode(ISD.TRUNCATE, dl, valueVT, val);
       } else
-        return dag.getNode(ISD.ANY_EXTEND, valueVT, val);
+        return dag.getNode(ISD.ANY_EXTEND, dl, valueVT, val);
     }
 
     if (partVT.isFloatingPoint() && valueVT.isFloatingPoint()) {
       if (valueVT.bitsLT(val.getValueType()))
-        return dag.getNode(ISD.FP_ROUND, valueVT, val, dag.getIntPtrConstant(1));
-      return dag.getNode(ISD.FP_EXTEND, valueVT, val);
+        return dag.getNode(ISD.FP_ROUND, dl, valueVT, val, dag.getIntPtrConstant(1));
+      return dag.getNode(ISD.FP_EXTEND, dl, valueVT, val);
     }
 
     if (partVT.getSizeInBits() == valueVT.getSizeInBits())
-      return dag.getNode(ISD.BIT_CONVERT, valueVT, val);
+      return dag.getNode(ISD.BIT_CONVERT, dl, valueVT, val);
 
     Util.shouldNotReachHere("Unknown mismatch!");
     return new SDValue();
   }
 
-  public static void getCopyToParts(SelectionDAG dag, SDValue val,
-                                    SDValue[] parts, EVT partVT) {
-    getCopyToParts(dag, val, parts, partVT, ISD.ANY_EXTEND);
+  public static void getCopyToParts(SelectionDAG dag,
+                                    DebugLoc dl,
+                                    SDValue val,
+                                    SDValue[] parts,
+                                    EVT partVT) {
+    getCopyToParts(dag, dl, val, parts, partVT, ISD.ANY_EXTEND);
   }
 
-  public static void getCopyToParts(SelectionDAG dag, SDValue val,
-                                    SDValue[] parts, EVT partVT,
+  public static void getCopyToParts(SelectionDAG dag,
+                                    DebugLoc dl,
+                                    SDValue val,
+                                    SDValue[] parts,
+                                    EVT partVT,
                                     int extendKind) {
     int numParts = parts.length;
     TargetLowering tli = dag.getTargetLoweringInfo();
@@ -382,20 +391,20 @@ public class RegsForValue {
       if (numParts * partBits > valueVT.getSizeInBits()) {
         if (partVT.isFloatingPoint() && valueVT.isFloatingPoint()) {
           Util.assertion(numParts == 1);
-          val = dag.getNode(ISD.FP_EXTEND, partVT, val);
+          val = dag.getNode(ISD.FP_EXTEND, dl, partVT, val);
         } else if (partVT.isInteger() && valueVT.isInteger()) {
           valueVT = EVT.getIntegerVT(dag.getContext(), numParts * partBits);
-          val = dag.getNode(extendKind, valueVT, val);
+          val = dag.getNode(extendKind, dl, valueVT, val);
         } else {
           Util.shouldNotReachHere("Unknown mismatch!");
         }
       } else if (partBits == valueVT.getSizeInBits()) {
         Util.assertion(numParts == 1 && !partVT.equals(valueVT));
-        val = dag.getNode(ISD.BIT_CONVERT, partVT, val);
+        val = dag.getNode(ISD.BIT_CONVERT, dl, partVT, val);
       } else if (numParts * partBits < valueVT.getSizeInBits()) {
         if (partVT.isInteger() && valueVT.isInteger()) {
           valueVT = EVT.getIntegerVT(dag.getContext(), numParts * partBits);
-          val = dag.getNode(ISD.TRUNCATE, valueVT, val);
+          val = dag.getNode(ISD.TRUNCATE, dl, valueVT, val);
         } else
           Util.shouldNotReachHere("Unknown mismatch!");
       }
@@ -416,10 +425,10 @@ public class RegsForValue {
         int roundParts = 1 << Util.log2(numParts);
         int roundBits = roundParts * partBits;
         int oddParts = numParts - roundParts;
-        SDValue oddVal = dag.getNode(ISD.SRL, valueVT, val, dag.getIntPtrConstant(roundBits));
+        SDValue oddVal = dag.getNode(ISD.SRL, dl, valueVT, val, dag.getIntPtrConstant(roundBits));
 
         SDValue[] temp = new SDValue[oddParts];
-        getCopyToParts(dag, oddVal, temp, partVT);
+        getCopyToParts(dag, dl, oddVal, temp, partVT);
         // The oadd parts were reversed by getCopyToParts - unreverse them.
         if (tli.isBigEndian())
           Util.reverse(temp);
@@ -428,11 +437,11 @@ public class RegsForValue {
         // Reaching here, we just need to copy remaining part of parts array.
         numParts = roundParts;
         valueVT = EVT.getIntegerVT(dag.getContext(), numParts * partBits);
-        val = dag.getNode(ISD.TRUNCATE, valueVT, val);
+        val = dag.getNode(ISD.TRUNCATE, dl, valueVT, val);
       }
 
       // The remained parts is a power of 2. Repeatly bitset the value using EXTRACT_ELEMENT.
-      parts[0] = dag.getNode(ISD.BIT_CONVERT, EVT.getIntegerVT(dag.getContext(),
+      parts[0] = dag.getNode(ISD.BIT_CONVERT, dl, EVT.getIntegerVT(dag.getContext(),
           valueVT.getSizeInBits()), val);
 
       // Try to group the remained part with different group size from numParts to the lower value.
@@ -443,14 +452,14 @@ public class RegsForValue {
           SDValue part0 = parts[i];
           SDValue part1 = parts[i + stepSize / 2];
 
-          part1 = dag.getNode(ISD.EXTRACT_ELEMENT, thisVT, part0,
+          part1 = dag.getNode(ISD.EXTRACT_ELEMENT, dl, thisVT, part0,
               dag.getConstant(1, ptrVT, false));
-          part0 = dag.getNode(ISD.EXTRACT_ELEMENT, thisVT, part0,
+          part0 = dag.getNode(ISD.EXTRACT_ELEMENT, dl, thisVT, part0,
               dag.getConstant(0, ptrVT, false));
 
           if (thisBits == partBits && !thisVT.equals(partVT)) {
-            part0 = dag.getNode(ISD.BIT_CONVERT, partVT, part0);
-            part1 = dag.getNode(ISD.BIT_CONVERT, partVT, part1);
+            part0 = dag.getNode(ISD.BIT_CONVERT, dl, partVT, part0);
+            part1 = dag.getNode(ISD.BIT_CONVERT, dl, partVT, part1);
           }
           parts[i] = part0;
           parts[i + stepSize / 2] = part1;
@@ -466,13 +475,13 @@ public class RegsForValue {
     if (numParts == 1) {
       if (!partVT.equals(valueVT)) {
         if (partVT.isVector()) {
-          val = dag.getNode(ISD.BIT_CONVERT, partVT, val);
+          val = dag.getNode(ISD.BIT_CONVERT, dl, partVT, val);
         } else {
           Util.assertion(valueVT.getVectorElementType().equals(partVT) &&
                   valueVT.getVectorNumElements() == 1,
               "Only trivial vector-to-vector conversions should get here!");
 
-          val = dag.getNode(ISD.EXTRACT_VECTOR_ELT, partVT, val,
+          val = dag.getNode(ISD.EXTRACT_VECTOR_ELT, dl, partVT, val,
               dag.getConstant(0, ptrVT, false));
         }
       }
@@ -495,12 +504,12 @@ public class RegsForValue {
     ArrayList<SDValue> ops = new ArrayList<>();
     for (int i = 0; i < numIntermediates.get(); i++) {
       if (intermidiateVT.get().isVector())
-        ops.add(dag.getNode(ISD.EXTRACT_SUBVECTOR, intermidiateVT.get(),
+        ops.add(dag.getNode(ISD.EXTRACT_SUBVECTOR, dl, intermidiateVT.get(),
             dag.getConstant(i * (numElts / numIntermediates.get()),
                 ptrVT, false)));
       else
         ops.add(dag.getNode(ISD.EXTRACT_VECTOR_ELT,
-            intermidiateVT.get(), val,
+            dl, intermidiateVT.get(), val,
             dag.getConstant(i, ptrVT, false)));
     }
 
@@ -511,7 +520,7 @@ public class RegsForValue {
       for (int i = 0; i < numParts; i++) {
         SDValue[] temp = new SDValue[1];
         temp[0] = parts[i];
-        getCopyToParts(dag, ops.get(i), temp, partVT);
+        getCopyToParts(dag, dl, ops.get(i), temp, partVT);
       }
     } else if (numParts > 0) {
       // If the intermediate type was expanded, split each the value into
@@ -522,7 +531,7 @@ public class RegsForValue {
       for (int i = 0; i < numIntermediates.get(); i++) {
         SDValue[] temp = new SDValue[factor];
         System.arraycopy(parts, i * factor, temp, 0, factor);
-        getCopyToParts(dag, ops.get(i), temp, partVT);
+        getCopyToParts(dag, dl, ops.get(i), temp, partVT);
       }
     }
   }

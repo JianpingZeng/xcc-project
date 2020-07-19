@@ -98,8 +98,8 @@ public class MipsDAGISel extends SelectionDAGISel {
         SDValue lhs = node.getOperand(0), rhs = node.getOperand(1);
 
         EVT vt = lhs.getValueType();
-        SDNode carry = curDAG.getMachineNode(MipsGenInstrNames.SLTu, vt, ops);
-        SDNode addCarry = curDAG.getMachineNode(MipsGenInstrNames.ADDu, vt,
+        SDNode carry = curDAG.getMachineNode(MipsGenInstrNames.SLTu, dl, vt, ops);
+        SDNode addCarry = curDAG.getMachineNode(MipsGenInstrNames.ADDu, dl, vt,
             new SDValue(carry, 0), rhs);
         return curDAG.selectNodeTo(node, mOp, vt, new EVT(MVT.Glue),
             lhs, new SDValue(addCarry, 0));
@@ -112,11 +112,11 @@ public class MipsDAGISel extends SelectionDAGISel {
         SDValue op1 = node.getOperand(0), op2 = node.getOperand(1);
 
         int op = opc == ISD.UMUL_LOHI ? MipsGenInstrNames.MULTu : MipsGenInstrNames.MULT;
-        SDNode mul = curDAG.getMachineNode(op, new EVT(MVT.Glue), op1, op2);
+        SDNode mul = curDAG.getMachineNode(op, dl, new EVT(MVT.Glue), op1, op2);
         SDValue inFlag = new SDValue(mul, 0);
-        SDNode lo = curDAG.getMachineNode(MipsGenInstrNames.MFLO, new EVT(MVT.i32), new EVT(MVT.Glue), inFlag);
+        SDNode lo = curDAG.getMachineNode(MipsGenInstrNames.MFLO, dl, new EVT(MVT.i32), new EVT(MVT.Glue), inFlag);
         inFlag = new SDValue(lo, 1);
-        SDNode hi = curDAG.getMachineNode(MipsGenInstrNames.MFHI, new EVT(MVT.i32), new EVT(MVT.Glue), inFlag);
+        SDNode hi = curDAG.getMachineNode(MipsGenInstrNames.MFHI, dl, new EVT(MVT.i32), new EVT(MVT.Glue), inFlag);
 
         if (!new SDValue(node, 0).isUseEmpty()) {
           replaceUses(new SDValue(node, 0), new SDValue(lo, 0));
@@ -144,14 +144,14 @@ public class MipsDAGISel extends SelectionDAGISel {
 
         int mulOp = opc == ISD.MULHU ? MipsGenInstrNames.MULTu :
             (ty.equals(new EVT(MVT.i32)) ? MipsGenInstrNames.MULT : MipsGenInstrNames.DMULT);
-        SDNode mulNode = curDAG.getMachineNode(mulOp, new EVT(MVT.Glue), op0, op1);
+        SDNode mulNode = curDAG.getMachineNode(mulOp, dl, new EVT(MVT.Glue), op0, op1);
         SDValue inFlag = new SDValue(mulNode, 0);
         if (opc == ISD.MUL) {
           int op = ty.equals(new EVT(MVT.i32)) ? MipsGenInstrNames.MFLO : MipsGenInstrNames.MFLO64;
-          return curDAG.getMachineNode(op, ty, inFlag);
+          return curDAG.getMachineNode(op, dl, ty, inFlag);
         }
         else
-          return curDAG.getMachineNode(MipsGenInstrNames.MFHI, new EVT(MVT.i32), inFlag);
+          return curDAG.getMachineNode(MipsGenInstrNames.MFHI, dl, new EVT(MVT.i32), inFlag);
       }
 
       case ISD.GLOBAL_OFFSET_TABLE:
@@ -160,19 +160,19 @@ public class MipsDAGISel extends SelectionDAGISel {
       case ISD.ConstantFP: {
         ConstantFPSDNode sdn = (ConstantFPSDNode) node;
         if (node.getValueType(0).equals(new EVT(MVT.f64)) && sdn.isExactlyValue(+0.0)) {
-          SDValue zero = curDAG.getCopyFromReg(curDAG.getEntryNode(), MipsGenRegisterNames.ZERO, new EVT(MVT.i32));
-          return curDAG.getMachineNode(MipsGenInstrNames.BuildPairF64, new EVT(MVT.f64), zero, zero);
+          SDValue zero = curDAG.getCopyFromReg(curDAG.getEntryNode(), dl, MipsGenRegisterNames.ZERO, new EVT(MVT.i32));
+          return curDAG.getMachineNode(MipsGenInstrNames.BuildPairF64, dl, new EVT(MVT.f64), zero, zero);
         }
         break;
       }
       case MipsISD.ThreadPointer: {
         int srcReg = MipsGenRegisterNames.HWR29;
         int dstReg = MipsGenRegisterNames.V1;
-        SDNode rdhwr = curDAG.getMachineNode(MipsGenInstrNames.RDHWR,
+        SDNode rdhwr = curDAG.getMachineNode(MipsGenInstrNames.RDHWR, dl,
             node.getValueType(0), curDAG.getRegister(srcReg, new EVT(MVT.i32)));
-        SDValue chain = curDAG.getCopyToReg(curDAG.getEntryNode(), dstReg,
+        SDValue chain = curDAG.getCopyToReg(curDAG.getEntryNode(), dl, dstReg,
             new SDValue(rdhwr, 0));
-        SDValue resNode = curDAG.getCopyFromReg(chain, dstReg, new EVT(MVT.i32));
+        SDValue resNode = curDAG.getCopyFromReg(chain, dl, dstReg, new EVT(MVT.i32));
         replaceUses(new SDValue(node, 0), resNode);
         return resNode.getNode();
       }
@@ -195,7 +195,6 @@ public class MipsDAGISel extends SelectionDAGISel {
    * This function is used to read the address expression and determine what kinds of
    * address mode could be suitable for it. The computed operand of address expression
    * is returned in the {@arg tmp} array.
-   * @param root
    * @param addr
    * @param tmp
    * @return

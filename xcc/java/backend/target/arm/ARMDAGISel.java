@@ -104,6 +104,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   public SDNode select(SDNode node) {
     EVT nvt = node.getValueType(0);
     int opcode = node.getOpcode();
+    DebugLoc dl = node.getDebugLoc();
 
     if (Util.DEBUG) {
       System.err.print("Selecting: ");
@@ -149,7 +150,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         SDValue temp = curDAG.getTargetConstant(((SDNode.ConstantSDNode) n2.getNode()).getZExtValue(),
             new EVT(MVT.i32));
         SDValue[] ops = new SDValue[]{n1, temp, n3, chain, inFlag};
-        SDNode resNode = curDAG.getMachineNode(opc, new EVT(MVT.Other), new EVT(MVT.Glue), ops);
+        SDNode resNode = curDAG.getMachineNode(opc, dl, new EVT(MVT.Other), new EVT(MVT.Glue), ops);
         chain = new SDValue(resNode, 0);
         if (node.getNumValues() == 2) {
           inFlag = new SDValue(resNode, 1);
@@ -210,7 +211,8 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
             SDValue Pred = getAL(curDAG);
             SDValue PredReg = curDAG.getRegister(0, MVT.i32);
             SDValue ops[] = {CPIdx, Pred, PredReg, curDAG.getEntryNode()};
-            ResNode = curDAG.getMachineNode(ARMGenInstrNames.tLDRpci, curDAG.getVTList(new EVT(MVT.i32), new EVT(MVT.Other)), ops);
+            ResNode = curDAG.getMachineNode(ARMGenInstrNames.tLDRpci, dl,
+                    curDAG.getVTList(new EVT(MVT.i32), new EVT(MVT.Other)), ops);
           } else {
             SDValue ops[] = {
                 CPIdx,
@@ -219,8 +221,8 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
                 curDAG.getRegister(0, MVT.i32),
                 curDAG.getEntryNode()
             };
-            ResNode = curDAG.getMachineNode(ARMGenInstrNames.LDRcp, curDAG.getVTList(new EVT(MVT.i32), new EVT(MVT.Other)),
-                ops);
+            ResNode = curDAG.getMachineNode(ARMGenInstrNames.LDRcp, dl, 
+                    curDAG.getVTList(new EVT(MVT.i32), new EVT(MVT.Other)), ops);
           }
           replaceUses(new SDValue(node, 0), new SDValue(ResNode, 0));
           return null;
@@ -321,15 +323,16 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
             SDValue Imm16 = curDAG.getTargetConstant((N2CVal & 0xFFFF0000) >> 16, new EVT(MVT.i32));
             SDValue ops[] = {n0.getOperand(0), Imm16,
                 getAL(curDAG), curDAG.getRegister(0, MVT.i32)};
-            return curDAG.getMachineNode(opc, vt, ops);
+            return curDAG.getMachineNode(opc, dl, vt, ops);
           }
         }
         break;
       }
       case ARMISD.VMOVRRD:
-        return curDAG.getMachineNode(ARMGenInstrNames.VMOVRRD, new EVT(MVT.i32), new EVT(MVT.i32),
-            node.getOperand(0), getAL(curDAG),
-            curDAG.getRegister(0, MVT.i32));
+        return curDAG.getMachineNode(ARMGenInstrNames.VMOVRRD, dl,
+                new EVT(MVT.i32), new EVT(MVT.i32), 
+                node.getOperand(0), getAL(curDAG), 
+                curDAG.getRegister(0, MVT.i32));
       case ISD.UMUL_LOHI: {
         if (subtarget.isThumb1Only())
           break;
@@ -337,13 +340,14 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
           SDValue ops[] = {node.getOperand(0), node.getOperand(1),
               getAL(curDAG), curDAG.getRegister(0, MVT.i32),
               curDAG.getRegister(0, MVT.i32)};
-          return curDAG.getMachineNode(ARMGenInstrNames.t2UMULL, new EVT(MVT.i32), new EVT(MVT.i32), ops);
+          return curDAG.getMachineNode(ARMGenInstrNames.t2UMULL, dl, new EVT(MVT.i32), new EVT(MVT.i32), ops);
         } else {
           SDValue ops[] = {node.getOperand(0), node.getOperand(1),
               getAL(curDAG), curDAG.getRegister(0, MVT.i32),
               curDAG.getRegister(0, MVT.i32)};
-          return curDAG.getMachineNode(subtarget.hasV6Ops() ?
-              ARMGenInstrNames.UMULL : ARMGenInstrNames.UMULLv5, new EVT(MVT.i32), new EVT(MVT.i32), ops);
+          return curDAG.getMachineNode(subtarget.hasV6Ops() ? 
+                          ARMGenInstrNames.UMULL : ARMGenInstrNames.UMULLv5, dl, 
+                  new EVT(MVT.i32), new EVT(MVT.i32), ops);
         }
       }
       case ISD.SMUL_LOHI: {
@@ -352,13 +356,13 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         if (subtarget.isThumb()) {
           SDValue ops[] = {node.getOperand(0), node.getOperand(1),
               getAL(curDAG), curDAG.getRegister(0, MVT.i32)};
-          return curDAG.getMachineNode(ARMGenInstrNames.t2SMULL, new EVT(MVT.i32), new EVT(MVT.i32), ops);
+          return curDAG.getMachineNode(ARMGenInstrNames.t2SMULL, dl, new EVT(MVT.i32), new EVT(MVT.i32), ops);
         } else {
           SDValue ops[] = {node.getOperand(0), node.getOperand(1),
               getAL(curDAG), curDAG.getRegister(0, MVT.i32),
               curDAG.getRegister(0, MVT.i32)};
           return curDAG.getMachineNode(subtarget.hasV6Ops() ?
-              ARMGenInstrNames.SMULL : ARMGenInstrNames.SMULLv5, new EVT(MVT.i32), new EVT(MVT.i32), ops);
+              ARMGenInstrNames.SMULL : ARMGenInstrNames.SMULLv5, dl, new EVT(MVT.i32), new EVT(MVT.i32), ops);
         }
       }
       case ISD.LOAD: {
@@ -402,12 +406,12 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         SDValue pred = getAL(curDAG);
         SDValue predReg = curDAG.getRegister(0, MVT.i32);
         SDValue ops[] = {node.getOperand(0), node.getOperand(1), pred, predReg};
-        return curDAG.getMachineNode(opc, vt, vt, ops);
+        return curDAG.getMachineNode(opc, dl, vt, vt, ops);
       }
       case ARMISD.VUZP: {
         int opc = 0;
-        EVT VT = node.getValueType(0);
-        switch (VT.getSimpleVT().simpleVT) {
+        EVT vt = node.getValueType(0);
+        switch (vt.getSimpleVT().simpleVT) {
           default:
             return null;
           case MVT.v8i8:
@@ -434,12 +438,12 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         SDValue Pred = getAL(curDAG);
         SDValue PredReg = curDAG.getRegister(0, MVT.i32);
         SDValue ops[] = {node.getOperand(0), node.getOperand(1), Pred, PredReg};
-        return curDAG.getMachineNode(opc, VT, VT, ops);
+        return curDAG.getMachineNode(opc, dl, vt, vt, ops);
       }
       case ARMISD.VTRN: {
         int opc = 0;
-        EVT VT = node.getValueType(0);
-        switch (VT.getSimpleVT().simpleVT) {
+        EVT vt = node.getValueType(0);
+        switch (vt.getSimpleVT().simpleVT) {
           default:
             return null;
           case MVT.v8i8:
@@ -466,22 +470,22 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         SDValue Pred = getAL(curDAG);
         SDValue PredReg = curDAG.getRegister(0, MVT.i32);
         SDValue ops[] = {node.getOperand(0), node.getOperand(1), Pred, PredReg};
-        return curDAG.getMachineNode(opc, VT, VT, ops);
+        return curDAG.getMachineNode(opc, dl, vt, vt, ops);
       }
       case ARMISD.BUILD_VECTOR: {
-        EVT VecVT = node.getValueType(0);
-        EVT EltVT = VecVT.getVectorElementType();
-        int NumElts = VecVT.getVectorNumElements();
-        if (EltVT.equals(new EVT(MVT.f64))) {
-          Util.assertion(NumElts == 2, "unexpected type for BUILD_VECTOR");
-          return pairDRegs(VecVT, node.getOperand(0), node.getOperand(1));
+        EVT vecVT = node.getValueType(0);
+        EVT eltVT = vecVT.getVectorElementType();
+        int numElts = vecVT.getVectorNumElements();
+        if (eltVT.equals(new EVT(MVT.f64))) {
+          Util.assertion(numElts == 2, "unexpected type for BUILD_VECTOR");
+          return pairDRegs(vecVT, node.getOperand(0), node.getOperand(1), dl);
         }
-        Util.assertion(EltVT.equals(new EVT(MVT.f32)), "unexpected type for BUILD_VECTOR");
-        if (NumElts == 2)
-          return pairSRegs(VecVT, node.getOperand(0), node.getOperand(1));
-        Util.assertion(NumElts == 4, "unexpected type for BUILD_VECTOR");
-        return quadSRegs(VecVT, node.getOperand(0), node.getOperand(1),
-            node.getOperand(2), node.getOperand(3));
+        Util.assertion(eltVT.equals(new EVT(MVT.f32)), "unexpected type for BUILD_VECTOR");
+        if (numElts == 2)
+          return pairSRegs(vecVT, node.getOperand(0), node.getOperand(1), dl);
+        Util.assertion(numElts == 4, "unexpected type for BUILD_VECTOR");
+        return quadSRegs(vecVT, node.getOperand(0), node.getOperand(1),
+            node.getOperand(2), node.getOperand(3), dl);
       }
 
       case ARMISD.VLD2DUP: {
@@ -656,7 +660,6 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
             break;
           case arm_ldrexd: {
             SDValue memAddr = node.getOperand(2);
-            DebugLoc dl = node.getDebugLoc();
             SDValue chain = node.getOperand(0);
 
             int newOpc = ARMGenInstrNames.LDREXD;
@@ -671,28 +674,28 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
 
             // place arguments in the right order
             SDValue[] ops = {memAddr, getAL(curDAG), curDAG.getRegister(0, new EVT(MVT.i32)), chain};
-            SDNode.MachineSDNode ld = curDAG.getMachineNode(newOpc, curDAG.getVTList(resTys), ops);
+            SDNode.MachineSDNode ld = curDAG.getMachineNode(newOpc, dl, curDAG.getVTList(resTys), ops);
             // Transfer memoperands.
             ld.setMemRefs(new MachineMemOperand[]{((SDNode.MemIntrinsicSDNode) node).getMemOperand()});
 
             // Until there's support for specifing explicit register constraints
             // like the use of even/odd register pair, hardcode ldrexd to always
             // use the pair [R0, R1] to hold the load result.
-            chain = curDAG.getCopyToReg(curDAG.getEntryNode(), ARMGenRegisterNames.R0,
+            chain = curDAG.getCopyToReg(curDAG.getEntryNode(), dl, ARMGenRegisterNames.R0,
                 new SDValue(ld, 0), new SDValue(null, 0));
-            chain = curDAG.getCopyToReg(chain, ARMGenRegisterNames.R1, new SDValue(ld, 1), chain.getValue(1));
+            chain = curDAG.getCopyToReg(chain, dl, ARMGenRegisterNames.R1, new SDValue(ld, 1), chain.getValue(1));
 
             // Remap uses.
             SDValue Glue = chain.getValue(1);
             if (!new SDValue(node, 0).isUseEmpty()) {
               SDValue Result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
-                  ARMGenRegisterNames.R0, new EVT(MVT.i32), Glue);
+                  dl, ARMGenRegisterNames.R0, new EVT(MVT.i32), Glue);
               Glue = Result.getValue(2);
               replaceUses(new SDValue(node, 0), Result);
             }
             if (!new SDValue(node, 1).isUseEmpty()) {
               SDValue Result = curDAG.getCopyFromReg(curDAG.getEntryNode(),
-                  ARMGenRegisterNames.R1, new EVT(MVT.i32), Glue);
+                  dl, ARMGenRegisterNames.R1, new EVT(MVT.i32), Glue);
               Glue = Result.getValue(2);
               replaceUses(new SDValue(node, 1), Result);
             }
@@ -702,7 +705,6 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
           }
 
           case arm_strexd: {
-            DebugLoc dl = node.getDebugLoc();
             SDValue chain = node.getOperand(0);
             SDValue val0 = node.getOperand(2);
             SDValue val1 = node.getOperand(3);
@@ -711,14 +713,14 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
             // Until there's support for specifing explicit register constraints
             // like the use of even/odd register pair, hardcode strexd to always
             // use the pair [R2, R3] to hold the i64 (i32, i32) value to be stored.
-            chain = curDAG.getCopyToReg(curDAG.getEntryNode(), ARMGenRegisterNames.R2, val0,
+            chain = curDAG.getCopyToReg(curDAG.getEntryNode(), dl, ARMGenRegisterNames.R2, val0,
                 new SDValue(null, 0));
-            chain = curDAG.getCopyToReg(chain, ARMGenRegisterNames.R3, val1, chain.getValue(1));
+            chain = curDAG.getCopyToReg(chain, dl, ARMGenRegisterNames.R3, val1, chain.getValue(1));
 
             SDValue Glue = chain.getValue(1);
-            val0 = curDAG.getCopyFromReg(curDAG.getEntryNode(), ARMGenRegisterNames.R2, new EVT(MVT.i32), Glue);
+            val0 = curDAG.getCopyFromReg(curDAG.getEntryNode(), dl, ARMGenRegisterNames.R2, new EVT(MVT.i32), Glue);
             Glue = val0.getValue(1);
-            val1 = curDAG.getCopyFromReg(curDAG.getEntryNode(), ARMGenRegisterNames.R3, new EVT(MVT.i32), Glue);
+            val1 = curDAG.getCopyFromReg(curDAG.getEntryNode(), dl, ARMGenRegisterNames.R3, new EVT(MVT.i32), Glue);
 
             // Store exclusive double return a i32 value which is the return status
             // of the issued store.
@@ -732,7 +734,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
             if (subtarget.isThumb() && subtarget.hasThumb2())
               NewOpc = ARMGenInstrNames.t2STREXD;
 
-            SDNode.MachineSDNode st = curDAG.getMachineNode(NewOpc, curDAG.getVTList(resTys), ops);
+            SDNode.MachineSDNode st = curDAG.getMachineNode(NewOpc, dl, curDAG.getVTList(resTys), ops);
             // Transfer memoperands.
             st.setMemRefs(new MachineMemOperand[]{((SDNode.MemIntrinsicSDNode) node).getMemOperand()});
             return st;
@@ -886,31 +888,29 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       }
 
       case ARMISD.VTBL1: {
-        DebugLoc dl = node.getDebugLoc();
-        EVT VT = node.getValueType(0);
+        EVT vt = node.getValueType(0);
         ArrayList<SDValue> ops = new ArrayList<>();
 
         ops.add(node.getOperand(0));
         ops.add(node.getOperand(1));
         ops.add(getAL(curDAG));                    // Predicate
         ops.add(curDAG.getRegister(0, MVT.i32)); // Predicate Register
-        return curDAG.getMachineNode(ARMGenInstrNames.VTBL1, VT);
+        return curDAG.getMachineNode(ARMGenInstrNames.VTBL1, dl, vt);
       }
       case ARMISD.VTBL2: {
-        DebugLoc dl = node.getDebugLoc();
-        EVT VT = node.getValueType(0);
+        EVT vt = node.getValueType(0);
 
         // Form a REG_SEQUENCE to force register allocation.
-        SDValue V0 = node.getOperand(0);
-        SDValue V1 = node.getOperand(1);
-        SDValue RegSeq = new SDValue(pairDRegs(new EVT(MVT.v16i8), V0, V1), 0);
+        SDValue v0 = node.getOperand(0);
+        SDValue v1 = node.getOperand(1);
+        SDValue RegSeq = new SDValue(pairDRegs(new EVT(MVT.v16i8), v0, v1, dl), 0);
 
         ArrayList<SDValue> ops = new ArrayList<>();
         ops.add(RegSeq);
         ops.add(node.getOperand(2));
         ops.add(getAL(curDAG));                    // Predicate
         ops.add(curDAG.getRegister(0, MVT.i32)); // Predicate Register
-        return curDAG.getMachineNode(ARMGenInstrNames.VTBL2Pseudo, VT);
+        return curDAG.getMachineNode(ARMGenInstrNames.VTBL2Pseudo, dl, vt);
       }
 
       case ISD.CONCAT_VECTORS:
@@ -951,7 +951,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     EVT vt = node.getValueType(0);
     if (!vt.is128BitVector() || node.getNumOperands() != 2)
       Util.shouldNotReachHere("unexpected CONCAT_VECTORS");
-    return pairDRegs(vt, node.getOperand(0), node.getOperand(1));
+    return pairDRegs(vt, node.getOperand(0), node.getOperand(1), node.getDebugLoc());
   }
 
   private SDNode selectAtomic64(SDNode node, int opc) {
@@ -968,7 +968,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     SDNode.SDVTList vts = curDAG.getVTList(new EVT(MVT.i32), new EVT(MVT.i32), new EVT(MVT.Other));
     SDValue[] args = new SDValue[ops.size()];
     ops.toArray(args);
-    SDNode.MachineSDNode resNode = curDAG.getMachineNode(opc, vts, args);
+    SDNode.MachineSDNode resNode = curDAG.getMachineNode(opc, node.getDebugLoc(), vts, args);
     resNode.setMemRefs(new MachineMemOperand[]{((SDNode.MemSDNode)node).getMemOperand()});
     return resNode;
   }
@@ -982,34 +982,34 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
    * @param v3
    * @return
    */
-  private SDNode quadSRegs(EVT vt, SDValue v0, SDValue v1, SDValue v2, SDValue v3) {
+  private SDNode quadSRegs(EVT vt, SDValue v0, SDValue v1, SDValue v2, SDValue v3, DebugLoc dl) {
     SDValue regClass = curDAG.getTargetConstant(ARMGenRegisterInfo.QPR_VFP2RegClassID, new EVT(MVT.i32));
     SDValue subReg0 = curDAG.getTargetConstant(ARMGenRegisterInfo.ssub_0, new EVT(MVT.i32));
     SDValue subReg1 = curDAG.getTargetConstant(ARMGenRegisterInfo.ssub_1, new EVT(MVT.i32));
     SDValue subReg2 = curDAG.getTargetConstant(ARMGenRegisterInfo.ssub_2, new EVT(MVT.i32));
     SDValue subReg3 = curDAG.getTargetConstant(ARMGenRegisterInfo.ssub_3, new EVT(MVT.i32));
     SDValue[] ops = {regClass, v0, subReg0, v1, subReg1, v2, subReg2, v3, subReg3};
-    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, vt, ops);
+    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, dl, vt, ops);
   }
 
-  private SDNode quadDRegs(EVT vt, SDValue v0, SDValue v1, SDValue v2, SDValue v3) {
+  private SDNode quadDRegs(EVT vt, SDValue v0, SDValue v1, SDValue v2, SDValue v3, DebugLoc dl) {
     SDValue regClass = curDAG.getTargetConstant(ARMGenRegisterInfo.QQPRRegClassID, new EVT(MVT.i32));
     SDValue subReg0 = curDAG.getTargetConstant(ARMGenRegisterInfo.dsub_0, new EVT(MVT.i32));
     SDValue subReg1 = curDAG.getTargetConstant(ARMGenRegisterInfo.dsub_1, new EVT(MVT.i32));
     SDValue subReg2 = curDAG.getTargetConstant(ARMGenRegisterInfo.dsub_2, new EVT(MVT.i32));
     SDValue subReg3 = curDAG.getTargetConstant(ARMGenRegisterInfo.dsub_3, new EVT(MVT.i32));
     SDValue[] ops = {regClass, v0, subReg0, v1, subReg1, v2, subReg2, v3, subReg3};
-    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, vt, ops);
+    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, dl, vt, ops);
   }
 
-  private SDNode quadQRegs(EVT vt, SDValue v0, SDValue v1, SDValue v2, SDValue v3) {
+  private SDNode quadQRegs(EVT vt, SDValue v0, SDValue v1, SDValue v2, SDValue v3, DebugLoc dl) {
     SDValue regClass = curDAG.getTargetConstant(ARMGenRegisterInfo.QQQQPRRegClassID, new EVT(MVT.i32));
     SDValue subReg0 = curDAG.getTargetConstant(ARMGenRegisterInfo.qsub_0, new EVT(MVT.i32));
     SDValue subReg1 = curDAG.getTargetConstant(ARMGenRegisterInfo.qsub_1, new EVT(MVT.i32));
     SDValue subReg2 = curDAG.getTargetConstant(ARMGenRegisterInfo.qsub_2, new EVT(MVT.i32));
     SDValue subReg3 = curDAG.getTargetConstant(ARMGenRegisterInfo.qsub_3, new EVT(MVT.i32));
     SDValue[] ops = {regClass, v0, subReg0, v1, subReg1, v2, subReg2, v3, subReg3};
-    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, vt, ops);
+    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, dl, vt, ops);
   }
 
   /**
@@ -1019,12 +1019,12 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
    * @param v1
    * @return
    */
-  private SDNode pairSRegs(EVT vt, SDValue v0, SDValue v1) {
+  private SDNode pairSRegs(EVT vt, SDValue v0, SDValue v1, DebugLoc dl) {
     SDValue regClass = curDAG.getTargetConstant(ARMGenRegisterInfo.DPR_VFP2RegClassID, new EVT(MVT.i32));
     SDValue subReg0 = curDAG.getTargetConstant(ARMGenRegisterInfo.ssub_0, new EVT(MVT.i32));
     SDValue subReg1 = curDAG.getTargetConstant(ARMGenRegisterInfo.ssub_1, new EVT(MVT.i32));
     SDValue[] ops = {regClass, v0, subReg0, v1, subReg1};
-    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, vt, ops);
+    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, dl, vt, ops);
   }
 
   /**
@@ -1034,12 +1034,12 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
    * @param v1
    * @return
    */
-  private SDNode pairDRegs(EVT vt, SDValue v0, SDValue v1) {
+  private SDNode pairDRegs(EVT vt, SDValue v0, SDValue v1, DebugLoc dl) {
     SDValue regClass = curDAG.getTargetConstant(ARMGenRegisterInfo.QPRRegClassID, new EVT(MVT.i32));
     SDValue subReg0 = curDAG.getTargetConstant(ARMGenRegisterInfo.dsub_0, new EVT(MVT.i32));
     SDValue subReg1 = curDAG.getTargetConstant(ARMGenRegisterInfo.dsub_1, new EVT(MVT.i32));
     SDValue[] ops = {regClass, v0, subReg0, v1, subReg1};
-    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, vt, ops);
+    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, dl, vt, ops);
   }
 
   /**
@@ -1049,12 +1049,12 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
    * @param v1
    * @return
    */
-  private SDNode pairQRegs(EVT vt, SDValue v0, SDValue v1) {
+  private SDNode pairQRegs(EVT vt, SDValue v0, SDValue v1, DebugLoc dl) {
     SDValue regClass = curDAG.getTargetConstant(ARMGenRegisterInfo.QQPRRegClassID, new EVT(MVT.i32));
     SDValue subReg0 = curDAG.getTargetConstant(ARMGenRegisterInfo.qsub_0, new EVT(MVT.i32));
     SDValue subReg1 = curDAG.getTargetConstant(ARMGenRegisterInfo.qsub_1, new EVT(MVT.i32));
     SDValue[] ops = {regClass, v0, subReg0, v1, subReg1};
-    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, vt, ops);
+    return curDAG.getMachineNode(TargetOpcode.REG_SEQUENCE, dl, vt, ops);
   }
 
   private boolean selectAddrMode2OffsetImmPre(SDNode op, SDValue n, SDValue[] out) {
@@ -1080,6 +1080,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
 
   private SDNode selectARMIndexedLoad(SDNode node) {
     SDNode.LoadSDNode ld = (SDNode.LoadSDNode) node;
+    DebugLoc dl = ld.getDebugLoc();
     MemIndexedMode mim = ld.getAddressingMode();
     if (mim == MemIndexedMode.UNINDEXED)
       return null;
@@ -1158,14 +1159,14 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         SDValue[] ops = new SDValue[] {base, amOpc, getAL(curDAG),
             curDAG.getRegister(0, new EVT(MVT.i32)), chain};
         // for pre or post, it updates the address base register.
-        return curDAG.getMachineNode(opcode, new EVT(MVT.i32),
+        return curDAG.getMachineNode(opcode, dl, new EVT(MVT.i32),
             new EVT(MVT.i32), new EVT(MVT.Other), ops);
       }
       else {
         SDValue chain = ld.getChain();
         SDValue base = ld.getBasePtr();
         SDValue[] ops = {base, offset, amOpc, getAL(curDAG), curDAG.getRegister(0, new EVT(MVT.i32)), chain};
-        return curDAG.getMachineNode(opcode, new EVT(MVT.i32),
+        return curDAG.getMachineNode(opcode, dl, new EVT(MVT.i32),
             new EVT(MVT.i32), new EVT(MVT.Other), ops);
       }
     }
@@ -1206,7 +1207,8 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       SDValue base = ld.getBasePtr();
       SDValue[] ops = {base, offset.get(), getAL(curDAG),
           curDAG.getRegister(0, new EVT(MVT.i32)), chain};
-      return curDAG.getMachineNode(opcode, new EVT(MVT.i32), new EVT(MVT.i32), new EVT(MVT.Other), ops);
+      return curDAG.getMachineNode(opcode, node.getDebugLoc(), new EVT(MVT.i32), 
+              new EVT(MVT.i32), new EVT(MVT.Other), ops);
     }
 
     return null;
@@ -2513,18 +2515,19 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     Util.assertion(numVecs >= 2 && numVecs <= 4, "VTBL numVecs out of range");
     EVT vt = n.getValueType(0);
     int firstTblReg = isExt ? 2 : 1;
+    DebugLoc dl = n.getDebugLoc();
 
     // form a REG_SEQUENCE to force register allocation.
     SDValue regSeq;
     SDValue v0 = n.getOperand(firstTblReg + 0);
     SDValue v1 = n.getOperand(firstTblReg + 1);
     if (numVecs == 2)
-      regSeq = new SDValue(pairDRegs(new EVT(MVT.v16i8), v0, v1), 0);
+      regSeq = new SDValue(pairDRegs(new EVT(MVT.v16i8), v0, v1, dl), 0);
     else {
       SDValue v2 = n.getOperand(firstTblReg + 2);
-      SDValue v3 = numVecs == 3 ? new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, vt), 0) :
+      SDValue v3 = numVecs == 3 ? new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, dl, vt), 0) :
           n.getOperand(firstTblReg + 3);
-      regSeq = new SDValue(quadDRegs(new EVT(MVT.v4i64), v0, v1, v2, v3), 0);
+      regSeq = new SDValue(quadDRegs(new EVT(MVT.v4i64), v0, v1, v2, v3, dl), 0);
     }
 
     ArrayList<SDValue> ops = new ArrayList<>();
@@ -2537,7 +2540,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     ops.add(curDAG.getRegister(0, new EVT(MVT.i32)));
     SDValue[] tmp = new SDValue[ops.size()];
     ops.toArray(tmp);
-    return curDAG.getMachineNode(opc, vt, tmp);
+    return curDAG.getMachineNode(opc, dl, vt, tmp);
   }
 
   private SDValue getVLDSTAlign(SDValue align, int numVecs, boolean is64BitVector) {
@@ -2560,6 +2563,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   private SDNode selectVST(SDNode n, boolean isUpdating, int numVecs,
                            int[] dOpcodes, int[] qOpcodes0, int[] qOpcodes1) {
     Util.assertion(numVecs >= 1 && numVecs <= 4, "VST numVecs out of range!");
+    DebugLoc dl = n.getDebugLoc();
     int addrOpIdx = isUpdating ? 1: 2;
     int vec0Idx = 3; // addrOpIdx + (isUpdating ? 2 : 1)
     SDValue[] tmp = new SDValue[2];
@@ -2614,18 +2618,18 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
         SDValue v0 = n.getOperand(vec0Idx + 0);
         SDValue v1 = n.getOperand(vec0Idx + 1);
         if (numVecs == 2)
-          srcReg = new SDValue(pairDRegs(new EVT(MVT.v2i64), v0, v1), 0);
+          srcReg = new SDValue(pairDRegs(new EVT(MVT.v2i64), v0, v1, dl), 0);
         else {
           SDValue v2 = n.getOperand(vec0Idx + 2);
-          SDValue v3 = numVecs == 3 ? new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, vt), 0) :
+          SDValue v3 = numVecs == 3 ? new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, dl, vt), 0) :
               n.getOperand(vec0Idx + 3);
-          srcReg = new SDValue(quadDRegs(new EVT(MVT.v4i64), v0, v1, v2, v3), 0);
+          srcReg = new SDValue(quadDRegs(new EVT(MVT.v4i64), v0, v1, v2, v3, dl), 0);
         }
       }
       else {
         SDValue q0 = n.getOperand(vec0Idx);
         SDValue q1 = n.getOperand(vec0Idx + 1);
-        srcReg = new SDValue(pairQRegs(new EVT(MVT.v4i64), q0, q1), 0);
+        srcReg = new SDValue(pairQRegs(new EVT(MVT.v4i64), q0, q1, dl), 0);
       }
 
       int opc = is64BitVector ? dOpcodes[opcodeIndex] : qOpcodes0[opcodeIndex];
@@ -2643,7 +2647,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       ops.toArray(res);
       EVT[] vts = new EVT[resTys.size()];
       resTys.toArray(vts);
-      SDNode.MachineSDNode vst = curDAG.getMachineNode(opc, curDAG.makeVTList(vts), res);
+      SDNode.MachineSDNode vst = curDAG.getMachineNode(opc, dl, curDAG.makeVTList(vts), res);
       // transfer memory operand.
       vst.setMemRefs(new MachineMemOperand[] {mmo});
       return vst;
@@ -2657,16 +2661,16 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     SDValue v1 = n.getOperand(vec0Idx + 1);
     SDValue v2 = n.getOperand(vec0Idx + 2);
     SDValue v3 = numVecs == 3 ?
-        new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, vt), 0) :
+        new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, dl, vt), 0) :
         n.getOperand(vec0Idx + 3);
 
-    SDValue regSeq = new SDValue(quadQRegs(new EVT(MVT.v8i64), v0, v1, v2, v3), 0);
+    SDValue regSeq = new SDValue(quadQRegs(new EVT(MVT.v8i64), v0, v1, v2, v3, dl), 0);
 
     // Store the even D registers.  This is always an updating store, so that it
     // provides the address to the second store for the odd subregs.
     SDValue[] opsA = new SDValue[] {memAddr, align, reg0, regSeq, pred, reg0, chain};
-    SDNode.MachineSDNode vsta = curDAG.getMachineNode(qOpcodes0[opcodeIndex], memAddr.getValueType(),
-        new EVT(MVT.Other), opsA);
+    SDNode.MachineSDNode vsta = (SDNode.MachineSDNode) curDAG.getMachineNode(qOpcodes0[opcodeIndex],
+            dl, memAddr.getValueType(), new EVT(MVT.Other), opsA);
     vsta.setMemRefs(new MachineMemOperand[] {mmo});
     chain = new SDValue(vsta, 1);
 
@@ -2688,7 +2692,8 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     ops.toArray(res);
     EVT[] vts = new EVT[resTys.size()];
     resTys.toArray(vts);
-    SDNode.MachineSDNode vstb = curDAG.getMachineNode(qOpcodes1[opcodeIndex], curDAG.makeVTList(vts), res);
+    SDNode.MachineSDNode vstb = curDAG.getMachineNode(qOpcodes1[opcodeIndex], dl,
+            curDAG.makeVTList(vts), res);
     vstb.setMemRefs(new MachineMemOperand[]{mmo});
     return vstb;
   }
@@ -2696,6 +2701,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   private SDNode selectVLD(SDNode n, boolean isUpdating, int numVecs,
                            int[] dOpcodes, int[] qOpcodes0, int[] qOpcodes1) {
     Util.assertion(numVecs >= 1 && numVecs <= 4, "VST numVecs out of range!");
+    DebugLoc dl = n.getDebugLoc();
     int addrOpIdx = isUpdating ? 1 : 2;
     SDValue[] tmp = new SDValue[2];
     if (!selectAddrMode6(n, n.getOperand(addrOpIdx), tmp))
@@ -2779,18 +2785,18 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       ops.toArray(res);
       EVT[] vts = new EVT[resTys.size()];
       resTys.toArray(vts);
-      vld = curDAG.getMachineNode(opc, curDAG.makeVTList(vts), res);
+      vld = curDAG.getMachineNode(opc, dl, curDAG.makeVTList(vts), res);
     }
     else {
       // Otherwise, quad registers are stored with two separate instructions,
       // where one stores the even registers and the other stores the odd registers.
       EVT addrTy = memAddr.getValueType();
       // load the even subregs
-      SDValue implDef = new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, resTy), 0);
+      SDValue implDef = new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, dl, resTy), 0);
 
       SDValue[] opsA = new SDValue[]{memAddr, align, reg0, implDef, pred, reg0, chain};
-      SDNode.MachineSDNode vlda = curDAG.getMachineNode(qOpcodes0[opcodeIndex], resTy,
-          addrTy, new EVT(MVT.Other), opsA);
+      SDNode.MachineSDNode vlda = (SDNode.MachineSDNode) curDAG.getMachineNode(qOpcodes0[opcodeIndex],
+              dl, resTy, addrTy, new EVT(MVT.Other), opsA);
       chain = new SDValue(vlda, 2);
 
       // load the odd subregs.
@@ -2813,7 +2819,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       ops.toArray(res);
       EVT[] vts = new EVT[resTys.size()];
       resTys.toArray(vts);
-      vld = curDAG.getMachineNode(qOpcodes1[opcodeIndex], curDAG.makeVTList(vts), res);
+      vld = curDAG.getMachineNode(qOpcodes1[opcodeIndex], dl, curDAG.makeVTList(vts), res);
     }
 
     // transfer memory operands.
@@ -2827,7 +2833,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     SDValue superReg = new SDValue(vld, 0);
     int sub0 = is64BitVector ? ARMGenRegisterInfo.dsub_0 : ARMGenRegisterInfo.qsub_0;
     for (int vec = 0; vec < numVecs; ++vec)
-      replaceUses(new SDValue(n, vec), curDAG.getTargetExtractSubreg(sub0 + vec, vt, superReg));
+      replaceUses(new SDValue(n, vec), curDAG.getTargetExtractSubreg(sub0 + vec, dl, vt, superReg));
 
     replaceUses(new SDValue(n, numVecs), new SDValue(vld, 1));
     if (isUpdating)
@@ -2838,6 +2844,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
   private SDNode selectVLDSTLane(SDNode n, boolean isLoad, boolean isUpdating,
                                  int numVecs, int[] dOpcodes, int[] qOpcodes) {
       Util.assertion(numVecs >= 2 && numVecs <= 4, "VST numVecs out of range!");
+      DebugLoc dl = n.getDebugLoc();
       int addrOpIdx = isUpdating ? 1: 2;
       int vec0Idx = 3; // addrOpIdx + (isUpdating ? 2 : 1)
       SDValue[] tmp = new SDValue[2];
@@ -2912,18 +2919,18 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
       SDValue v1 = n.getOperand(vec0Idx + 1);
       if (numVecs == 2) {
         if (is64BitVector)
-          superReg = new SDValue(pairDRegs(new EVT(MVT.v2i64), v0, v1), 0);
+          superReg = new SDValue(pairDRegs(new EVT(MVT.v2i64), v0, v1, dl), 0);
         else
-          superReg = new SDValue(pairQRegs(new EVT(MVT.v4i64), v0, v1), 0);
+          superReg = new SDValue(pairQRegs(new EVT(MVT.v4i64), v0, v1, dl), 0);
       }
       else {
         SDValue v2 = n.getOperand(vec0Idx + 2);
-        SDValue v3 = numVecs == 3 ? new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, vt), 0) :
+        SDValue v3 = numVecs == 3 ? new SDValue(curDAG.getMachineNode(TargetOpcode.IMPLICIT_DEF, dl, vt), 0) :
             n.getOperand(vec0Idx + 3);
         if (is64BitVector)
-          superReg = new SDValue(quadDRegs(new EVT(MVT.v4i64), v0, v1, v2, v3), 0);
+          superReg = new SDValue(quadDRegs(new EVT(MVT.v4i64), v0, v1, v2, v3, dl), 0);
         else
-          superReg = new SDValue(quadQRegs(new EVT(MVT.v8i64), v0, v1, v2, v3), 0);
+          superReg = new SDValue(quadQRegs(new EVT(MVT.v8i64), v0, v1, v2, v3, dl), 0);
       }
 
       ops.add(superReg);
@@ -2937,7 +2944,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     ops.toArray(res);
     EVT[] vts = new EVT[resTys.size()];
     resTys.toArray(vts);
-    SDNode.MachineSDNode vldLn = curDAG.getMachineNode(opc, curDAG.makeVTList(vts), res);
+    SDNode.MachineSDNode vldLn = curDAG.getMachineNode(opc, dl, curDAG.makeVTList(vts), res);
     // transfer memory operand.
     vldLn.setMemRefs(new MachineMemOperand[] {mmo});
     if (isLoad)
@@ -2947,7 +2954,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     superReg = new SDValue(vldLn, 0);
     int sub0 = is64BitVector ? ARMGenRegisterInfo.dsub_0 : ARMGenRegisterInfo.qsub_0;
     for (int vec = 0; vec < numVecs; ++vec)
-      replaceUses(new SDValue(n, vec), curDAG.getTargetExtractSubreg(sub0 + vec, vt, superReg));
+      replaceUses(new SDValue(n, vec), curDAG.getTargetExtractSubreg(sub0 + vec, dl, vt, superReg));
 
     replaceUses(new SDValue(n, numVecs), new SDValue(vldLn, 1));
     if (isUpdating)
@@ -2957,7 +2964,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
 
   private SDNode selectVLDDup(SDNode n, boolean isUpdating, int numVecs, int[] opcodes) {
     Util.assertion(numVecs >=2 && numVecs <= 4, "VLDDup NumVecs out-of-range");
-
+    DebugLoc dl = n.getDebugLoc();
     SDValue[] tmp = new SDValue[2];
     if (!selectAddrMode6(n, n.getOperand(1), tmp))
       return null;
@@ -3015,8 +3022,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     resTys.add(new EVT(MVT.Other));
     SDValue[] res = new SDValue[ops.size()];
     ops.toArray(res);
-    SDNode.MachineSDNode vldDup =
-        curDAG.getMachineNode(opc, curDAG.getVTList(resTys), res);
+    SDNode.MachineSDNode vldDup = curDAG.getMachineNode(opc, dl, curDAG.getVTList(resTys), res);
     vldDup.setMemRefs(mmo);
 
     superReg = new SDValue(vldDup, 0);
@@ -3025,7 +3031,7 @@ public abstract class ARMDAGISel extends SelectionDAGISel {
     int subIdx = ARMGenRegisterInfo.dsub_0;
     for (int vec = 0; vec < numVecs; ++vec)
       replaceUses(new SDValue(n, vec),
-          curDAG.getTargetExtractSubreg(subIdx+vec, vt, superReg));
+          curDAG.getTargetExtractSubreg(subIdx+vec, dl, vt, superReg));
     replaceUses(new SDValue(n, numVecs), new SDValue(vldDup, 1));
     if (isUpdating)
       replaceUses(new SDValue(n, numVecs + 1), new SDValue(vldDup, 2));

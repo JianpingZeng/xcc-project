@@ -19,6 +19,7 @@ package backend.target;
 import backend.codegen.*;
 import backend.codegen.dagisel.*;
 import backend.codegen.dagisel.SDNode.*;
+import backend.debug.DebugLoc;
 import backend.intrinsic.Intrinsic;
 import backend.mc.*;
 import backend.support.CallingConv;
@@ -126,8 +127,8 @@ public abstract class TargetLowering {
 
           if (c.getAPIntValue().intersects(demanded.not())) {
             EVT vt = op.getValueType();
-            SDValue newVal = dag.getNode(op.getOpcode(), vt, op.getOperand(0),
-                dag.getConstant(demanded.and(c.getAPIntValue()), vt, false));
+            SDValue newVal = dag.getNode(op.getOpcode(), op.getDebugLoc(), vt, op.getOperand(0),
+                    dag.getConstant(demanded.and(c.getAPIntValue()), vt, false));
             return combineTo(op, newVal);
           }
           break;
@@ -151,12 +152,14 @@ public abstract class TargetLowering {
         EVT smallVT = EVT.getIntegerVT(dag.getContext(), (int) smallVTBits);
         if (tli.isTruncateFree(op.getValueType(), smallVT) &&
             tli.isZExtFree(smallVT, op.getValueType())) {
-          SDValue x = dag.getNode(op.getOpcode(), smallVT,
-              dag.getNode(ISD.TRUNCATE, smallVT,
-                  op.getNode().getOperand(0)),
-              dag.getNode(ISD.TRUNCATE, smallVT,
-                  op.getNode().getOperand(1)));
-          SDValue z = dag.getNode(ISD.ZERO_EXTEND, op.getValueType(), x);
+          SDValue x = dag.getNode(op.getOpcode(), op.getDebugLoc(),
+                  smallVT,
+                  dag.getNode(ISD.TRUNCATE, op.getOperand(0).getDebugLoc(),
+                      smallVT, op.getNode().getOperand(0)),
+              dag.getNode(ISD.TRUNCATE, op.getOperand(1).getDebugLoc(),
+                      smallVT,
+                      op.getNode().getOperand(1)));
+          SDValue z = dag.getNode(ISD.ZERO_EXTEND, op.getDebugLoc(), op.getValueType(), x);
           return combineTo(op, z);
         }
       }
@@ -1240,18 +1243,20 @@ public abstract class TargetLowering {
                                       boolean varArg,
                                       ArrayList<InputArg> ins,
                                       SelectionDAG dag,
-                                      ArrayList<SDValue> inVals) {
+                                      ArrayList<SDValue> inVals,
+                                      DebugLoc dl) {
     Util.shouldNotReachHere("Target doesn't implement the function lowerFormalArguments");
     return null;
   }
 
   public SDValue lowerMemArgument(SDValue chain,
-                                           CallingConv cc,
-                                           ArrayList<InputArg> argInfo,
-                                           SelectionDAG dag,
-                                           CCValAssign va,
-                                           MachineFrameInfo mfi,
-                                           int i) {
+                                  CallingConv cc,
+                                  ArrayList<InputArg> argInfo,
+                                  SelectionDAG dag,
+                                  CCValAssign va,
+                                  MachineFrameInfo mfi,
+                                  int i,
+                                  DebugLoc dl) {
     Util.shouldNotReachHere("Target doesn't implement the function lowerMemArgument");
     return null;
   }
@@ -1293,10 +1298,11 @@ public abstract class TargetLowering {
    * @return
    */
   public SDValue lowerReturn(SDValue chain,
-                                      CallingConv cc,
-                                      boolean isVarArg,
-                                      ArrayList<OutputArg> outs,
-                                      SelectionDAG dag) {
+                             CallingConv cc,
+                             boolean isVarArg,
+                             ArrayList<OutputArg> outs,
+                             SelectionDAG dag,
+                             DebugLoc dl) {
     Util.shouldNotReachHere("Target doesn't implement the function lowerReturn");
     return null;
   }
@@ -1314,7 +1320,8 @@ public abstract class TargetLowering {
                                             boolean isReturnValueUsed,
                                             SDValue callee,
                                             ArrayList<ArgListEntry> args,
-                                            SelectionDAG dag) {
+                                            SelectionDAG dag,
+                                            DebugLoc dl) {
     Util.assertion(!isTailCall || EnablePerformTailCallOpt.value);
     ArrayList<OutputArg> outs = new ArrayList<>(32);
     for (int i = 0, e = args.size(); i < e; i++) {
@@ -1362,7 +1369,7 @@ public abstract class TargetLowering {
         else if (args.get(i).isZExt)
           extendKind = ISD.ZERO_EXTEND;
 
-        getCopyToParts(dag, op, parts, partVT, extendKind);
+        getCopyToParts(dag, dl, op, parts, partVT, extendKind);
 
         for (int k = 0; k < numParts; k++) {
           OutputArg outFlags = new OutputArg(flags, parts[k], i < numFixedArgs);
@@ -1403,7 +1410,7 @@ public abstract class TargetLowering {
 
     ArrayList<SDValue> inVals = new ArrayList<>();
     chain = lowerCall(chain, callee, cc, varArg, isTailCall, outs, ins, dag,
-        inVals);
+        inVals, dl);
 
     if (isTailCall) {
       dag.setRoot(chain);
@@ -1425,8 +1432,8 @@ public abstract class TargetLowering {
       for (int i = 0; i < numRegs; i++)
         temp[i] = inVals.get(curReg + i);
 
-      SDValue returnValue = getCopyFromParts(dag, temp, registerVT, vt,
-          assertOp);
+      SDValue returnValue = getCopyFromParts(dag, dl, temp, registerVT,
+              vt, assertOp);
       for (int i = 0; i < numRegs; i++)
         inVals.set(i + curReg, temp[i]);
       returnValues.add(returnValue);
@@ -1436,7 +1443,7 @@ public abstract class TargetLowering {
     if (returnValues.isEmpty())
       return Pair.get(new SDValue(), chain);
 
-    SDValue res = dag.getNode(ISD.MERGE_VALUES, dag.getVTList(retTys), returnValues);
+    SDValue res = dag.getNode(ISD.MERGE_VALUES, dl, dag.getVTList(retTys), returnValues);
     return Pair.get(res, chain);
   }
 
@@ -1452,10 +1459,16 @@ public abstract class TargetLowering {
     return false;
   }
 
-  public SDValue lowerCall(SDValue chain, SDValue callee,
-                           CallingConv cc, boolean isVarArg, boolean isTailCall,
-                           ArrayList<OutputArg> outs, ArrayList<InputArg> ins,
-                           SelectionDAG dag, ArrayList<SDValue> inVals) {
+  public SDValue lowerCall(SDValue chain,
+                           SDValue callee,
+                           CallingConv cc,
+                           boolean isVarArg,
+                           boolean isTailCall,
+                           ArrayList<OutputArg> outs,
+                           ArrayList<InputArg> ins,
+                           SelectionDAG dag,
+                           ArrayList<SDValue> inVals,
+                           DebugLoc dl) {
     Util.shouldNotReachHere("Target doesn't implement the function lowerCall");
     return null;
   }
@@ -1772,6 +1785,7 @@ public abstract class TargetLowering {
                                SDValue rhs,
                                CondCode cc,
                                boolean foldBooleans,
+                               DebugLoc dl,
                                DAGCombinerInfo dagCBI) {
     SelectionDAG dag = dagCBI.dag;
     switch (cc) {
@@ -1789,7 +1803,7 @@ public abstract class TargetLowering {
       ConstantSDNode rhsCNT = (ConstantSDNode) rhs.getNode();
       APInt c = rhsCNT.getAPIntValue();
       if (lhs.getNode() instanceof ConstantSDNode) {
-        return dag.foldSetCC(vt, lhs, rhs, cc);
+        return dag.foldSetCC(dl, vt, lhs, rhs, cc);
       } else {
         if (lhs.getOpcode() == ISD.SRL && (c.eq(0) || c.eq(1)) &&
             lhs.getOperand(0).getOpcode() == ISD.CTLZ &&
@@ -1805,7 +1819,7 @@ public abstract class TargetLowering {
               cc = SETEQ;
             }
             SDValue zero = dag.getConstant(0, lhs.getValueType(), false);
-            return dag.getSetCC(vt, lhs.getOperand(0).getOperand(0), zero, cc);
+            return dag.getSetCC(dl, vt, lhs.getOperand(0).getOperand(0), zero, cc);
           }
         }
 
@@ -1850,13 +1864,13 @@ public abstract class TargetLowering {
               EVT ptrType = ld.getOperand(1).getValueType();
               SDValue ptr = ld.getBasePtr();
               if (bestOffset == 0)
-                ptr = dag.getNode(ISD.ADD, ptrType, ptr,
+                ptr = dag.getNode(ISD.ADD, dl, ptrType, ptr,
                     dag.getConstant(bestOffset, ptrType, false));
               int newAlign = Util.minAlign(ld.getAlignment(), bestOffset);
-              SDValue newLoad = dag.getLoad(newVT, ld.getChain(), ptr,
+              SDValue newLoad = dag.getLoad(dl, newVT, ld.getChain(), ptr,
                   ld.getSrcValue(), ld.getSrcValueOffset() + bestOffset,
                   false, newAlign);
-              return dag.getSetCC(vt, dag.getNode(ISD.AND, newVT, newLoad,
+              return dag.getSetCC(dl, vt, dag.getNode(ISD.AND, dl, newVT, newLoad,
                   dag.getConstant(bestMark, newVT, false)),
                   dag.getConstant(0, newVT, false),
                   cc);
@@ -1899,7 +1913,7 @@ public abstract class TargetLowering {
               if (dagCBI.isBeforeLegalizeOps() ||
                   (isOperationLegal(ISD.SETCC, newVT)) &&
                       getCondCodeAction(cc, newVT) == Legal) {
-                return dag.getSetCC(vt, lhs.getOperand(0),
+                return dag.getSetCC(dl, vt, lhs.getOperand(0),
                     dag.getConstant(new APInt(c).trunc(inSize),
                         newVT, false), cc);
               }
@@ -1926,12 +1940,12 @@ public abstract class TargetLowering {
             zextOp = lhs.getOperand(0);
           } else {
             APInt imm = APInt.getLowBitsSet(extDstTyBits, extSrcTyBits);
-            zextOp = dag.getNode(ISD.AND, op0Ty, lhs.getOperand(0),
+            zextOp = dag.getNode(ISD.AND, dl, op0Ty, lhs.getOperand(0),
                 dag.getConstant(imm, op0Ty, false));
           }
           if (!dagCBI.isCalledByLegalizer())
             dagCBI.addToWorkList(zextOp.getNode());
-          return dag.getSetCC(vt, zextOp, dag.getConstant(
+          return dag.getSetCC(dl, vt, zextOp, dag.getConstant(
               c.and(APInt.getLowBitsSet(extDstTyBits, extSrcTyBits)),
               extDstTy, false), cc);
         } else if ((rhsCNT.isNullValue() || rhsCNT.getAPIntValue().eq(1)) &&
@@ -1943,7 +1957,7 @@ public abstract class TargetLowering {
 
             CondCode ccT = ((CondCodeSDNode) lhs.getOperand(2).getNode()).getCondition();
             ccT = ISD.getSetCCInverse(ccT, lhs.getOperand(0).getValueType().isInteger());
-            return dag.getSetCC(vt, lhs.getOperand(0), lhs.getOperand(1), ccT);
+            return dag.getSetCC(dl, vt, lhs.getOperand(0), lhs.getOperand(1), ccT);
           }
           if ((lhs.getOpcode() == ISD.XOR || lhs.getOpcode() == ISD.AND) &&
               lhs.getOperand(0).getOpcode() == ISD.XOR &&
@@ -1958,11 +1972,11 @@ public abstract class TargetLowering {
               else {
                 Util.assertion(lhs.getOpcode() == ISD.AND && lhs.getOperand(0).getOpcode() == ISD.XOR);
 
-                val = dag.getNode(ISD.AND, lhs.getValueType(),
+                val = dag.getNode(ISD.AND, dl, lhs.getValueType(),
                     lhs.getOperand(0).getOperand(0),
                     lhs.getOperand(1));
               }
-              return dag.getSetCC(vt, val, rhs, cc == SETEQ ? SETNE : SETEQ);
+              return dag.getSetCC(dl, vt, val, rhs, cc == SETEQ ? SETNE : SETEQ);
             }
           }
         }
@@ -1979,13 +1993,13 @@ public abstract class TargetLowering {
 
         if (cc == SETGE || cc == SETUGE) {
           if (c.eq(minVal)) return dag.getConstant(1, vt, false);
-          return dag.getSetCC(vt, lhs, dag.getConstant(c.sub(1),
+          return dag.getSetCC(dl, vt, lhs, dag.getConstant(c.sub(1),
               rhs.getValueType(), false), cc == SETGE ? SETGT : SETUGT);
         }
 
         if (cc == SETLE || cc == SETULE) {
           if (c.eq(maxVal)) return dag.getConstant(1, vt, false);
-          return dag.getSetCC(vt, lhs, dag.getConstant(c.clone().increase(),
+          return dag.getSetCC(dl, vt, lhs, dag.getConstant(c.clone().increase(),
               rhs.getValueType(), false), cc == SETLE ? SETLT : SETULT);
         }
 
@@ -1999,26 +2013,26 @@ public abstract class TargetLowering {
           return dag.getConstant(1, vt, false);
 
         if ((cc == SETGT || cc == SETUGT) && c.eq(minVal))
-          return dag.getSetCC(vt, lhs, rhs, SETNE);
+          return dag.getSetCC(dl, vt, lhs, rhs, SETNE);
         if ((cc == SETLT || cc == SETULT) && c.eq(maxVal))
-          return dag.getSetCC(vt, lhs, rhs, SETNE);
+          return dag.getSetCC(dl, vt, lhs, rhs, SETNE);
 
         if ((cc == SETLT || cc == SETULT) && c.eq(minVal.add(1)))
-          return dag.getSetCC(vt, lhs, dag.getConstant(minVal, lhs.getValueType(), false),
+          return dag.getSetCC(dl, vt, lhs, dag.getConstant(minVal, lhs.getValueType(), false),
               SETEQ);
         else if ((cc == SETGT || cc == SETUGT) && c.eq(maxVal.sub(1)))
-          return dag.getSetCC(vt, lhs, dag.getConstant(maxVal, lhs.getValueType(), false),
+          return dag.getSetCC(dl, vt, lhs, dag.getConstant(maxVal, lhs.getValueType(), false),
               SETEQ);
 
         if (cc == SETUGT && c.eq(APInt.getSignedMaxValue(operandBitSize))) {
-          return dag.getSetCC(vt, lhs, dag.getConstant(0, rhs.getValueType(), false),
+          return dag.getSetCC(dl, vt, lhs, dag.getConstant(0, rhs.getValueType(), false),
               SETLT);
         }
 
         if (cc == SETULT && c.eq(APInt.getSignedMinValue(operandBitSize))) {
           SDValue constMinusOne = dag.getConstant(APInt.getAllOnesValue(operandBitSize),
               rhs.getValueType(), false);
-          return dag.getSetCC(vt, lhs, constMinusOne, SETGT);
+          return dag.getSetCC(dl, vt, lhs, constMinusOne, SETGT);
         }
 
         if ((cc == SETEQ || cc == SETNE) && vt.equals(lhs.getValueType()) &&
@@ -2029,12 +2043,12 @@ public abstract class TargetLowering {
                 new EVT(getPointerTy()) : new EVT(getShiftAmountTy());
             if (cc == SETNE && c.eq(0)) {
               if (Util.isPowerOf2(csn.getZExtValue())) {
-                return dag.getNode(ISD.SRL, vt, lhs,
+                return dag.getNode(ISD.SRL, dl, vt, lhs,
                     dag.getConstant(Util.log2(csn.getZExtValue()), shiftTy, false));
               }
             } else if (cc == SETEQ && c.eq(csn.getZExtValue())) {
               if (c.isPowerOf2())
-                return dag.getNode(ISD.SRL, vt, lhs,
+                return dag.getNode(ISD.SRL, dl, vt, lhs,
                     dag.getConstant(c.logBase2(), shiftTy, false));
             }
           }
@@ -2042,11 +2056,11 @@ public abstract class TargetLowering {
       }
     }
     else if (lhs.getNode() instanceof ConstantSDNode) {
-      return dag.getSetCC(vt, rhs, lhs, getSetCCSwappedOperands(cc));
+      return dag.getSetCC(dl, vt, rhs, lhs, getSetCCSwappedOperands(cc));
     }
 
     if (lhs.getNode() instanceof ConstantFPSDNode) {
-      SDValue o = dag.foldSetCC(vt, lhs, rhs, cc);
+      SDValue o = dag.foldSetCC(dl, vt, lhs, rhs, cc);
       if (o.getNode() != null)
         return o;
     } else if (rhs.getNode() instanceof ConstantFPSDNode) {
@@ -2066,7 +2080,7 @@ public abstract class TargetLowering {
       }
 
       if (cc == SETO || cc == SETUO)
-        return dag.getSetCC(vt, lhs, lhs, cc);
+        return dag.getSetCC(dl, vt, lhs, lhs, cc);
     }
 
     if (lhs.equals(rhs)) {
@@ -2081,7 +2095,7 @@ public abstract class TargetLowering {
 
       CondCode newCC = uof == 0 ? SETO : SETUO;
       if (newCC != cc)
-        return dag.getSetCC(vt, lhs, rhs, newCC);
+        return dag.getSetCC(dl, vt, lhs, rhs, newCC);
     }
 
     if ((cc == SETEQ || cc == SETNE) && lhs.getValueType().isInteger()) {
@@ -2089,17 +2103,17 @@ public abstract class TargetLowering {
       if (lhsOpc == ISD.ADD || lhsOpc == ISD.SUB || lhsOpc == ISD.XOR) {
         if (lhsOpc == rhs.getOpcode()) {
           if (lhs.getOperand(0).equals(rhs.getOperand(0)))
-            return dag.getSetCC(vt, lhs.getOperand(1),
+            return dag.getSetCC(dl, vt, lhs.getOperand(1),
                 rhs.getOperand(1), cc);
           if (lhs.getOperand(1).equals(rhs.getOperand(1)))
-            return dag.getSetCC(vt, lhs.getOperand(0),
+            return dag.getSetCC(dl, vt, lhs.getOperand(0),
                 rhs.getOperand(0), cc);
           if (SelectionDAG.isCommutativeBinOp(lhsOpc)) {
             if (lhs.getOperand(0).equals(rhs.getOperand(1)))
-              return dag.getSetCC(vt, lhs.getOperand(1),
+              return dag.getSetCC(dl, vt, lhs.getOperand(1),
                   rhs.getOperand(0), cc);
             if (lhs.getOperand(1).equals(rhs.getOperand(0)))
-              return dag.getSetCC(vt, lhs.getOperand(0),
+              return dag.getSetCC(dl, vt, lhs.getOperand(0),
                   rhs.getOperand(0), cc);
           }
         }
@@ -2110,7 +2124,7 @@ public abstract class TargetLowering {
             ConstantSDNode lhsOp1C = (ConstantSDNode) lhs.getOperand(1).getNode();
 
             if (lhs.getOpcode() == ISD.ADD && lhs.getNode().hasOneUse()) {
-              return dag.getSetCC(vt, lhs.getOperand(0),
+              return dag.getSetCC(dl, vt, lhs.getOperand(0),
                   dag.getConstant(rhsC.getAPIntValue().
                           sub(lhsOp1C.getAPIntValue()),
                       lhs.getValueType(), false),
@@ -2119,7 +2133,7 @@ public abstract class TargetLowering {
 
             if (lhs.getOpcode() == ISD.XOR) {
               if (dag.maskedValueIsZero(lhs.getOperand(0), lhsOp1C.getAPIntValue().not()))
-                return dag.getSetCC(vt, lhs.getOperand(0),
+                return dag.getSetCC(dl, vt, lhs.getOperand(0),
                     dag.getConstant(lhsOp1C.getAPIntValue().
                             xor(rhsC.getAPIntValue()),
                         lhs.getValueType(), false),
@@ -2129,7 +2143,7 @@ public abstract class TargetLowering {
             if (lhs.getOperand(0).getNode() instanceof ConstantSDNode) {
               ConstantSDNode lhsOp0C = (ConstantSDNode) lhs.getOperand(0).getNode();
               if (lhsOpc == ISD.SUB && lhs.getNode().hasOneUse()) {
-                return dag.getSetCC(vt, lhs.getOperand(1),
+                return dag.getSetCC(dl, vt, lhs.getOperand(1),
                     dag.getConstant(lhsOp0C.getAPIntValue().
                             sub(rhsC.getAPIntValue()),
                         lhs.getValueType(), false),
@@ -2140,18 +2154,18 @@ public abstract class TargetLowering {
         }
 
         if (lhs.getOperand(0).equals(rhs))
-          return dag.getSetCC(vt, lhs.getOperand(1),
+          return dag.getSetCC(dl, vt, lhs.getOperand(1),
               dag.getConstant(0, lhs.getValueType(), false), cc);
         if (lhs.getOperand(1).equals(rhs)) {
           if (SelectionDAG.isCommutativeBinOp(lhsOpc)) {
-            return dag.getSetCC(vt, lhs.getOperand(0),
+            return dag.getSetCC(dl, vt, lhs.getOperand(0),
                 dag.getConstant(0, lhs.getValueType(), false), cc);
           } else if (lhs.getNode().hasOneUse()) {
-            SDValue sh = dag.getNode(ISD.SHL, rhs.getValueType(),
+            SDValue sh = dag.getNode(ISD.SHL, dl, rhs.getValueType(),
                 rhs, dag.getConstant(1, new EVT(getShiftAmountTy()), false));
             if (!dagCBI.isCalledByLegalizer())
               dagCBI.addToWorkList(sh.getNode());
-            return dag.getSetCC(vt, lhs.getOperand(0), sh, cc);
+            return dag.getSetCC(dl, vt, lhs.getOperand(0), sh, cc);
           }
         }
       }
@@ -2159,19 +2173,19 @@ public abstract class TargetLowering {
       int rhsOpc = rhs.getOpcode();
       if (rhsOpc == ISD.ADD || rhsOpc == ISD.SUB || rhsOpc == ISD.XOR) {
         if (rhs.getOperand(0).equals(lhs))
-          return dag.getSetCC(vt, rhs.getOperand(1),
+          return dag.getSetCC(dl, vt, rhs.getOperand(1),
               dag.getConstant(0, rhs.getValueType(), false), cc);
         else if (rhs.getOperand(1).equals(rhs)) {
           if (SelectionDAG.isCommutativeBinOp(rhsOpc)) {
-            return dag.getSetCC(vt, rhs.getOperand(0),
+            return dag.getSetCC(dl, vt, rhs.getOperand(0),
                 dag.getConstant(0, rhs.getValueType(), false), cc);
           } else if (rhs.getNode().hasOneUse()) {
             Util.assertion(rhsOpc == ISD.SUB, "Unexpected operation!");
-            SDValue sh = dag.getNode(ISD.SHL, rhs.getValueType(),
+            SDValue sh = dag.getNode(ISD.SHL, dl, rhs.getValueType(),
                 lhs, dag.getConstant(1, new EVT(getShiftAmountTy()), false));
             if (!dagCBI.isCalledByLegalizer())
               dagCBI.addToWorkList(sh.getNode());
-            return dag.getSetCC(vt, sh, rhs.getOperand(0), cc);
+            return dag.getSetCC(dl, vt, sh, rhs.getOperand(0), cc);
           }
         }
       }
@@ -2181,7 +2195,7 @@ public abstract class TargetLowering {
           if (valueHasExactlyOneBitSet(rhs, dag)) {
             cc = ISD.getSetCCInverse(cc, true);
             SDValue zero = dag.getConstant(0, rhs.getValueType(), false);
-            return dag.getSetCC(vt, lhs, zero, cc);
+            return dag.getSetCC(dl, vt, lhs, zero, cc);
           }
         }
       }
@@ -2190,7 +2204,7 @@ public abstract class TargetLowering {
           if (valueHasExactlyOneBitSet(lhs, dag)) {
             cc = ISD.getSetCCInverse(cc, true);
             SDValue zero = dag.getConstant(0, lhs.getValueType(), false);
-            return dag.getSetCC(vt, rhs, zero, cc);
+            return dag.getSetCC(dl, vt, rhs, zero, cc);
           }
         }
       }
@@ -2203,45 +2217,45 @@ public abstract class TargetLowering {
           Util.shouldNotReachHere("Unknown integer setcc!");
           break;
         case SETEQ:
-          temp = dag.getNode(ISD.XOR, new EVT(MVT.i1), lhs, rhs);
+          temp = dag.getNode(ISD.XOR, dl, new EVT(MVT.i1), lhs, rhs);
           lhs = dag.getNOT(temp, new EVT(MVT.i1));
           if (!dagCBI.isCalledByLegalizer())
             dagCBI.addToWorkList(temp.getNode());
           break;
         case SETNE:
-          lhs = dag.getNode(ISD.XOR, new EVT(MVT.i1), lhs, rhs);
+          lhs = dag.getNode(ISD.XOR, dl, new EVT(MVT.i1), lhs, rhs);
           break;
         case SETGT:
         case SETULT:
           temp = dag.getNOT(lhs, new EVT(MVT.i1));
-          lhs = dag.getNode(ISD.ADD, new EVT(MVT.i1), rhs, temp);
+          lhs = dag.getNode(ISD.ADD, dl, new EVT(MVT.i1), rhs, temp);
           if (!dagCBI.isCalledByLegalizer())
             dagCBI.addToWorkList(temp.getNode());
           break;
         case SETLT:
         case SETUGT:
           temp = dag.getNOT(rhs, new EVT(MVT.i1));
-          lhs = dag.getNode(ISD.AND, new EVT(MVT.i1), lhs, temp);
+          lhs = dag.getNode(ISD.AND, dl, new EVT(MVT.i1), lhs, temp);
           if (!dagCBI.isCalledByLegalizer())
             dagCBI.addToWorkList(temp.getNode());
           break;
         case SETULE:
         case SETGE:
           temp = dag.getNOT(lhs, new EVT(MVT.i1));
-          lhs = dag.getNode(ISD.OR, new EVT(MVT.i1), rhs, temp);
+          lhs = dag.getNode(ISD.OR, dl, new EVT(MVT.i1), rhs, temp);
           if (!dagCBI.isCalledByLegalizer())
             dagCBI.addToWorkList(temp.getNode());
           break;
         case SETUGE:
         case SETLE:
           temp = dag.getNOT(rhs, new EVT(MVT.i1));
-          lhs = dag.getNode(ISD.OR, new EVT(MVT.i1), lhs, temp);
+          lhs = dag.getNode(ISD.OR, dl, new EVT(MVT.i1), lhs, temp);
           break;
       }
       if (vt.getSimpleVT().simpleVT != MVT.i1) {
         if (!dagCBI.isCalledByLegalizer())
           dagCBI.addToWorkList(lhs.getNode());
-        lhs = dag.getNode(ISD.ZERO_EXTEND, vt, lhs);
+        lhs = dag.getNode(ISD.ZERO_EXTEND, dl, vt, lhs);
       }
       return lhs;
     }
@@ -2326,6 +2340,7 @@ public abstract class TargetLowering {
     Util.assertion(res != null && res.length == 2, "Invalid res passed through!");
     Util.assertion(depth >= 0);
     int bitwidth = demandedMask.getBitWidth();
+    DebugLoc dl = op.getDebugLoc();
     Util.assertion(op.getValueSizeInBits() == bitwidth, "Mask size mismatches value type size!");
     APInt newMask = demandedMask.clone();
     res[0] = new APInt(bitwidth, 0);
@@ -2411,8 +2426,7 @@ public abstract class TargetLowering {
 
         Util.assertion(res[0].and(res[1]).eq(0), "Bits known to be one AND zero?");
         if (res[0].intersects(inSignBit)) {
-          return tlo.combineTo(op, tlo.dag.getZeroExtendInReg(
-              op.getOperand(0), vt));
+          return tlo.combineTo(op, tlo.dag.getZeroExtendInReg(op.getOperand(0), dl, vt));
         }
         if (res[1].intersects(inSignBit)) {
           res[1].orAssign(newBits);
@@ -2431,7 +2445,7 @@ public abstract class TargetLowering {
         APInt newBits = APInt.getHighBitsSet(bitwidth, bitwidth - operandBitWidth).
             and(newMask);
         if (!newBits.intersects(newMask)) {
-          return tlo.combineTo(op, tlo.dag.getNode(ISD.ANY_EXTEND,
+          return tlo.combineTo(op, tlo.dag.getNode(ISD.ANY_EXTEND, dl,
               op.getValueType(), op.getOperand(0)));
         }
         if (simplifyDemandedBits(op.getOperand(0), inMask, tlo, res, depth + 1)) {
@@ -2451,7 +2465,7 @@ public abstract class TargetLowering {
         APInt newBits = inMask.not().and(newMask);
 
         if (newBits.eq(0))
-          return tlo.combineTo(op, tlo.dag.getNode(ISD.ANY_EXTEND,
+          return tlo.combineTo(op, tlo.dag.getNode(ISD.ANY_EXTEND, dl,
               op.getValueType(), op.getOperand(0)));
 
         APInt inDemandedBits = inMask.and(newMask);
@@ -2464,7 +2478,7 @@ public abstract class TargetLowering {
         res[1] = res[1].zext(bitwidth);
 
         if (res[0].intersects(inSignBit)) {
-          return tlo.combineTo(op, tlo.dag.getNode(ISD.ZERO_EXTEND,
+          return tlo.combineTo(op, tlo.dag.getNode(ISD.ZERO_EXTEND, dl,
               op.getValueType(), op.getOperand(0)));
         }
         if (res[1].intersects(inSignBit)) {
@@ -2512,9 +2526,9 @@ public abstract class TargetLowering {
 
                 if (shAmt.getZExtValue() < bitwidth &&
                     highBits.and(newMask).eq(0)) {
-                  SDValue newTrunc = tlo.dag.getNode(ISD.TRUNCATE,
+                  SDValue newTrunc = tlo.dag.getNode(ISD.TRUNCATE, dl,
                       op.getValueType(), in.getOperand(0));
-                  return tlo.combineTo(op, tlo.dag.getNode(ISD.SRL,
+                  return tlo.combineTo(op, tlo.dag.getNode(ISD.SRL, dl,
                       op.getValueType(), newTrunc,
                       in.getOperand(1)));
                 }
@@ -2570,6 +2584,7 @@ public abstract class TargetLowering {
   }
 
   public SDValue emitTargetCodeForMemcpy(SelectionDAG dag,
+                                         DebugLoc dl,
                                          SDValue chain,
                                          SDValue dst,
                                          SDValue src,
@@ -2584,6 +2599,7 @@ public abstract class TargetLowering {
   }
 
   public SDValue emitTargetCodeForMemset(SelectionDAG dag,
+                                         DebugLoc dl,
                                          SDValue chain,
                                          SDValue op1,
                                          SDValue op2,
@@ -2596,6 +2612,7 @@ public abstract class TargetLowering {
   }
 
   public SDValue emitTargetCodeForMemmove(SelectionDAG dag,
+                                          DebugLoc dl,
                                           SDValue chain,
                                           SDValue op1,
                                           SDValue op2,
@@ -2628,13 +2645,13 @@ public abstract class TargetLowering {
 
     APInt d = ((ConstantSDNode) n.getOperand(1).getNode()).getAPIntValue();
     APInt.MS magics = d.magic();
-
+    DebugLoc dl = n.getDebugLoc();
     SDValue q;
     if (isOperationLegalOrCustom(ISD.MULHS, vt))
-      q = dag.getNode(ISD.MULHS, vt, n.getOperand(0),
+      q = dag.getNode(ISD.MULHS, dl, vt, n.getOperand(0),
           dag.getConstant(magics.m, vt, false));
     else if (isOperationLegalOrCustom(ISD.SMUL_LOHI, vt)) {
-      q = new SDValue(dag.getNode(ISD.SMUL_LOHI,
+      q = new SDValue(dag.getNode(ISD.SMUL_LOHI, dl,
           dag.getVTList(vt, vt),
           n.getOperand(0),
           dag.getConstant(magics.m, vt, false)).getNode(), 1);
@@ -2643,28 +2660,28 @@ public abstract class TargetLowering {
       q = new SDValue();
     }
     if (d.isStrictlyPositive() && magics.m.isNegative()) {
-      q = dag.getNode(ISD.ADD, vt, q, n.getOperand(0));
+      q = dag.getNode(ISD.ADD, dl, vt, q, n.getOperand(0));
       if (created != null)
         created.add(q.getNode());
     }
     if (d.isNegative() && magics.m.isStrictlyPositive()) {
-      q = dag.getNode(ISD.SUB, vt, q, n.getOperand(0));
+      q = dag.getNode(ISD.SUB, dl, vt, q, n.getOperand(0));
       if (created != null)
         created.add(q.getNode());
     }
     // Shift right algebraic if shift value is nonzero
     if (magics.s > 0) {
-      q = dag.getNode(ISD.SRA, vt, q, dag.getConstant(magics.s,
+      q = dag.getNode(ISD.SRA, dl, vt, q, dag.getConstant(magics.s,
           new EVT(getShiftAmountTy()), false));
       if (created != null)
         created.add(q.getNode());
     }
-    SDValue t = dag.getNode(ISD.SRL, vt, q,
+    SDValue t = dag.getNode(ISD.SRL, dl, vt, q,
         dag.getConstant(vt.getSizeInBits() - 1, new EVT(getShiftAmountTy()), false));
     if (created != null)
       created.add(t.getNode());
 
-    return dag.getNode(ISD.ADD, vt, q, t);
+    return dag.getNode(ISD.ADD, dl, vt, q, t);
   }
 
   public SDValue buildUDIV(SDNode n, SelectionDAG dag, ArrayList<SDNode> created) {
@@ -2676,13 +2693,14 @@ public abstract class TargetLowering {
         (ConstantSDNode) n.getOperand(1).getNode() : null;
     Util.assertion(n1C != null);
 
+    DebugLoc dl = n.getDebugLoc();
     APInt.MU magics = n1C.getAPIntValue().magicu();
     SDValue q;
     if (isOperationLegalOrCustom(ISD.MULHU, vt))
-      q = dag.getNode(ISD.MULHU, vt, n.getOperand(0),
+      q = dag.getNode(ISD.MULHU, dl, vt, n.getOperand(0),
           dag.getConstant(magics.m, vt, false));
     else if (isOperationLegalOrCustom(ISD.UMUL_LOHI, vt))
-      q = new SDValue(dag.getNode(ISD.UMUL_LOHI,
+      q = new SDValue(dag.getNode(ISD.UMUL_LOHI, dl,
           dag.getVTList(vt, vt),
           n.getOperand(0),
           dag.getConstant(magics.m, vt, false)).getNode(), 1);
@@ -2693,20 +2711,20 @@ public abstract class TargetLowering {
 
     if (!magics.a) {
       Util.assertion(magics.s < n1C.getAPIntValue().getBitWidth());
-      return dag.getNode(ISD.SRL, vt, q,
+      return dag.getNode(ISD.SRL, dl, vt, q,
           dag.getConstant(magics.s, new EVT(getShiftAmountTy()), false));
     } else {
-      SDValue npq = dag.getNode(ISD.SUB, vt, n.getOperand(0), q);
+      SDValue npq = dag.getNode(ISD.SUB, dl, vt, n.getOperand(0), q);
       if (created != null)
         created.add(npq.getNode());
-      npq = dag.getNode(ISD.SRL, vt, npq,
+      npq = dag.getNode(ISD.SRL, dl, vt, npq,
           dag.getConstant(1, new EVT(getShiftAmountTy()), false));
       if (created != null)
         created.add(npq.getNode());
-      npq = dag.getNode(ISD.ADD, vt, npq, q);
+      npq = dag.getNode(ISD.ADD, dl, vt, npq, q);
       if (created != null)
         created.add(npq.getNode());
-      return dag.getNode(ISD.SRL, vt, npq,
+      return dag.getNode(ISD.SRL, dl, vt, npq,
           dag.getConstant(magics.s - 1, new EVT(getShiftAmountTy()), false));
     }
   }

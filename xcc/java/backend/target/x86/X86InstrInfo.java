@@ -2355,8 +2355,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
           getRegisterInfo().needsStackRealignment(mf);
       SDValue[] ops = new SDValue[addrOps.size()];
       addrOps.toArray(ops);
-      load = dag.getTargetNode(getLoadRegOpcode(0, rc, isAligned, subtarget),
-              vt, new EVT(MVT.Other), ops);
+      load = dag.getMachineNode(getLoadRegOpcode(0, rc, isAligned, subtarget),
+              node.getDebugLoc(), vt, new EVT(MVT.Other), ops);
       newNodes.add(load);
     }
 
@@ -2378,7 +2378,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       beforeOps.add(new SDValue(load, 0));
 
     beforeOps.addAll(afterOps);
-    SDNode newNode = dag.getTargetNode(opc, vts, beforeOps);
+    SDNode newNode = dag.getMachineNode(opc, node.getDebugLoc(), vts, beforeOps);
     newNodes.add(newNode);
 
     if (foldedStore) {
@@ -2387,8 +2387,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl {
       addrOps.add(chain);
       boolean isAligned = getRegisterInfo().getStackAlignment() >= 16 ||
           getRegisterInfo().needsStackRealignment(mf);
-      SDNode store = dag.getTargetNode(getStoreRegOpcode(0, destRC,
-          isAligned, subtarget), new EVT(MVT.Other), addrOps);
+      SDNode store = dag.getMachineNode(getStoreRegOpcode(0, destRC,
+          isAligned, subtarget), node.getDebugLoc(), new EVT(MVT.Other), addrOps);
       newNodes.add(store);
     }
 
