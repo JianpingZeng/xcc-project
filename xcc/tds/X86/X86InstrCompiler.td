@@ -1108,7 +1108,7 @@ ConstantSDNode cn = n.getOperand(1).getNode() instanceof ConstantSDNode ?
     curDAG.maskedValueIsZero(n.getOperand(0), cn.getAPIntValue());
 
   int bitWidth = n.getValueType(0).getScalarType().getSizeInBits();
-  APInt mask = APInt.getAllOnesValue(bitWidth);
+  tools.APInt mask = tools.APInt.getAllOnesValue(bitWidth);
   // APInt KnownZero0, KnownOne0;
   tools.APInt[] vals0 = new tools.APInt[2];
   curDAG.computeMaskedBits(n.getOperand(0), mask, vals0, 0);
