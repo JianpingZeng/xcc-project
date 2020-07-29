@@ -55,7 +55,7 @@ if [ ! -d $CUR_DIR/llvm-3.0.src/build ]; then
     mkdir -p $CUR_DIR/llvm-3.0.src/build
 fi
 
-if [ ! -f $CUR_DIR/llvm-3.0.src/build/.compile.succeeded ]; then
+if [ ! -f $CUR_DIR/llvm-3.0.src/build/.compile.${TARGET}.succeeded ]; then
     export CC=$X86_GCC
     export CXX=$X86_GPP
     pushd $CUR_DIR/llvm-3.0.src/build && \
@@ -70,24 +70,36 @@ fi
 
 
 echo "===================================================================="
-echo "Bulding dragonegg-3.0..."
+echo "Bulding dragonegg-3.0 for ${TARGET}..."
 echo "===================================================================="
-if [ ! -d $CUR_DIR/dragonegg-3.0 ]; then
-    echo "dragonegg-3.0 does not exist?"
+if [ ! -f $CUR_DIR/dragonegg-3.0.tar.xz ]; then
+    echo "dragonegg-3.0.tar.xz does not exist?"
     exit 1
 fi
-if [ ! -f $CUR_DIR/dragonegg-3.0/.built.succeeded ]; then
-    export CC=$X86_GCC
-    export CXX=$X86_GPP
-    pushd $CUR_DIR/dragonegg-3.0
-    if [ "$TARGET" == "ARM" ]; then
-        GCC=$ARM_GCC LLVM_CONFIG=$INSTALL_PREFIX/bin/llvm-config make
-    else
-        GCC=$X86_GCC LLVM_CONFIG=$INSTALL_PREFIX/bin/llvm-config make
+if [ "$TARGET" == "ARM" ]; then
+    if [ ! -d "$CUR_DIR/dragonegg-arm" ]; then
+        tar -axf dragonegg-3.0.tar.xz && mv dragonegg-3.0 ${CUR_DIR}/dragonegg-arm
     fi
-    popd || exit 1 
-fi
 
+    if [ ! -f $CUR_DIR/dragonegg-arm/.built.succeeded ]; then
+        export CC=$X86_GCC
+        export CXX=$X86_GPP
+        pushd $CUR_DIR/dragonegg-arm
+        GCC=$ARM_GCC LLVM_CONFIG=$INSTALL_PREFIX/bin/llvm-config make
+        popd || exit 1
+    fi
+else
+    if [ ! -d "$CUR_DIR/dragonegg-x86" ]; then
+        tar -axf dragonegg-3.0.tar.xz && mv dragonegg-3.0 ${CUR_DIR}/dragonegg-x86
+    fi
+    if [ ! -f $CUR_DIR/dragonegg-x86/.built.succeeded ]; then
+        export CC=$X86_GCC
+        export CXX=$X86_GPP
+        pushd $CUR_DIR/dragonegg-x86
+        GCC=$X86_GCC LLVM_CONFIG=$INSTALL_PREFIX/bin/llvm-config make
+        popd || exit 1
+    fi
+fi
 
 echo "===================================================================="
 echo "Bulding xcc..."

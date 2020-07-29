@@ -13,9 +13,9 @@ fi
 
 LLVM="${ROOT_DIR}/xcc/cmake-build-debug"
 X86_GCC="/usr"
-X86_DRAGONEGG="${ROOT_DIR}/dragonegg-3.0"
+X86_DRAGONEGG="${ROOT_DIR}/dragonegg-x86"
 
-ARM_DRAGONEGG="${ROOT_DIR}/dragonegg-3.0"
+ARM_DRAGONEGG="${ROOT_DIR}/dragonegg-arm"
 ARM_GCC="${ROOT_DIR}/arm-unknown-linux-gnueabi/bin"
 
 # -----------------------------------------------------------------------------
@@ -288,10 +288,10 @@ if [[ $FLAG_target == "armv7" ]]; then
   CPU="-march=arm"
   GCCCPU="-mcpu=cortex-a9"
 else
-  GCC="${X86_GCC}/bin/gcc"
-  GPP="${X86_GCC}/bin/g++"
-  GFORTRAN="${X86_GCC}/bin/gfortran"
-  GFORTRAN="${X86_GCC}/bin/gfortran"
+  GCC="${X86_GCC}/bin/gcc-4.6"
+  GPP="${X86_GCC}/bin/g++-4.6"
+  GFORTRAN="${X86_GCC}/bin/gfortran-4.6"
+  GFORTRAN="${X86_GCC}/bin/gfortran-4.6"
   DRAGONEGG="${X86_DRAGONEGG}/dragonegg.so"
   CPU="-march=x86-64"
   GCCCPU="-mtune=corei7-avx"
