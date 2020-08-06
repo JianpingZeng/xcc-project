@@ -5,8 +5,8 @@ eXtremely Compiler Collection (XCC)
 Nowdays, most of production compilers, e.g., LLVM, GCC, IBM XL, and ICC, are written by
 C/C++ due to high efficiency of resulting in binary. However, it is not benefitial at all
 times due to strange and subtle bugs casued by C/C++ itself for such large software project.
-Inspired by safe programming feature provided by Java, we think it is starting point to use
-re-invent an new compiler infrastructure which can provide the community with a concept-of-proof.
+Inspired by safe programming feature provided by Java, we think it is a starting point to
+devise an new compiler infrastructure which can provide the community with a concept-of-proof.
 
 XCC is a research compiler written in Java for translating [LLVM IR](https://llvm.org/docs/LangRef.html) into assembly code,
 which accepts LLVM IR compatible with LLVM 3.0. Currently, xcc naively translates
@@ -14,11 +14,12 @@ LLVM IR to unoptimized machine code except for the directed-acyclic-graph (DAG) 
 selection which does instruction folding for most instruction patterns. For the sake of simplicity,
 XCC currently uses a simple up-bottom local register allocation which keeps the lifetime of live
 interval within basic block. It means the local register allocation always spills the value of
-live interval to the stack and reload it from stack in the beginning of next basic block.
+live interval to the stack in the basic block end and reload it from stack in the beginning of
+the basic block where the virtual register is used.
 
-
-Currently, XCC compiler can successfully compile all applications of SPEC CPU2006 even though
-some generates binaries crash but it is a good sign.
+Currently, XCC compiler can successfully compile all applications of SPEC CPU2006 for ARM target
+even though some generated binaries crash but it is a good sign. Furthermore, it has an experimental
+backend for X86 and Mips.
 
 ## Future plan
 1. Fix existing bugs which is our first priority without exception.
@@ -26,7 +27,6 @@ some generates binaries crash but it is a good sign.
 2. Using an advancing register allocator, such as Greedy allocator of LLVM,
 graph coloring, or IL-Based allocator. 
 4. Advance the optimization strategies so as to improve its performance.
-
 
 ## Usage
 
@@ -41,7 +41,7 @@ graph coloring, or IL-Based allocator.
 2. Build this project with the following command.
    ```bash
     cd xcc-project
-    ./build.sh [ARM or X86]  Note that: It fails to build X86 target due to some bugs
+    ./build.sh [ARM, X86, or Mips]  Note that: X86 target has many bugs and Mips is experimental
    ```
 
 ### Compilation
