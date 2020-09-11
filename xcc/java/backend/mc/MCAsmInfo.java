@@ -371,7 +371,7 @@ public class MCAsmInfo {
     }
 
     // FIXME: move these methods to DwarfPrinter when the JIT stops using them.
-    public static int getSLEB128Size(int Value) {
+    public static int getULEB128Size(long Value) {
         int size = 0;
         do {
             Value >>>= 7;
@@ -380,12 +380,12 @@ public class MCAsmInfo {
         return size;
     }
 
-    public static int getULEB128Size(int Value) {
+    public static int getSLEB128Size(long Value) {
         int size = 0;
-        int sign = Value >> 31;
+        long sign = Value >> 31;
         boolean isMore;
         do {
-            int b = Value & 0xf;
+            long b = Value & 0xf;
             Value >>= 7;
             isMore = Value != sign || ((b ^ sign) & 0x40) != 0;
             ++size;

@@ -27,9 +27,15 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.value.MDNode;
+
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public class DIEnumerator extends DIDescriptor {
+    public DIEnumerator() { super();}
+    public DIEnumerator(MDNode n) { super(n);}
+    public String getName() { return getStringField(1); }
+    public long getEnumValue() { return getInt64Field(2); }
 }

@@ -462,7 +462,35 @@ public class X86FrameLowering extends TargetFrameLowering {
       int frameIndex = mf.getFrameInfo().createStackObject(4, 4);
       Util.assertion(frameIndex == mf.getFrameInfo().getObjectIndexEnd() - 1,
               "The slot for EBP must be last");
-
     }
+  }
+
+  @Override
+  public int getFrameIndexOffset(MachineFunction mf, int fi) {
+    X86RegisterInfo tri = subtarget.getRegisterInfo();
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    int offset = mfi.getObjectOffset(fi) - getLocalAreaOffset();
+    long stackSize = mfi.getStackSize();
+    if (tri.needsStackRealignment(mf)) {
+      if (fi < 0)
+        // skip the saved EBP
+        offset += tri.getSlotSize();
+      else {
+        Util.assertion(((-(offset + stackSize)) % mfi.getObjectAlignment(fi)) == 0);
+        return (int) (offset + stackSize);
+      }
+    } else {
+      if (!hasFP(mf))
+        return (int) (offset + stackSize);
+
+      // skip the saved EBP
+      offset += tri.getSlotSize();
+      // skip the RETADDR move area
+      X86MachineFunctionInfo x86FI = (X86MachineFunctionInfo) mf.getFunctionInfo();
+      int tailCallReturnAddrDelta = x86FI.getTCReturnAddrDelta();
+      if (tailCallReturnAddrDelta < 0)
+        offset -= tailCallReturnAddrDelta;
+    }
+    return offset;
   }
 }

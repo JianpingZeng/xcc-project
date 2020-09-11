@@ -4,6 +4,7 @@ import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFrameInfo;
 import backend.codegen.MachineFunction;
 import backend.codegen.RegScavenger;
+import tools.OutRef;
 import tools.Pair;
 
 import static backend.target.TargetOptions.DisableFPEliMLeaf;
@@ -17,7 +18,7 @@ import static backend.target.TargetOptions.DisableFPElim;
  * @version 0.4
  */
 public abstract class TargetFrameLowering {
-  public enum StackDirection {
+    public enum StackDirection {
     /**
      * Adding to the stack increasing the stack address.
      */
@@ -153,5 +154,25 @@ public abstract class TargetFrameLowering {
    */
   public void processFunctionBeforeFrameFinalized(MachineFunction mf) {
 
+  }
+
+  /**
+   * Returns the displacement from the frame register to
+   * the stack frame of the specified index. This is the default implementation
+   * which is overridden for some targets.
+   * @param mf
+   * @param fi
+   * @return
+   */
+  public int getFrameIndexOffset(MachineFunction mf, int fi) {
+    MachineFrameInfo mfi = mf.getFrameInfo();
+    return mfi.getObjectOffset(fi) + mfi.getStackSize() -
+            getLocalAreaOffset() + mfi.getOffsetAdjustment();
+  }
+
+  public int getFrameIndexReference(MachineFunction mf, int fi, OutRef<Integer> frameReg) {
+    TargetRegisterInfo tri = mf.getSubtarget().getRegisterInfo();
+    frameReg.set(tri.getFrameRegister(mf));
+    return getFrameIndexOffset(mf, fi);
   }
 }

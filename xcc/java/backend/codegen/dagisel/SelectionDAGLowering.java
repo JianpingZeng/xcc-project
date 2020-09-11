@@ -23,6 +23,7 @@ import backend.codegen.*;
 import backend.codegen.dagisel.SDNode.RegisterSDNode;
 import backend.debug.DIVariable;
 import backend.debug.DebugLoc;
+import backend.debug.Dwarf;
 import backend.intrinsic.Intrinsic;
 import backend.ir.AllocationInst;
 import backend.ir.IndirectBrInst;

@@ -27,12 +27,14 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.support.Dwarf;
 import backend.value.Function;
 import backend.value.MDNode;
+import backend.value.Value;
 import tools.Util;
 
 import java.io.PrintStream;
+
+import static backend.debug.Dwarf.LLVMDebugVersion8;
 
 /**
  * @author Jianping Zeng.
@@ -76,18 +78,61 @@ public class DISubprogram extends DIScope {
   public Function getFunction() {
     return getFunctionField(16);
   }
+  public DIArray getTemplateParams() { return new DIArray(getDescriptorField(17).getDbgNode()); }
+  public DISubprogram getFunctionDeclaration() { return new DISubprogram(getDescriptorField(18).getDbgNode()); }
+  public MDNode getVariableNodes() {
+    if (dbgNode == null || dbgNode.getNumOfOperands() <= 19)
+      return null;
+    Value val = dbgNode.operand(19);
+    MDNode n = val instanceof MDNode ? (MDNode)val : null;
+    if (n != null)
+      return n.operand(0) instanceof MDNode ? (MDNode) n.operand(0) : null;
+    return null;
+  }
+  public DIArray getVariables() {
+    if (dbgNode == null || dbgNode.getNumOfOperands() <= 19)
+      return null;
+    Value val = dbgNode.operand(19);
+    MDNode n = val instanceof MDNode ? (MDNode)val : null;
+    if (n != null && n.operand(0) instanceof MDNode)
+      return new DIArray(((MDNode)n.operand(0)));
+    return new DIArray();
+  }
 
-  public int isLocalToUnit() { return getUnsignedField(9); }
-  public int isDefinition() { return getUnsignedField(10); }
+  public boolean isLocalToUnit() { return getUnsignedField(9) != 0; }
+  public boolean isDefinition() { return getUnsignedField(10) != 0; }
   public int getVirtuality() { return getUnsignedField(11); }
   public int getVirtualIndex() { return getUnsignedField(12); }
   public DICompositeType getContainingType() { return new DICompositeType(getDescriptorField(13).getDbgNode()); }
-  public int isArtificial() { return getUnsignedField(14); }
-  public int isOptimized() {
+  public boolean isArtificial() { return getUnsignedField(14) != 0; }
+  public boolean isOptimized() {
     Util.assertion(dbgNode != null, "Invalid subprogram descriptor!");
     if (dbgNode.getNumOfOperands() == 16)
-      return getUnsignedField(15);
-    return 0;
+      return getUnsignedField(15) != 0;
+    return false;
+  }
+
+  public boolean isPrivate() {
+    if (getVersion() <= LLVMDebugVersion8)
+      return false;
+    return (getUnsignedField(14) & FlagPrivate) != 0;
+  }
+
+  public boolean isProtected() {
+    if (getVersion() <= LLVMDebugVersion8)
+      return false;
+    return (getUnsignedField(14) & FlagProtected) != 0;
+  }
+
+  public boolean isExplicit() {
+    if (getVersion() <= LLVMDebugVersion8)
+      return false;
+    return (getUnsignedField(14) & FlagExplicit) != 0;
+  }
+  public boolean isPrototyped() {
+    if (getVersion() <= LLVMDebugVersion8)
+      return false;
+    return (getUnsignedField(14) & FlagPrototyped) != 0;
   }
 
   @Override

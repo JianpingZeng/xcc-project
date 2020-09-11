@@ -27,9 +27,15 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.value.MDNode;
+
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public class DISubrange extends DIDescriptor {
+    public DISubrange() { super();}
+    public DISubrange(MDNode n) { super(n);}
+    public long getLo() { return getInt64Field(1); }
+    public long getHi() { return getInt64Field(2); }
 }

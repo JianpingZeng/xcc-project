@@ -10,7 +10,7 @@ package backend.target.x86;
 
 import backend.codegen.TargetLoweringObjectFileELF;
 
-import static backend.support.Dwarf.*;
+import static backend.debug.Dwarf.*;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 
 public class X86_32ELFTargetObjectFile extends TargetLoweringObjectFileELF {

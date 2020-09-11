@@ -46,6 +46,7 @@ public class DICompositeType extends DIDerivedType {
   public DIArray getTypeArray() { return new DIArray(getDescriptorField(10).getDbgNode()); }
   public int getRuntimeLang() { return getUnsignedField(11); }
   public DICompositeType getContainingType() { return new DICompositeType(getDescriptorField(12).getDbgNode()); }
+  public DIArray getTemplateParams() { return new DIArray(getDescriptorField(13).getDbgNode()); }
   public boolean verify() {
     if (dbgNode == null) return false;
     if (!getContext().verify()) return false;

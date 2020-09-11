@@ -474,4 +474,9 @@ public abstract class MCRegisterInfo {
     if (subIdx != 0)
       os.print(String.format(":sub(%d)", subIdx));
   }
+
+  public int getDwarfRegNum(int reg, boolean isEH) {
+    Util.shouldNotReachHere("getDwarfRegNum is not implemented yet!");
+    return 0;
+  }
 }

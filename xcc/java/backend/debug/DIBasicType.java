@@ -27,9 +27,22 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.value.MDNode;
+
+import java.io.PrintStream;
+
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public class DIBasicType extends DIType {
+    public DIBasicType() { super();}
+    public DIBasicType(MDNode n) { super(n);}
+    public int getEncoding() { return getUnsignedField(9); }
+    public boolean verify() { return isBasicType(); }
+
+    @Override
+    public void print(PrintStream os) {
+        os.printf(" [%s] ", Dwarf.attributeEncodingString(getEncoding()));
+    }
 }

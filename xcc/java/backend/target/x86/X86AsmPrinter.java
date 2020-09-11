@@ -990,6 +990,19 @@ public class X86AsmPrinter extends AsmPrinter {
     }
   }
 
+  @Override
+  public MachineLocation getDebugValueLocation(MachineInstr mi) {
+    Util.assertion(mi.getNumOperands() == 7, "Invalid number of machine operands!");
+    MachineLocation location = new MachineLocation();
+    // frame address (register +- offset)
+    if (mi.getOperand(0).isRegister() && mi.getOperand(3).isImm())
+      location.set(mi.getOperand(0).getReg(), (int) mi.getOperand(3).getImm());
+    else {
+      // ignore DBG_VALUE instruction.
+    }
+    return location;
+  }
+
   public static X86AsmPrinter createX86AsmCodeEmitter(
       OutputStream os,
       X86TargetMachine tm,

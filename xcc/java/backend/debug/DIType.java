@@ -27,7 +27,6 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.support.Dwarf;
 import backend.value.MDNode;
 
 import java.io.PrintStream;
@@ -38,15 +37,7 @@ import java.util.Objects;
  * @version 0.4
  */
 public class DIType extends DIScope {
-  private static final int    FlagPrivate          = 1 << 0;
-  private static final int    FlagProtected        = 1 << 1;
-  private static final int    FlagFwdDecl          = 1 << 2;
-  private static final int    FlagAppleBlock       = 1 << 3;
-  private static final int    FlagBlockByrefStruct = 1 << 4;
-  private static final int    FlagVirtual           = 1 << 5;
-  private static final int    FlagArtificial        = 1 << 6;  // To identify artificial arguments in
-                                                                    // a subroutine type. e.g. "this" in c++.
-
+  // a subroutine type. e.g. "this" in c++.
   protected DIType(MDNode dbgNode, boolean b1, boolean b2) {
     super(dbgNode);
   }
@@ -102,6 +93,25 @@ public class DIType extends DIScope {
     }
   }
 
+  public boolean isObjcClassComplete() {
+    return (getFlags() & FlagObjcClassComplete) != 0;
+  }
+
   @Override
   public void print(PrintStream os) { super.print(os); }
+
+  public boolean isUnsignedDIType() {
+    DIDerivedType dty = new DIDerivedType(dbgNode);
+    if (dty.verify())
+      return dty.getTypeDerivedFrom().isUnsignedDIType();
+
+    DIBasicType bty = new DIBasicType(dbgNode);
+    if (bty.verify()) {
+      int encoding = bty.getEncoding();
+      if (encoding == Dwarf.DW_ATE_unsigned ||
+              encoding == Dwarf.DW_ATE_unsigned_char)
+        return true;
+    }
+    return false;
+  }
 }

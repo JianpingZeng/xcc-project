@@ -27,12 +27,11 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.support.Dwarf;
 import backend.value.*;
 
 import java.io.PrintStream;
 
-import static backend.support.Dwarf.*;
+import static backend.debug.Dwarf.*;
 
 /**
  * A thin wrapper around the MDNode to access encoded debug info.
@@ -40,6 +39,17 @@ import static backend.support.Dwarf.*;
  * @version 0.4
  */
 public class DIDescriptor {
+  static final int    FlagPrivate          = 1 << 0;
+  static final int    FlagProtected        = 1 << 1;
+  static final int    FlagFwdDecl          = 1 << 2;
+  static final int    FlagAppleBlock       = 1 << 3;
+  static final int    FlagBlockByrefStruct = 1 << 4;
+  static final int    FlagVirtual           = 1 << 5;
+  static final int    FlagArtificial        = 1 << 6;  // To identify artificial arguments in
+  static final int    FlagExplicit          = 1 << 7;
+  static final int    FlagPrototyped        = 1 << 8;
+  static final int    FlagObjcClassComplete = 1 << 9;
+
   protected MDNode dbgNode;
   protected String getStringField(int elt) {
     if (dbgNode == null) return "";
@@ -214,5 +224,17 @@ public class DIDescriptor {
   }
   public boolean isGlobal() {
     return isGlobalVariable();
+  }
+  public boolean isUnspecifiedParameter() {
+    return dbgNode != null &&
+            getTag() == DW_TAG_unspecified_parameters;
+  }
+  public boolean isTemplateTypeParameter() {
+    return dbgNode != null &&
+            getTag() == DW_TAG_template_type_parameter;
+  }
+  public boolean isTemplateValueParameter() {
+    return dbgNode != null &&
+            getTag() == DW_TAG_template_value_parameter;
   }
 }

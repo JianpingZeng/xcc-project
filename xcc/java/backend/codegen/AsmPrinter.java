@@ -58,14 +58,6 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   private boolean isInTextSection;
   /**
-   * This provides a unique ID for the compiling machine function in the
-   * current translation unit.
-   * <p>
-   * It is automatically increased by calling method {}
-   */
-  private int functionNumber;
-
-  /**
    * The output stream on which the assembly code will be emitted.
    */
   protected PrintStream os;
@@ -84,7 +76,7 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   /**
    * A asmName mangler for performing necessary mangling on global linkage entity.
    */
-  protected NameMangler mangler;
+  public NameMangler mangler;
   /**
    * The asmName of current being processed machine function.
    */
@@ -92,16 +84,16 @@ public abstract class AsmPrinter extends MachineFunctionPass {
 
   protected MCSymbol.MCContext outContext;
 
-  protected MCStreamer outStreamer;
+  public MCStreamer outStreamer;
   protected TargetSubtarget subtarget;
   public MachineFunction mf;
   protected MachineModuleInfo mmi;
   private HashMap<BasicBlock, MCSymbol> addrLabelSymbols;
+  private int setCounter;
 
   protected AsmPrinter(OutputStream os, TargetMachine tm,
                        MCSymbol.MCContext ctx,
                        MCStreamer streamer, MCAsmInfo mai) {
-    functionNumber = 0;
     this.os = new PrintStream(os);
     this.tm = tm;
     this.mai = mai;
@@ -113,7 +105,10 @@ public abstract class AsmPrinter extends MachineFunctionPass {
     // FIXME, disable verbose output by default for avoiding a bug of
     // printing out a double value.
     verboseAsm = false; //streamer.isVerboseAsm();
+    setCounter = 0;
   }
+
+  public TargetData getTargetData() { return tm.getTargetData(); }
 
   @Override
   public void getAnalysisUsage(AnalysisUsage au) {
@@ -763,7 +758,48 @@ public abstract class AsmPrinter extends MachineFunctionPass {
       li = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
   }
 
-  private class SectionCPs {
+  public void emitLabelDifference(MCSymbol labelHI, MCSymbol labelLO, int size) {
+    MCExpr diff = MCBinaryExpr.createSub(MCSymbolRefExpr.create(labelHI),
+            MCSymbolRefExpr.create(labelLO), outContext);
+    if (!mai.hasSetDirective()) {
+      outStreamer.emitValue(diff, size, 0);
+      return;
+    }
+
+    // otherwise, emit with .set
+    MCSymbol setLabel = getTempSymbol("set", setCounter++);
+    outStreamer.emitAssignment(setLabel, diff);
+    outStreamer.emitSymbolValue(setLabel, size, 0);
+  }
+
+  public MCSymbol getTempSymbol(String name, int id) {
+    return outContext.getOrCreateSymbol(mai.getPrivateGlobalPrefix() + name + id);
+  }
+
+  public void emitInt8(int value) {
+    outStreamer.emitIntValue(value, 1, 0);
+  }
+
+  public void emitInt16(int value) {
+    outStreamer.emitIntValue(value, 2, 0);
+  }
+
+  public void emitInt32(int value) {
+    outStreamer.emitIntValue(value, 4, 0);
+  }
+
+  public int getISAEncoding() { return 0; }
+
+  /**
+   * Get location information encoded by DBG_VALUE operands.
+   * @param mi
+   * @return
+   */
+  public MachineLocation getDebugValueLocation(MachineInstr mi) {
+    return new MachineLocation();
+  }
+
+    private class SectionCPs {
     MCSection sec;
     int alignment;
     TIntArrayList cpes;
@@ -1558,5 +1594,51 @@ public abstract class AsmPrinter extends MachineFunctionPass {
   public MCSymbol getExternalSymbolSymbol(String sym) {
     String name = mangler.getMangledNameWithPrefix(sym);
     return outContext.getOrCreateSymbol(name);
+  }
+
+  public void emitSLEB128(long value) { emitSLEB128(value, null);}
+  public void emitSLEB128(long value, String desc) {
+    if (verboseAsm && desc != null)
+      outStreamer.addComment(desc);
+
+    if (mai.hasLEB128()) {
+      outStreamer.emitSLEB128IntValue(value, 0);
+      return;
+    }
+
+    // .sleb128 doesn't support, emit as .bytes
+    long sign = value >> 31;
+    boolean isMore;
+    do {
+      long tmp = value & 0x7f;
+      value >>= 7;
+      isMore = value != sign || ((tmp ^ sign) & 0x40) != 0;
+      if (isMore) tmp |= 0x80;
+      outStreamer.emitIntValue(tmp, 1, 0);
+    }while (isMore);
+  }
+  public void emitULEB128(long value) { emitULEB128(value, null);}
+  public void emitULEB128(long value, String desc) { emitULEB128(value, desc, 0);}
+  public void emitULEB128(long value, String desc, int padTo) {
+    if (verboseAsm && desc != null)
+      outStreamer.addComment(desc);
+
+    if (mai.hasLEB128() && padTo == 0) {
+      outStreamer.emitULEB128IntValue(value, 0);
+      return;
+    }
+
+    // .uleb128 doesn't support, emit as .bytes
+    do {
+      long tmp = value & 0x7f;
+      value >>>= 7;
+      if (value != 0 || padTo != 0) tmp |= 0x80;
+      outStreamer.emitIntValue(tmp, 1, 0);
+    }while (value != 0);
+    if (padTo != 0) {
+      if (padTo > 1)
+        outStreamer.emitFill(padTo - 1, 0x80, 0);
+      outStreamer.emitFill(1, 0, 0);
+    }
   }
 }

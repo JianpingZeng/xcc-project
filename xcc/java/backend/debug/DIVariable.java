@@ -31,7 +31,8 @@ import backend.value.Function;
 import backend.value.MDNode;
 import tools.Util;
 
-import static backend.support.Dwarf.LLVMDebugVersion7;
+import static backend.debug.Dwarf.LLVMDebugVersion7;
+import static backend.debug.Dwarf.LLVMDebugVersion8;
 
 /**
  * @author Jianping Zeng.
@@ -87,5 +88,11 @@ public class DIVariable extends DIDescriptor {
     // This variable is not inlined function argument if its scope
     // does not describe current function.
     return !new DISubprogram(getContext().getDbgNode()).describes(function);
+  }
+
+  public boolean isArtificial() {
+    if (getVersion() <= LLVMDebugVersion8)
+      return true;
+    return (getUnsignedField(6) & FlagArtificial) !=0;
   }
 }

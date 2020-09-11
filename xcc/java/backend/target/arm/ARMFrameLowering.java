@@ -899,4 +899,16 @@ public class ARMFrameLowering extends TargetFrameLowering {
       frameReg.set(regInfo.getBaseRegister());
     return offset;
   }
+
+  @Override
+  public int getFrameIndexOffset(MachineFunction mf, int fi) {
+    OutRef<Integer> frameReg = new OutRef<>(0);
+    return getFrameIndexReference(mf, fi, frameReg);
+  }
+
+  @Override
+  public int getFrameIndexReference(MachineFunction mf, int fi,
+                                    OutRef<Integer> frameReg) {
+    return resolveFrameIndexReference(mf, fi, frameReg, 0);
+  }
 }

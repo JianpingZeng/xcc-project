@@ -10,7 +10,7 @@ package backend.target.x86;
 
 import backend.codegen.MachineModuleInfo;
 import backend.mc.*;
-import backend.support.Dwarf;
+import backend.debug.Dwarf;
 import backend.support.NameMangler;
 import backend.target.SectionKind;
 import backend.target.TargetLoweringObjectFile;

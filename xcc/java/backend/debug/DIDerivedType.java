@@ -27,7 +27,6 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.support.Dwarf;
 import backend.value.MDNode;
 
 import java.io.PrintStream;
@@ -68,4 +67,26 @@ public class DIDerivedType extends DIType {
 
   @Override
   public void print(PrintStream os) { super.print(os); }
+
+  public String getObjCPropertyName() { return getStringField(10); }
+  public String getObjCPropertyGetterName() { return getStringField(11); }
+  public String getObjCPropertySetterName() { return getStringField(12); }
+  public boolean isReadOnlyObjCProperty() {
+    return (getUnsignedField(13) & Dwarf.DW_APPLE_PROPERTY_readonly) != 0;
+  }
+  public boolean isReadWriteObjCProperty() {
+    return (getUnsignedField(13) & Dwarf.DW_APPLE_PROPERTY_readwrite) != 0;
+  }
+  public boolean isAssignObjCProperty() {
+    return (getUnsignedField(13) & Dwarf.DW_APPLE_PROPERTY_assign) != 0;
+  }
+  public boolean isCopyObjCProperty() {
+    return (getUnsignedField(13) & Dwarf.DW_APPLE_PROPERTY_copy) != 0;
+  }
+  public boolean isRetainObjCProperty() {
+    return (getUnsignedField(13) & Dwarf.DW_APPLE_PROPERTY_retain) != 0;
+  }
+  public boolean isNonAtomicObjCProperty() {
+    return (getUnsignedField(13) & Dwarf.DW_APPLE_PROPERTY_nonatomic) != 0;
+  }
 }

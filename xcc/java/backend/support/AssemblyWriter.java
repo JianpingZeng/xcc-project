@@ -17,6 +17,7 @@
 
 package backend.support;
 
+import backend.debug.Dwarf;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.StructType;

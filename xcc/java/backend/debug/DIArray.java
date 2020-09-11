@@ -34,6 +34,7 @@ import backend.value.MDNode;
  * @version 0.4
  */
 public class DIArray extends DIDescriptor {
+  public DIArray() { super();}
   public DIArray(MDNode n) { super(n);}
   public int getNumElements() {
     if (dbgNode == null) return 0;

@@ -27,7 +27,6 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import backend.support.Dwarf;
 import backend.value.MDNode;
 import tools.Util;
 

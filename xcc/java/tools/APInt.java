@@ -723,6 +723,34 @@ public class APInt implements Cloneable {
       return pVal;
   }
 
+  public byte[] getRawByteData() {
+    if (isSingleWord()) {
+      return new byte[] {(byte) ((val>>>56)&0xff),
+                         (byte) ((val>>>48)&0xff),
+                         (byte) ((val>>>40)&0xff),
+                         (byte) ((val>>>32)&0xff),
+                         (byte) ((val>>>24)&0xff),
+                         (byte)((val >>> 16)&0xff),
+                         (byte)((val >>> 8)&0xff),
+                         (byte)(val &0xff)};
+    } else {
+      byte[] res = new byte[pVal.length*8];
+      int j = 0;
+      for (int i = 0; i < pVal.length; ++i) {
+        res[j] = (byte) ((pVal[i]>>>56) & 0xff);
+        res[j+1] = (byte) ((pVal[i]>>>48) & 0xff);
+        res[j+2] = (byte) ((pVal[i]>>>40) & 0xff);
+        res[j+3] = (byte) ((pVal[i]>>>32) & 0xff);
+        res[j+4] = (byte) ((pVal[i]>>>24) & 0xff);
+        res[j+5] = (byte)((pVal[i] >>> 16) & 0xff);
+        res[j+6] = (byte)((pVal[i] >>> 8) & 0xff);
+        res[j+7] = (byte)(pVal[i] & 0xff);
+        j += 8;
+      }
+      return res;
+    }
+  }
+
   public boolean ult(final APInt rhs) {
     Util.assertion(bitWidth == rhs.bitWidth, "Bit widths must be same for comparision");
     if (isSingleWord())

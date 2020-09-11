@@ -29,7 +29,7 @@ package backend.debug;
 
 import backend.value.MDNode;
 
-import static backend.support.Dwarf.LLVMDebugVersion7;
+import static backend.debug.Dwarf.LLVMDebugVersion7;
 
 /**
  * @author Jianping Zeng.

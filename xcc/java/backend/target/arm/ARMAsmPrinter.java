@@ -47,6 +47,9 @@ import static backend.target.TargetOptions.FloatABIForType;
  * @version 0.4
  */
 public class ARMAsmPrinter extends AsmPrinter {
+  final static int DW_ISA_ARM_thumb = 1;
+  final static int DW_ISA_ARM_arm = 2;
+
   private ARMMCInstLower instLowering;
 
   public ARMAsmPrinter(PrintStream os,
@@ -55,6 +58,14 @@ public class ARMAsmPrinter extends AsmPrinter {
                        MCStreamer streamer,
                        MCAsmInfo mai) {
     super(os, tm, ctx, streamer, mai);
+  }
+
+  @Override
+  public int getISAEncoding() {
+    // ARM/Darwin adds ISA to the DWARF info for each function.
+    if (!subtarget.isTargetDarwin())
+      return 0;
+    return ((ARMSubtarget)subtarget).isThumb() ? DW_ISA_ARM_thumb : DW_ISA_ARM_arm;
   }
 
   private static void populateADROperands(MCInst inst, int dest, MCSymbol label,
@@ -1236,6 +1247,20 @@ public class ARMAsmPrinter extends AsmPrinter {
     }
     return MCSymbolRefExpr.VariantKind.VK_None;
   }
+
+  @Override
+  public MachineLocation getDebugValueLocation(MachineInstr mi) {
+    Util.assertion(mi.getNumOperands() == 4, "Invalid number of machine operands!");
+    MachineLocation location = new MachineLocation();
+    // frame address
+    if (mi.getOperand(0).isRegister() && mi.getOperand(1).isImm())
+      location.set(mi.getOperand(0).getReg(), (int) mi.getOperand(1).getImm());
+    else {
+      // ignore DBG_VALUE instruction.
+    }
+    return location;
+  }
+
 
   private interface AttributeEmitter {
     void maybeSwitchVendor(String vendor);

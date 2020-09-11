@@ -27,9 +27,79 @@ package backend.debug;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import backend.value.Constant;
+import backend.value.GlobalVariable;
+import backend.value.MDNode;
+import tools.Util;
+
+import java.io.PrintStream;
+
+import static backend.debug.Dwarf.*;
+
 /**
  * @author Jianping Zeng.
  * @version 0.4
  */
 public class DIGlobalVariable extends DIDescriptor {
+    public DIGlobalVariable() { super();}
+    public DIGlobalVariable(MDNode n) { super(n);}
+    public DIScope getContext() { return new DIScope(getDescriptorField(2).getDbgNode()); }
+    public String getName() { return getStringField(3); }
+    public String getDisplayName() { return getStringField(4); }
+    public String getLinkageName() { return getStringField(5); }
+    public DICompileUnit getCompileUnit() {
+        Util.assertion(getVersion() <= LLVMDebugVersion10, "Invalid getCompileUnit!");
+        if (getVersion() == LLVMDebugVersion7)
+            return new DICompileUnit(getDescriptorField(6).getDbgNode());
+        DIFile f = new DIFile(getDescriptorField(6).getDbgNode());
+        return f.getCompileUnit();
+    }
+    public String getFilename() {
+        if (getVersion() <= LLVMDebugVersion10)
+            getContext().getFilename();
+        return new DIFile(getDescriptorField(6).getDbgNode()).getFilename();
+    }
+
+    public String getDirectory() {
+        if (getVersion() <= LLVMDebugVersion10)
+            getContext().getDirectory();
+        return new DIFile(getDescriptorField(6).getDbgNode()).getDirectory();
+    }
+
+    public int getLineNumber() { return getUnsignedField(7); }
+    public DIType getType() { return new DIType(getDescriptorField(8).getDbgNode()); }
+    public boolean isLocalToUnit() { return getUnsignedField(9) != 0; }
+    public boolean isDefinition() { return getUnsignedField(10) != 0; }
+    public GlobalVariable getGlobal() { return getGlobalVariableField(11); }
+    public Constant getConstant() { return getConstantField(11); }
+    public boolean verify() {
+        if (dbgNode == null) return false;
+        if (getDisplayName() == null || getDisplayName().isEmpty())
+            return false;
+        if (getContext() != null && !getContext().verify())
+            return false;
+        DIType ty = getType();
+        if (!ty.verify()) return false;
+        if (getGlobal() == null && getConstant() == null)
+            return false;
+        return true;
+    }
+
+    @Override
+    public void print(PrintStream os) {
+        os.print(" [");
+        String name = getName();
+        if (name != null && !name.isEmpty())
+            os.printf(" [%s] ", name);
+
+        int tag = getTag();
+        os.printf(" [%s] ", Dwarf.tagString(tag));
+        os.printf(" [%d] ", getLineNumber());
+        if (isLexicalBlock()) os.print(" [local] ");
+        if (isDefinition()) os.print(" [def] ");
+        if (isGlobalVariable())
+            new DIGlobalVariable(dbgNode).print(os);
+
+        os.println("]");
+    }
 }

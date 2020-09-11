@@ -106,7 +106,23 @@ public abstract class MCStreamer {
 
   public abstract void emitBytes(String data, int addrSpace);
 
+  public void emitSLEB128IntValue(long value, int addressSpace) {
+    StringBuilder os = new StringBuilder();
+    MCObjectWriter.encodeSLEB128(value, os);
+    emitBytes(os.toString(), addressSpace);
+  }
+  public void emitULEB128IntValue(long value, int addressSpace) {
+    StringBuilder os = new StringBuilder();
+    MCObjectWriter.encodeULEB128(value, os);
+    emitBytes(os.toString(), addressSpace);
+  }
   public abstract void emitValue(MCExpr val, int size,  int addrSpace);
+
+  public void emitSymbolValue(MCSymbol sym, int size) { emitSymbolValue(sym, size, 0);}
+
+  public void emitSymbolValue(MCSymbol sym, int size, int addrSpace) {
+    emitValue(MCSymbolRefExpr.create(sym), size, addrSpace);
+  }
 
   public void emitIntValue(long val, int size, int addrSpace) {
     emitValue(MCConstantExpr.create(val, getContext()), size, addrSpace);
