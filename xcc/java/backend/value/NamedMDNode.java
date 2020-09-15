@@ -80,4 +80,8 @@ public final class NamedMDNode extends Value {
   public Module getParent() {
     return parent;
   }
+
+  public void eraseFromParent() {
+    getParent().eraseNamedMetadata(this);
+  }
 }

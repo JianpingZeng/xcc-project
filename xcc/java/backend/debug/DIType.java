@@ -52,6 +52,7 @@ public class DIType extends DIScope {
     DIFile f = new DIFile(getDescriptorField(3).getDbgNode());
     return f.getCompileUnit();
   }
+  public DIFile getFile() { return new DIFile(getDescriptorField(3).getDbgNode()); }
   public int getLineNumber() { return getUnsignedField(4); }
   public long getSizeInBits() { return getInt64Field(5); }
   public long getAlignInBits() { return getInt64Field(6); }

@@ -339,6 +339,16 @@ public final class Module implements Iterable<Function> {
     return res;
   }
 
+  /**
+   * Return the specified NamedMDNode with the given name.
+   * If there is no NamedMDNode with given name, return null.
+   * @param name  The name of NamedMDNode to be found.
+   * @return
+   */
+  public NamedMDNode getNamedMetadata(String name) {
+    return namedMDSymTab.getOrDefault(name, null);
+  }
+
   public void findUsedStructTypes(ArrayList<StructType> namedTypes) {
     new TypeFinder(namedTypes).run(this);
   }
@@ -363,5 +373,10 @@ public final class Module implements Iterable<Function> {
 
   public ArrayList<NamedMDNode> getNamedMDList() {
     return namedMDList;
+  }
+
+  public void eraseNamedMetadata(NamedMDNode nmd) {
+    namedMDSymTab.remove(nmd.getName());
+    namedMDList.remove(nmd);
   }
 }

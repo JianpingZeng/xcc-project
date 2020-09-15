@@ -60,7 +60,7 @@ public class MDNode extends User {
     return get(context, vals, FunctionLocalness.FL_Unknown);
   }
 
-  public static MDNode get(LLVMContext context, Value[] vals) {
+  public static MDNode get(LLVMContext context, Value... vals) {
     return get(context, Arrays.asList(vals));
   }
 
