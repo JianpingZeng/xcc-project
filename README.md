@@ -4,7 +4,7 @@ eXtremely Compiler Collection (XCC)
 
 Nowdays, most of production compilers, e.g., LLVM, GCC, IBM XL, and ICC, are written in
 C/C++ thanks to high efficiency of resulting binaries. However, it is not always benefitial
-times due to strange and subtle bugs introduced by C/C++ itself for large software projects.
+due to strange and subtle bugs introduced by C/C++ itself for large software projects.
 Inspired by safe programming features provided by Java, we think it is a good starting point to
 devise a new compiler infrastructure which provides the community with a concept-of-proof compiler.
 
